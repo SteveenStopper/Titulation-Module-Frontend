@@ -1,0 +1,8 @@
+/* Minimal styles to get the app running */
+html, body {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  font-family: var(--font-family, Inter, Roboto, "Helvetica Neue", Arial, sans-serif);
+  background-color: var(--surface-ground, #f5f5f5);
+}

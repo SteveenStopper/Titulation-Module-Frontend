@@ -17,12 +17,20 @@
         "build": {
           "builder": "@angular/build:application",
           "options": {
+            "aot": true,
             "browser": "src/main.ts",
             "polyfills": [
               "zone.js"
             ],
             "tsConfig": "tsconfig.app.json",
             "inlineStyleLanguage": "scss",
+            "stylePreprocessorOptions": {
+              "includePaths": [
+                "./node_modules/primeng/resources",
+                "./node_modules/primeicons",
+                "./node_modules/primeflex"
+              ]
+            },
             "assets": [
               {
                 "glob": "**/*",
@@ -30,7 +38,9 @@
               }
             ],
             "styles": [
-              "src/styles.scss"
+              "primeicons/primeicons.css",
+              "primeflex/primeflex.css",
+              "src/styles.minimal.scss"
             ]
           },
           "configurations": {
@@ -88,11 +98,14 @@
               }
             ],
             "styles": [
-              "src/styles.scss"
+              "src/styles.minimal.scss"
             ]
           }
         }
       }
     }
+  },
+  "cli": {
+    "analytics": false
   }
 }

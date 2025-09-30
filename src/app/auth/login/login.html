@@ -1,0 +1,114 @@
+<p-toast></p-toast>
+<div class="login-shell">
+  <p-card class="login-card surface-overlay">
+    <div class="grid m-0">
+      <!-- Branding Panel -->
+      <div class="col-12 md:col-5 lg:col-6 branding-panel">
+        <div class="branding-content">
+          <div class="logo-ring">
+            <img src="https://www.istla-sigala.edu.ec/biblioteca/media/assets/LOGO_SIGALA.png"
+              alt="Logo Instituto Superior Tecnológico Los Andes" />
+          </div>
+          <h1 class="brand-title">ISTLA</h1>
+          <p class="brand-subtitle">Sistema de Gestión de Titulación</p>
+          <p class="brand-institute">Instituto Superior Tecnológico Los Andes</p>
+          <ul class="brand-points">
+            <li><i class="pi pi-check"></i> Acceso seguro institucional</li>
+            <li><i class="pi pi-check"></i> Procesos académicos centralizados</li>
+            <li><i class="pi pi-check"></i> Soporte a estudiantes y docentes</li>
+          </ul>
+        </div>
+      </div>
+
+      <!-- Form Panel -->
+      <div class="col-12 md:col-7 lg:col-6 form-panel">
+        <div class="form-header">
+          <h2 class="panel-title">Iniciar sesión</h2>
+          <p class="panel-subtitle">Usa tus credenciales institucionales</p>
+          <p-divider class="my-3"></p-divider>
+        </div>
+
+        <form [formGroup]="loginForm" (ngSubmit)="onSubmit()" class="login-form">
+          <div class="form-field">
+            <label for="email" class="field-label">
+              <i class="pi pi-envelope"></i>Correo institucional
+            </label>
+            <div class="p-inputgroup">
+              <span class="p-inputgroup-addon">
+                <i class="pi pi-envelope"></i>
+              </span>
+              <input pInputText id="email" type="email" formControlName="email"
+                placeholder="nombre.apellido@istla.edu.ec" autocomplete="email" required />
+            </div>
+            <div class="field-errors">
+              <small class="p-error"
+                *ngIf="loginForm.get('email')?.hasError('required') && loginForm.get('email')?.touched">
+                <i class="pi pi-exclamation-triangle"></i>El correo electrónico es requerido
+              </small>
+              <small class="p-error"
+                *ngIf="loginForm.get('email')?.hasError('email') && loginForm.get('email')?.touched">
+                <i class="pi pi-exclamation-triangle"></i>Ingrese un correo electrónico válido
+              </small>
+            </div>
+          </div>
+
+          <div class="form-field">
+            <label for="password" class="field-label">
+              <i class="pi pi-lock"></i>Contraseña
+            </label>
+            <p-password 
+              [feedback]="false" 
+              [toggleMask]="true" 
+              formControlName="password" 
+              inputId="password" 
+              placeholder="Ingrese su contraseña institucional" 
+              autocomplete="current-password"
+              required
+            >
+              <ng-template pTemplate="header">
+                <div class="font-semibold text-sm mb-2">Requisitos de contraseña</div>
+              </ng-template>
+              <ng-template pTemplate="footer">
+                <p-divider></p-divider>
+                <ul class="pl-2 my-0 leading-normal">
+                  <li>Al menos una minúscula</li>
+                  <li>Al menos una mayúscula</li>
+                  <li>Al menos un número</li>
+                  <li>Mínimo 8 caracteres</li>
+                </ul>
+              </ng-template>
+            </p-password>
+            <div class="field-errors">
+              <small class="p-error" *ngIf="loginForm.get('password')?.hasError('required') && loginForm.get('password')?.touched">
+                <i class="pi pi-exclamation-triangle"></i>La contraseña es requerida
+              </small>
+              <small class="p-error" *ngIf="loginForm.get('password')?.hasError('minlength') && loginForm.get('password')?.touched">
+                <i class="pi pi-exclamation-triangle"></i>La contraseña debe tener al menos 8 caracteres
+              </small>
+            </div>
+          </div>
+
+          <div class="form-actions">
+            <button pButton type="submit" [disabled]="!loginForm.valid || isLoading" class="login-button"
+              [class.loading]="isLoading">
+              <i class="pi pi-sign-in" *ngIf="!isLoading"></i>
+              <i class="pi pi-spinner pi-spin" *ngIf="isLoading"></i>
+              <span>{{ isLoading ? 'Verificando credenciales...' : 'Acceder al Sistema' }}</span>
+            </button>
+          </div>
+
+          <div *ngIf="error" class="error-message">
+            <i class="pi pi-exclamation-circle"></i>
+            {{ error }}
+          </div>
+
+          <div class="help-text">
+            <i class="pi pi-info-circle"></i>
+            ¿Problemas para acceder?
+            <a href="javascript:void(0)" (click)="showPasswordRecovery()">Contacte al Departamento de Sistemas</a>
+          </div>
+        </form>
+      </div>
+    </div>
+  </p-card>
+</div>

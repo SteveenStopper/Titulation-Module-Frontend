@@ -1,17 +1,39 @@
-# See https://docs.github.com/get-started/getting-started-with-git/ignoring-files for more about ignoring files.
+# Entornos y variables
+.env
+.env.*
+!.env.example
 
-# Compiled output
+# Dependencias
+/node_modules
+/.pnp
+.pnp.*
+
+# Build y caché
 /dist
+/dist-ssr
 /tmp
 /out-tsc
 /bazel-out
+.cache/
+.angular/cache
+.ng_pkg_build/
+.storybook/dist/
 
-# Node
-/node_modules
-npm-debug.log
-yarn-error.log
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
 
-# IDEs and editors
+# Testing
+/coverage
+/test-results/
+/karma-results.json
+/coverage/
+*.code-coverage
+
+# IDEs y editores
 .idea/
 .project
 .classpath
@@ -20,9 +42,112 @@ yarn-error.log
 .settings/
 *.sublime-workspace
 
-# Visual Studio Code
+# VS Code
 .vscode/*
 !.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+
+# Sistema operativo
+.DS_Store
+Thumbs.db
+
+# Archivos temporales
+*.tmp
+*.swp
+*~
+
+# Cypress
+/cypress/videos/
+/cypress/screenshots/
+/cypress/downloads/
+
+# Playwright
+/playwright-report/
+/playwright/.cache/
+/test-results/
+
+# Storybook
+/storybook-static/
+
+# Archivos de entorno de Angular
+src/environments/environment.ts
+src/environments/environment.prod.ts
+
+# Archivos de configuración local
+firebase-debug.log
+firebase-debug.*.log
+
+# Archivos de configuración de Windows
+[Dd]esktop.ini
+
+# Archivos de configuración de macOS
+.AppleDouble
+.LSOverride
+Icon
+
+# Archivos de configuración de Linux
+*~
+.fuse_hidden*
+.directory
+.Trash-*
+.nfs*
+
+# Archivos de configuración de Docker
+.dockerignore
+.docker/
+
+# Archivos de configuración de Kubernetes
+.kube/
+
+# Archivos de configuración de Terraform
+.terraform/
+*.tfstate
+*.tfstate.*
+
+# Archivos de configuración de Serverless
+.serverless/
+
+# Archivos de configuración de Netlify
+.netlify/
+
+# Archivos de configuración de Vercel
+.vercel/
+
+# Archivos de configuración de Heroku
+.heroku/
+
+# Archivos de configuración de Firebase
+.firebase/
+firebase-debug.log
+firebase-debug.*.log
+
+# Archivos de configuración de Android
+.idea/
+.gradle/
+local.properties
+*.iml
+*.hprof
+.cxx/
+
+# Archivos de configuración de iOS
+**/ios/Pods/
+**/ios/Podfile.lock
+**/ios/*.xcworkspace/
+**/ios/*.xcodeproj/xcuserdata/
+**/ios/*.xcodeproj/project.xcworkspace/xcuserdata/
+
+# Archivos de configuración de Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+*.cab
+*.msi
+*.msm
+*.msp
+*.lnk
 !.vscode/tasks.json
 !.vscode/launch.json
 !.vscode/extensions.json
