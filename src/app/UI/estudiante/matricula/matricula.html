@@ -1,0 +1,88 @@
+<section class="bg-white rounded-xl border border-gray-200 shadow-sm">
+  <div class="p-4">
+    <div class="space-y-4">
+      <div class="flex items-start justify-between">
+        <div>
+          <h3 class="text-lg font-semibold text-gray-800">Carga de requisitos</h3>
+          <p class="text-sm text-gray-500">Sube los documentos requeridos. Secretaría validará su aprobación.</p>
+        </div>
+        <span class="text-xs px-2 py-1 rounded-full"
+              [ngClass]="requisitosHabilitados ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'">
+          {{ requisitosHabilitados ? 'Habilitado' : 'Pendiente aprobación de pago' }}
+        </span>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <!-- Solicitud -->
+        <div class="p-4 rounded-lg border border-gray-200 bg-gray-50">
+          <div class="font-medium text-gray-800 mb-2">Solicitud</div>
+          <div class="mb-2">
+            <label class="block text-sm font-medium text-gray-700 mb-1">Tipo de solicitud</label>
+            <select [(ngModel)]="reqTipos.solicitud" [ngModelOptions]="{standalone: true}" [disabled]="!requisitosHabilitados"
+                    class="w-full rounded-md border-gray-300 focus:border-blue-500 focus:ring-blue-500 text-sm">
+              <option value="" disabled selected>Seleccione</option>
+              <option *ngFor="let t of solicitudTipos" [value]="t">{{ t }}</option>
+            </select>
+          </div>
+          <input type="file" (change)="onReqFile($event, 'solicitud')" accept="application/pdf" [disabled]="!requisitosHabilitados"
+                 class="block w-full text-sm text-gray-700 disabled:opacity-60 file:mr-3 file:py-2 file:px-3 file:rounded-md file:border-0 file:text-sm file:font-medium file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"/>
+          <div class="text-xs text-gray-500 mt-1" *ngIf="reqNombres.solicitud">Archivo: {{ reqNombres.solicitud }}</div>
+        </div>
+        <!-- Oficio -->
+        <div class="p-4 rounded-lg border border-gray-200 bg-gray-50">
+          <div class="font-medium text-gray-800 mb-2">Oficio</div>
+          <div class="mb-2">
+            <label class="block text-sm font-medium text-gray-700 mb-1">Tipo de oficio</label>
+            <select [(ngModel)]="reqTipos.oficio" [ngModelOptions]="{standalone: true}" [disabled]="!requisitosHabilitados"
+                    class="w-full rounded-md border-gray-300 focus:border-blue-500 focus:ring-blue-500 text-sm">
+              <option value="" disabled selected>Seleccione</option>
+              <option *ngFor="let t of oficioTipos" [value]="t">{{ t }}</option>
+            </select>
+          </div>
+          <input type="file" (change)="onReqFile($event, 'oficio')" accept="application/pdf" [disabled]="!requisitosHabilitados"
+                 class="block w-full text-sm text-gray-700 disabled:opacity-60 file:mr-3 file:py-2 file:px-3 file:rounded-md file:border-0 file:text-sm file:font-medium file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"/>
+          <div class="text-xs text-gray-500 mt-1" *ngIf="reqNombres.oficio">Archivo: {{ reqNombres.oficio }}</div>
+        </div>
+        <!-- Otro documento -->
+        <div class="p-4 rounded-lg border border-gray-200 bg-gray-50 md:col-span-2">
+          <div class="font-medium text-gray-800 mb-2">Otro documento</div>
+          <input type="file" multiple (change)="onReqFile($event, 'otro')" accept="application/pdf" [disabled]="!requisitosHabilitados"
+                 class="block w-full text-sm text-gray-700 disabled:opacity-60 file:mr-3 file:py-2 file:px-3 file:rounded-md file:border-0 file:text-sm file:font-medium file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"/>
+
+          <div class="mt-3 space-y-2" *ngIf="reqOtros.length">
+            <div class="flex items-center gap-3 p-2 rounded border bg-white" *ngFor="let o of reqOtros; let i = index">
+              <div class="flex-1">
+                <div class="text-sm font-medium text-gray-800">{{ o.nombre }}</div>
+                <div class="text-xs text-gray-500">{{ (o.file.size/1024) | number:'1.0-0' }} KB</div>
+              </div>
+              <div class="w-80">
+                <select [(ngModel)]="o.tipo" [ngModelOptions]="{standalone: true}" [disabled]="!requisitosHabilitados"
+                        class="w-full rounded-md border-gray-300 focus:border-blue-500 focus:ring-blue-500 text-sm">
+                  <option value="" disabled selected>Seleccione tipo</option>
+                  <option *ngFor="let t of otroTipos" [value]="t">{{ t }}</option>
+                </select>
+              </div>
+              <button type="button" class="px-2 py-1 text-sm border rounded hover:bg-gray-50" (click)="removeOtro(i)">
+                Quitar
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="pt-2">
+        <button type="button" (click)="submitRequisitos()"
+                class="inline-flex items-center gap-2 px-4 py-2 rounded-md text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-60 text-sm"
+                [disabled]="!canSubmitRequisitos">
+          <i class="fa-solid fa-paper-plane"></i>
+          Enviar a Secretaría
+        </button>
+        <span class="ml-3 text-sm" [ngClass]="{
+          'text-yellow-700': reqEstado==='enviado',
+          'text-green-700': reqEstado==='aprobado',
+          'text-red-700': reqEstado==='rechazado'
+        }" *ngIf="reqEstado">Estado: {{ reqEstado }}</span>
+      </div>
+    </div>
+  </div>
+</section>

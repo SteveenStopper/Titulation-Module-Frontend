@@ -1,0 +1,109 @@
+<section class="space-y-6">
+  <!-- Filtros y acciones -->
+  <div class="bg-white rounded-xl border border-gray-200 shadow-sm p-4">
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-3 items-end">
+      <div>
+        <label class="block text-sm text-gray-600 mb-1">Período</label>
+        <select class="w-full border border-gray-300 rounded-md px-3 py-2 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                [(ngModel)]="selectedPeriod" (ngModelChange)="onPeriodChange()">
+          <option [ngValue]="undefined" disabled>Seleccione un período</option>
+          <option *ngFor="let p of periodOptions" [ngValue]="p">{{ p }}</option>
+        </select>
+      </div>
+      <div class="flex gap-2 justify-start md:justify-end">
+        <button type="button" (click)="exportKpisCsv()" [disabled]="!selectedPeriod" class="px-3 py-2 rounded-lg border text-sm hover:bg-gray-50 disabled:opacity-50">
+          <i class="fa fa-file-csv mr-1"></i> Exportar KPIs (CSV)
+        </button>
+        <button type="button" (click)="exportDetalleCsv()" [disabled]="!selectedPeriod" class="px-3 py-2 rounded-lg border text-sm hover:bg-gray-50 disabled:opacity-50">
+          <i class="fa fa-file-export mr-1"></i> Exportar Detalle (CSV)
+        </button>
+        <button type="button" (click)="printPdf()" [disabled]="!selectedPeriod" class="px-3 py-2 rounded-lg border text-sm hover:bg-gray-50 disabled:opacity-50">
+          <i class="fa fa-file-pdf mr-1"></i> Imprimir PDF
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- KPIs -->
+  <div class="bg-white rounded-xl border border-gray-200 shadow-sm p-4">
+    <h3 class="font-semibold text-gray-800 mb-3">Indicadores</h3>
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+      <div class="rounded-lg border p-4">
+        <div class="text-sm text-gray-500">Inscritos</div>
+        <div class="text-2xl font-bold">{{ stats.inscritos }}</div>
+      </div>
+      <div class="rounded-lg border p-4">
+        <div class="text-sm text-gray-500">UIC</div>
+        <div class="text-2xl font-bold">{{ stats.uic }}</div>
+      </div>
+      <div class="rounded-lg border p-4">
+        <div class="text-sm text-gray-500">Examen Complexivo</div>
+        <div class="text-2xl font-bold">{{ stats.complexivo }}</div>
+      </div>
+      <div class="rounded-lg border p-4">
+        <div class="text-sm text-gray-500">Vouchers Pendientes</div>
+        <div class="text-2xl font-bold">{{ stats.vouchersPendientes }}</div>
+      </div>
+      <div class="rounded-lg border p-4">
+        <div class="text-sm text-gray-500">Vouchers Aprobados</div>
+        <div class="text-2xl font-bold">{{ stats.vouchersAprobados }}</div>
+      </div>
+      <div class="rounded-lg border p-4">
+        <div class="text-sm text-gray-500">Defensas Programadas</div>
+        <div class="text-2xl font-bold">{{ stats.defensasProgramadas }}</div>
+      </div>
+    </div>
+
+    <!-- Flowbite-style Chart Card (ApexCharts) -->
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
+      <div class="max-w-full w-full bg-white rounded-lg border shadow-sm p-4 md:p-6">
+        <div class="flex justify-between mb-5">
+          <div>
+            <h5 class="leading-none text-3xl font-bold text-gray-900 pb-2">{{ stats.inscritos }}</h5>
+            <p class="text-base font-normal text-gray-500">Inscritos en este periodo</p>
+          </div>
+          <div class="flex items-center px-2.5 py-0.5 text-base font-semibold"
+               [ngClass]="weeklyChangePct >= 0 ? 'text-green-600' : 'text-red-600'">
+            {{ weeklyChangePct }}%
+            <svg class="w-3 h-3 ms-1" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 10 14">
+              <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" [attr.d]="weeklyChangePct >= 0 ? 'M5 13V1m0 0L1 5m4-4 4 4' : 'M5 1v12M5 13l4-4M5 13 1 9'" />
+            </svg>
+          </div>
+        </div>
+        <div id="tooltip-chart"></div>
+        <div class="grid grid-cols-1 items-center border-gray-200 border-t justify-between mt-5">
+          <div class="flex justify-between items-center pt-5">
+            <span class="text-sm text-gray-500">Actividad semanal (UIC vs Complexivo)</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Detalle -->
+  <div class="bg-white rounded-xl border border-gray-200 shadow-sm p-4">
+    <div class="flex items-center justify-between mb-3">
+      <h3 class="font-semibold text-gray-800">Detalle de estudiantes</h3>
+    </div>
+    <div class="overflow-x-auto">
+      <table class="min-w-full text-sm border border-gray-200 rounded-lg table-auto">
+        <thead class="bg-gray-50">
+          <tr class="text-gray-700 text-xs uppercase tracking-wider">
+            <th class="px-3 py-2 text-left">Nombre</th>
+            <th class="px-3 py-2 text-left">Modalidad</th>
+            <th class="px-3 py-2 text-left">Estado Voucher</th>
+            <th class="px-3 py-2 text-left">Defensa</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-gray-100">
+          <tr *ngFor="let d of detalleEstudiantes" class="odd:bg-white even:bg-gray-50">
+            <td class="px-3 py-2">{{ d.nombre }}</td>
+            <td class="px-3 py-2">{{ d.modalidad }}</td>
+            <td class="px-3 py-2">{{ d.estadoVoucher }}</td>
+            <td class="px-3 py-2">{{ d.defensa || '-' }}</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>

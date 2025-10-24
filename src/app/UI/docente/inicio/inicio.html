@@ -1,0 +1,60 @@
+<section class="space-y-4">
+  <!-- Encabezado -->
+  <div class="bg-white rounded-xl border border-gray-200 shadow-sm px-4 py-4 flex items-center justify-between">
+    <div>
+      <h1 class="text-2xl font-bold text-gray-800">Inicio Docente</h1>
+      <p class="text-gray-600">Bienvenido al panel de Docente.</p>
+    </div>
+    <button (click)="abrirNotificaciones()" aria-label="Notificaciones" class="relative inline-flex items-center justify-center h-8 w-8 rounded-full bg-rose-600 text-white hover:bg-rose-700">
+      <i class="fa fa-bell text-sm"></i>
+      <span *ngIf="noLeidas>0" class="absolute -top-1 -right-1 h-4 min-w-[16px] px-1 rounded-full bg-white text-rose-600 border border-rose-600 text-[10px] leading-4 text-center">{{ noLeidas }}</span>
+    </button>
+  </div>
+
+  <!-- Resumen -->
+  <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+    <div *ngFor="let item of resumen" class="bg-white rounded-xl border border-gray-200 shadow-sm p-4 flex items-center gap-3">
+      <div class="text-2xl" [ngClass]="item.color"><i class="fa" [ngClass]="item.icono"></i></div>
+      <div>
+        <div class="text-2xl font-bold text-gray-800">{{ item.valor }}</div>
+        <div class="text-sm text-gray-600">{{ item.titulo }}</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Accesos rápidos -->
+  <div class="bg-white rounded-xl border border-gray-200 shadow-sm p-4">
+    <h2 class="text-lg font-semibold text-gray-800 mb-3">Accesos rápidos</h2>
+    <div class="flex flex-wrap gap-3">
+      <a *ngFor="let a of accesos" [routerLink]="a.ruta" class="inline-flex items-center gap-2 text-white px-4 py-2 rounded-lg" [ngClass]="a.color">
+        <i class="fa" [ngClass]="a.icono"></i>
+        <span>{{ a.titulo }}</span>
+      </a>
+    </div>
+  </div>
+
+  <!-- Panel de notificaciones -->
+  <div *ngIf="panelNotificacionesAbierto" class="fixed inset-0 z-50">
+    <div class="absolute inset-0 bg-black/20" (click)="abrirNotificaciones()"></div>
+    <aside class="absolute right-0 top-0 h-full w-80 bg-white shadow-xl border-l border-gray-200 flex flex-col">
+      <div class="p-4 border-b flex items-center justify-between">
+        <div class="font-semibold text-gray-800">Notificaciones</div>
+        <button (click)="marcarTodasLeidas()" class="text-xs text-rose-600 hover:underline">Marcar todas como leídas</button>
+      </div>
+      <div class="flex-1 overflow-y-auto divide-y">
+        <div *ngFor="let n of notificaciones" class="p-4 flex gap-3" [class.bg-rose-50]="!n.leida">
+          <div class="mt-1"><i class="fa fa-bell text-rose-600"></i></div>
+          <div class="flex-1">
+            <div class="text-sm font-medium text-gray-800">{{ n.titulo }}</div>
+            <div class="text-xs text-gray-600">{{ n.detalle }}</div>
+            <div class="text-[10px] text-gray-400 mt-1">{{ n.fecha }}</div>
+          </div>
+          <button *ngIf="!n.leida" (click)="marcarLeida(n)" class="text-xs text-emerald-700 hover:underline">Leída</button>
+        </div>
+      </div>
+      <div class="p-3 border-t text-right">
+        <button (click)="abrirNotificaciones()" class="px-3 py-1.5 text-sm rounded-md bg-gray-800 text-white hover:bg-gray-900">Cerrar</button>
+      </div>
+    </aside>
+  </div>
+</section>

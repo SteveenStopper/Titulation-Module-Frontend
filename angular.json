@@ -24,24 +24,21 @@
             ],
             "tsConfig": "tsconfig.app.json",
             "inlineStyleLanguage": "scss",
-            "stylePreprocessorOptions": {
-              "includePaths": [
-                "./node_modules/primeng/resources",
-                "./node_modules/primeicons",
-                "./node_modules/primeflex"
-              ]
-            },
             "assets": [
               {
                 "glob": "**/*",
                 "input": "public"
+              },
+              {
+                "glob": "**/*",
+                "input": "src/assets",
+                "output": "assets"
               }
             ],
             "styles": [
-              "primeicons/primeicons.css",
-              "primeflex/primeflex.css",
-              "src/styles.minimal.scss"
-            ]
+              "src/styles.scss"
+            ],
+            "scripts": []
           },
           "configurations": {
             "production": {

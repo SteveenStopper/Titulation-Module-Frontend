@@ -1,0 +1,108 @@
+<section class="space-y-4">
+  <!-- Header -->
+  <div class="bg-white rounded-xl border border-gray-200 shadow-sm px-4 py-3 flex items-center justify-between">
+    <div>
+      <h1 class="text-xl font-bold text-gray-800">Gestión de períodos</h1>
+      <p class="text-gray-600 text-sm">Crea, edita y administra períodos académicos.</p>
+    </div>
+    <button (click)="abrirCrear()" class="px-3 py-1.5 rounded-md bg-emerald-600 text-white text-sm hover:bg-emerald-700">
+      Nuevo período
+    </button>
+  </div>
+
+  <!-- Activo actual -->
+  <div *ngIf="activoActual" class="rounded-lg border border-emerald-200 bg-emerald-50 text-emerald-800 px-4 py-2 text-sm">
+    <span class="font-medium">Período activo:</span>
+    {{ activoActual.nombre }} ({{ activoActual.fechaInicio }} → {{ activoActual.fechaFin }})
+  </div>
+
+  <!-- Tabla de períodos -->
+  <div class="bg-white rounded-xl border border-gray-200 shadow-sm">
+    <div class="relative overflow-x-auto p-4">
+      <div class="mb-3 flex items-center justify-between gap-3">
+        <div class="flex items-center gap-2 text-sm text-gray-600">
+          <i class="fa-solid fa-magnifying-glass"></i>
+          <input type="text" [(ngModel)]="filtro" placeholder="Buscar por nombre" class="px-3 py-1.5 border rounded w-64" />
+        </div>
+      </div>
+      <table class="w-full text-sm text-left text-gray-500">
+        <thead class="text-xs text-gray-700 uppercase bg-gray-50">
+          <tr>
+            <th scope="col" class="px-6 py-3">Nombre</th>
+            <th scope="col" class="px-6 py-3">Fecha inicio</th>
+            <th scope="col" class="px-6 py-3">Fecha fin</th>
+            <th scope="col" class="px-6 py-3">Estado</th>
+            <th scope="col" class="px-6 py-3 text-right">Acciones</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let p of periodosFiltrados" class="bg-white border-b hover:bg-gray-50">
+            <th scope="row" class="px-6 py-4 font-medium text-gray-900 whitespace-nowrap">{{ p.nombre }}</th>
+            <td class="px-6 py-4">{{ p.fechaInicio }}</td>
+            <td class="px-6 py-4">{{ p.fechaFin }}</td>
+            <td class="px-6 py-4">
+              <span
+                class="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full border"
+                [ngClass]="{
+                  'bg-emerald-50 text-emerald-700 border-emerald-200': p.estado==='activo',
+                  'bg-gray-50 text-gray-700 border-gray-200': p.estado==='borrador',
+                  'bg-rose-50 text-rose-700 border-rose-200': p.estado==='cerrado'
+                }"
+              >
+                {{ p.estado | titlecase }}
+              </span>
+            </td>
+            <td class="px-6 py-4">
+              <div class="flex items-center justify-end gap-2">
+                <button class="px-2 py-1 text-sm border rounded hover:bg-gray-50" (click)="abrirEditar(p)">Editar</button>
+                <button class="px-2 py-1 text-sm border rounded hover:bg-gray-50 disabled:opacity-50"
+                        [disabled]="p.estado==='activo'"
+                        (click)="activar(p)">Activar</button>
+                <button class="px-2 py-1 text-sm border rounded hover:bg-gray-50"
+                        (click)="cerrar(p)">Cerrar</button>
+              </div>
+            </td>
+          </tr>
+          <tr *ngIf="periodos.length===0" class="bg-white">
+            <td colspan="5" class="px-6 py-6 text-center text-gray-500">Aún no hay períodos creados.</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Modal Crear/Editar -->
+  <div *ngIf="isModalOpen" class="fixed inset-0 z-50 flex items-center justify-center">
+    <div class="absolute inset-0 bg-black/40" (click)="cerrarModal()"></div>
+    <div class="relative bg-white rounded-xl border border-gray-200 shadow-lg w-full max-w-md p-4">
+      <div class="flex items-center justify-between mb-3">
+        <h2 class="text-lg font-semibold text-gray-800">{{ isEditing ? 'Editar período' : 'Nuevo período' }}</h2>
+        <button class="text-gray-500 hover:text-gray-700" (click)="cerrarModal()"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+
+      <div class="space-y-3">
+        <div>
+          <label class="block text-sm text-gray-700 mb-1">Nombre</label>
+          <input type="text" [(ngModel)]="form.nombre" class="w-full px-3 py-2 border rounded" placeholder="p. ej. Período 2025-I" />
+        </div>
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div>
+            <label class="block text-sm text-gray-700 mb-1">Fecha inicio</label>
+            <input type="date" [(ngModel)]="form.fechaInicio" class="w-full px-3 py-2 border rounded" />
+          </div>
+          <div>
+            <label class="block text-sm text-gray-700 mb-1">Fecha fin</label>
+            <input type="date" [(ngModel)]="form.fechaFin" class="w-full px-3 py-2 border rounded" />
+          </div>
+        </div>
+
+        <div *ngIf="formError" class="text-sm text-rose-600">{{ formError }}</div>
+
+        <div class="flex justify-end gap-2 pt-2">
+          <button class="px-3 py-1.5 rounded-md border text-sm hover:bg-gray-50" (click)="cerrarModal()">Cancelar</button>
+          <button class="px-3 py-1.5 rounded-md bg-emerald-600 text-white text-sm hover:bg-emerald-700" (click)="guardarFormulario()">Guardar</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>

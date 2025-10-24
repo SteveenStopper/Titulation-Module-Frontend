@@ -1,114 +1,174 @@
-<p-toast></p-toast>
-<div class="login-shell">
-  <p-card class="login-card surface-overlay">
-    <div class="grid m-0">
-      <!-- Branding Panel -->
-      <div class="col-12 md:col-5 lg:col-6 branding-panel">
-        <div class="branding-content">
-          <div class="logo-ring">
-            <img src="https://www.istla-sigala.edu.ec/biblioteca/media/assets/LOGO_SIGALA.png"
-              alt="Logo Instituto Superior Tecnológico Los Andes" />
-          </div>
-          <h1 class="brand-title">ISTLA</h1>
-          <p class="brand-subtitle">Sistema de Gestión de Titulación</p>
-          <p class="brand-institute">Instituto Superior Tecnológico Los Andes</p>
-          <ul class="brand-points">
-            <li><i class="pi pi-check"></i> Acceso seguro institucional</li>
-            <li><i class="pi pi-check"></i> Procesos académicos centralizados</li>
-            <li><i class="pi pi-check"></i> Soporte a estudiantes y docentes</li>
-          </ul>
+<ng-container *ngIf="showToast" class="toast-container">
+  <div class="fixed top-4 right-4 z-50 max-w-xs w-full bg-white rounded-lg shadow-lg border-l-4 border-green-500 p-4 animate-fadeIn">
+    <div class="flex items-center">
+      <svg class="w-5 h-5 text-green-500 mr-3" fill="currentColor" viewBox="0 0 20 20">
+        <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"></path>
+      </svg>
+      <span class="text-green-700 font-medium">Inicio de sesión exitoso</span>
+    </div>
+  </div>
+</ng-container>
+
+<div class="min-h-screen bg-gradient-to-br from-slate-100 via-blue-50 to-slate-200 flex items-center justify-center p-4">
+  <div class="bg-white rounded-xl shadow-2xl overflow-hidden max-w-6xl w-full flex flex-col md:flex-row">
+    <!-- Branding Panel -->
+    <div class="bg-gradient-to-b from-blue-900 to-blue-800 w-full md:w-1/2 flex items-center justify-center p-8">
+      <div class="text-center text-white">
+        <div class="w-24 h-24 mx-auto mb-6 rounded-full bg-blue-700/30 border-2 border-white/30 flex items-center justify-center animate-pulse">
+          <img src="https://www.istla-sigala.edu.ec/biblioteca/media/assets/LOGO_SIGALA.png" 
+               alt="Logo ISTLA" class="w-20 h-20 object-contain">
         </div>
-      </div>
-
-      <!-- Form Panel -->
-      <div class="col-12 md:col-7 lg:col-6 form-panel">
-        <div class="form-header">
-          <h2 class="panel-title">Iniciar sesión</h2>
-          <p class="panel-subtitle">Usa tus credenciales institucionales</p>
-          <p-divider class="my-3"></p-divider>
-        </div>
-
-        <form [formGroup]="loginForm" (ngSubmit)="onSubmit()" class="login-form">
-          <div class="form-field">
-            <label for="email" class="field-label">
-              <i class="pi pi-envelope"></i>Correo institucional
-            </label>
-            <div class="p-inputgroup">
-              <span class="p-inputgroup-addon">
-                <i class="pi pi-envelope"></i>
-              </span>
-              <input pInputText id="email" type="email" formControlName="email"
-                placeholder="nombre.apellido@istla.edu.ec" autocomplete="email" required />
-            </div>
-            <div class="field-errors">
-              <small class="p-error"
-                *ngIf="loginForm.get('email')?.hasError('required') && loginForm.get('email')?.touched">
-                <i class="pi pi-exclamation-triangle"></i>El correo electrónico es requerido
-              </small>
-              <small class="p-error"
-                *ngIf="loginForm.get('email')?.hasError('email') && loginForm.get('email')?.touched">
-                <i class="pi pi-exclamation-triangle"></i>Ingrese un correo electrónico válido
-              </small>
-            </div>
-          </div>
-
-          <div class="form-field">
-            <label for="password" class="field-label">
-              <i class="pi pi-lock"></i>Contraseña
-            </label>
-            <p-password 
-              [feedback]="false" 
-              [toggleMask]="true" 
-              formControlName="password" 
-              inputId="password" 
-              placeholder="Ingrese su contraseña institucional" 
-              autocomplete="current-password"
-              required
-            >
-              <ng-template pTemplate="header">
-                <div class="font-semibold text-sm mb-2">Requisitos de contraseña</div>
-              </ng-template>
-              <ng-template pTemplate="footer">
-                <p-divider></p-divider>
-                <ul class="pl-2 my-0 leading-normal">
-                  <li>Al menos una minúscula</li>
-                  <li>Al menos una mayúscula</li>
-                  <li>Al menos un número</li>
-                  <li>Mínimo 8 caracteres</li>
-                </ul>
-              </ng-template>
-            </p-password>
-            <div class="field-errors">
-              <small class="p-error" *ngIf="loginForm.get('password')?.hasError('required') && loginForm.get('password')?.touched">
-                <i class="pi pi-exclamation-triangle"></i>La contraseña es requerida
-              </small>
-              <small class="p-error" *ngIf="loginForm.get('password')?.hasError('minlength') && loginForm.get('password')?.touched">
-                <i class="pi pi-exclamation-triangle"></i>La contraseña debe tener al menos 8 caracteres
-              </small>
-            </div>
-          </div>
-
-          <div class="form-actions">
-            <button pButton type="submit" [disabled]="!loginForm.valid || isLoading" class="login-button"
-              [class.loading]="isLoading">
-              <i class="pi pi-sign-in" *ngIf="!isLoading"></i>
-              <i class="pi pi-spinner pi-spin" *ngIf="isLoading"></i>
-              <span>{{ isLoading ? 'Verificando credenciales...' : 'Acceder al Sistema' }}</span>
-            </button>
-          </div>
-
-          <div *ngIf="error" class="error-message">
-            <i class="pi pi-exclamation-circle"></i>
-            {{ error }}
-          </div>
-
-          <div class="help-text">
-            <i class="pi pi-info-circle"></i>
-            ¿Problemas para acceder?
-            <a href="javascript:void(0)" (click)="showPasswordRecovery()">Contacte al Departamento de Sistemas</a>
-          </div>
-        </form>
+        <h1 class="text-5xl font-bold mb-3 text-white drop-shadow-lg">ISTLA</h1>
+        <p class="text-xl font-medium mb-2 text-white/90">Sistema de Gestión de Titulación</p>
+        <p class="italic text-lg mb-6 text-white/80">Instituto Superior Tecnológico Los Andes</p>
+        <ul class="space-y-3 max-w-xs mx-auto">
+          <li class="flex items-center">
+            <span class="w-6 h-6 rounded-full bg-yellow-500 flex items-center justify-center mr-3">
+              <svg class="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
+                <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path>
+              </svg>
+            </span>
+            <span class="text-white/90">Acceso seguro institucional</span>
+          </li>
+          <li class="flex items-center">
+            <span class="w-6 h-6 rounded-full bg-yellow-500 flex items-center justify-center mr-3">
+              <svg class="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
+                <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path>
+              </svg>
+            </span>
+            <span class="text-white/90">Procesos académicos centralizados</span>
+          </li>
+          <li class="flex items-center">
+            <span class="w-6 h-6 rounded-full bg-yellow-500 flex items-center justify-center mr-3">
+              <svg class="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
+                <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path>
+              </svg>
+            </span>
+            <span class="text-white/90">Soporte a estudiantes y docentes</span>
+          </li>
+        </ul>
       </div>
     </div>
-  </p-card>
+
+    <!-- Form Panel -->
+    <div class="w-full md:w-1/2 p-10 flex flex-col justify-center">
+      <div class="text-center mb-8">
+        <h2 class="text-3xl font-bold text-gray-800 mb-2">Iniciar sesión</h2>
+        <p class="text-gray-600">Usa tus credenciales institucionales</p>
+        <div class="my-6 border-t border-gray-200"></div>
+      </div>
+
+      <form [formGroup]="loginForm" (ngSubmit)="onSubmit()" class="max-w-md w-full mx-auto">
+        <!-- Email Field -->
+        <div class="mb-6">
+          <label class="block text-sm font-semibold text-gray-700 mb-2 flex items-center">
+            <svg class="w-4 h-4 mr-2 text-blue-600" fill="currentColor" viewBox="0 0 20 20">
+              <path d="M2.003 5.884L10 9.882l7.997-3.998A2 2 0 0016 4H4a2 2 0 00-1.997 1.884z"></path>
+              <path d="M18 8.118l-8 4-8-4V14a2 2 0 002 2h12a2 2 0 002-2V8.118z"></path>
+            </svg>
+            Correo institucional
+          </label>
+          <div class="relative">
+            <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+              <svg class="h-5 w-5 text-gray-400" fill="currentColor" viewBox="0 0 20 20">
+                <path d="M2.003 5.884L10 9.882l7.997-3.998A2 2 0 0016 4H4a2 2 0 00-1.997 1.884z"></path>
+                <path d="M18 8.118l-8 4-8-4V14a2 2 0 002 2h12a2 2 0 002-2V8.118z"></path>
+              </svg>
+            </div>
+            <input 
+              type="email" 
+              formControlName="email"
+              placeholder="nombre.apellido@istla.edu.ec"
+              autocomplete="email"
+              class="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"
+            />
+          </div>
+          <div *ngIf="loginForm.get('email')?.invalid && loginForm.get('email')?.touched" class="mt-2 text-red-600 text-sm flex items-center">
+            <svg class="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
+              <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd"></path>
+            </svg>
+            <span *ngIf="loginForm.get('email')?.hasError('required')">El correo electrónico es requerido</span>
+            <span *ngIf="loginForm.get('email')?.hasError('email')">Ingrese un correo electrónico válido</span>
+          </div>
+        </div>
+
+        <!-- Password Field -->
+        <div class="mb-6">
+          <label class="block text-sm font-semibold text-gray-700 mb-2 flex items-center">
+            <svg class="w-4 h-4 mr-2 text-blue-600" fill="currentColor" viewBox="0 0 20 20">
+              <path fill-rule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clip-rule="evenodd"></path>
+            </svg>
+            Contraseña
+          </label>
+          <div class="relative">
+            <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+              <svg class="h-5 w-5 text-gray-400" fill="currentColor" viewBox="0 0 20 20">
+                <path fill-rule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clip-rule="evenodd"></path>
+              </svg>
+            </div>
+            <input 
+              [type]="showPassword ? 'text' : 'password'"
+              formControlName="password"
+              placeholder="Ingrese su contraseña institucional"
+              autocomplete="current-password"
+              class="w-full pl-10 pr-12 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"
+            />
+            <button
+              type="button"
+              (click)="togglePassword()"
+              class="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-500 hover:text-blue-600"
+            >
+              <svg *ngIf="!showPassword" class="h-5 w-5" fill="currentColor" viewBox="0 0 20 20">
+                <path fill-rule="evenodd" d="M3.707 2.293a1 1 0 00-1.414 1.414l14 14a1 1 0 001.414-1.414l-1.473-1.473A10.014 10.014 0 0019.542 10C18.268 5.943 14.478 3 10 3a9.958 9.958 0 00-4.512 1.074l-1.78-1.781zm4.261 4.26l1.514 1.515a2.003 2.003 0 012.45 2.45l1.514 1.514a4 4 0 00-5.478-5.478z" clip-rule="evenodd"></path>
+                <path d="M12.454 16.697L9.75 13.992a4 4 0 01-3.742-3.741L2.335 6.578A9.98 9.98 0 00.458 10c1.274 4.057 5.065 7 9.542 7 .847 0 1.669-.105 2.454-.303z"></path>
+              </svg>
+              <svg *ngIf="showPassword" class="h-5 w-5" fill="currentColor" viewBox="0 0 20 20">
+                <path fill-rule="evenodd" d="M10 2a8 8 0 00-6.586 12.67l-1.781-1.781A10.004 10.004 0 0110 2zm0 14a8 8 0 006.586-12.67l1.781 1.781A10.004 10.004 0 0110 16z" clip-rule="evenodd"></path>
+                <path d="M10 8a2 2 0 100 4 2 2 0 000-4z"></path>
+              </svg>
+            </button>
+          </div>
+          <div *ngIf="loginForm.get('password')?.invalid && loginForm.get('password')?.touched" class="mt-2 text-red-600 text-sm flex items-center">
+            <svg class="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
+              <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd"></path>
+            </svg>
+            <span *ngIf="loginForm.get('password')?.hasError('required')">La contraseña es requerida</span>
+            <span *ngIf="loginForm.get('password')?.hasError('minlength')">La contraseña debe tener al menos 8 caracteres</span>
+          </div>
+        </div>
+
+        <!-- Submit Button -->
+        <div class="mb-6">
+          <button
+            type="submit"
+            [disabled]="!loginForm.valid || isLoading"
+            class="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-4 rounded-lg shadow-md hover:shadow-lg transform hover:-translate-y-0.5 transition-all duration-200 flex items-center justify-center"
+          >
+            <svg *ngIf="isLoading" class="animate-spin -ml-1 mr-3 h-5 w-5 text-white" fill="none" viewBox="0 0 24 24">
+              <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+              <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+            </svg>
+            <span>{{ isLoading ? 'Verificando credenciales...' : 'Acceder al Sistema' }}</span>
+          </button>
+        </div>
+
+        <!-- Error Message -->
+        <div *ngIf="error" class="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg mb-4 flex items-center">
+          <svg class="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 20 20">
+            <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd"></path>
+          </svg>
+          {{ error }}
+        </div>
+
+        <!-- Help Text -->
+        <div class="text-center text-gray-600 text-sm bg-gray-50 p-4 rounded-lg border border-gray-200">
+          <svg class="w-4 h-4 inline mr-1 text-blue-600" fill="currentColor" viewBox="0 0 20 20">
+            <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"></path>
+          </svg>
+          ¿Problemas para acceder?
+          <a (click)="showPasswordRecovery()" class="text-blue-600 hover:underline cursor-pointer font-medium">Contacte al Departamento de Sistemas</a>
+        </div>
+      </form>
+    </div>
+  </div>
 </div>

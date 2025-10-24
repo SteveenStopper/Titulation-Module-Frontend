@@ -1,0 +1,62 @@
+<section class="space-y-4">
+  <!-- Header -->
+  <div class="bg-white rounded-xl border border-gray-200 shadow-sm px-4 py-3 flex items-center justify-between">
+    <div>
+      <h2 class="text-xl md:text-2xl font-bold text-gray-800">Aranceles</h2>
+      <p class="text-gray-600">Revisión y gestión de aranceles por estudiante.</p>
+    </div>
+    <div class="flex items-center gap-2">
+      <input [(ngModel)]="search" type="text" placeholder="Buscar por estudiante o carrera" class="px-3 py-2 border rounded-lg text-sm w-64" />
+    </div>
+  </div>
+
+  <!-- Tabla -->
+  <div class="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+    <div class="overflow-x-auto">
+      <table class="min-w-full text-sm">
+        <thead class="bg-gray-50 text-gray-700 text-xs uppercase">
+          <tr>
+            <th class="px-4 py-2 text-left">Estudiante</th>
+            <th class="px-4 py-2 text-left">Carrera</th>
+            <th class="px-4 py-2 text-left">Estado de aranceles</th>
+            <th class="px-4 py-2 text-center">Acciones</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-gray-100">
+          <tr *ngFor="let it of filtered" class="odd:bg-white even:bg-gray-50 align-top">
+            <td class="px-4 py-3">
+              <div class="font-medium text-gray-800">{{ it.estudiante }}</div>
+            </td>
+            <td class="px-4 py-3">
+              <div class="text-gray-700">{{ it.carrera }}</div>
+            </td>
+            <td class="px-4 py-3">
+              <span *ngIf="estadoLabel(it) === 'Activo'" class="inline-flex items-center gap-2 text-xs px-2 py-1 rounded-full bg-green-100 text-green-700">
+                <i class="fa fa-check-circle"></i> Activo
+              </span>
+              <span *ngIf="estadoLabel(it) === 'Inactivo'" class="inline-flex items-center gap-2 text-xs px-2 py-1 rounded-full bg-red-100 text-red-700">
+                <i class="fa fa-exclamation-circle"></i> Inactivo
+              </span>
+            </td>
+            <td class="px-4 py-3">
+              <div class="flex items-center justify-center gap-2">
+                <button (click)="aceptar(it.id)" [disabled]="!isActivo(it)" class="px-3 py-1.5 text-xs rounded-md bg-green-600 text-white hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed">
+                  <i class="fa fa-check mr-1"></i> Aceptar
+                </button>
+                <button (click)="rechazar(it.id)" [disabled]="isActivo(it)" class="px-3 py-1.5 text-xs rounded-md bg-red-600 text-white hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed">
+                  <i class="fa fa-xmark mr-1"></i> Rechazar
+                </button>
+                <button (click)="generarCertificado(it.id)" [disabled]="it.clearanceStatus !== 'approved' || !isActivo(it)" class="px-3 py-1.5 text-xs rounded-md bg-indigo-600 text-white hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed">
+                  <i class="fa fa-file-pdf mr-1"></i> Generar
+                </button>
+              </div>
+            </td>
+          </tr>
+          <tr *ngIf="filtered.length === 0">
+            <td colspan="4" class="px-4 py-6 text-center text-gray-500">Sin resultados</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>

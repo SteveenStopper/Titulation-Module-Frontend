@@ -5,9 +5,7 @@ import { provideAnimations } from '@angular/platform-browser/animations';
 import { provideToastr } from 'ngx-toastr';
 
 import { routes } from './app.routes';
-import { MessageService } from 'primeng/api';
-import { providePrimeNG } from 'primeng/config';
-import Lara from '@primeuix/themes/lara';
+ 
 
 export const appConfig: ApplicationConfig = {
   providers: [
@@ -25,11 +23,6 @@ export const appConfig: ApplicationConfig = {
     provideZoneChangeDetection({ 
       eventCoalescing: true 
     }),
-    providePrimeNG({
-      theme: {
-        preset: Lara
-      }
-    }),
-    MessageService
+    
   ]
 };

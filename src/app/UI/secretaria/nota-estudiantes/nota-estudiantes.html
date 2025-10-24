@@ -1,0 +1,77 @@
+<section class="space-y-4">
+  <!-- Header -->
+  <div class="bg-white rounded-xl border border-gray-200 shadow-sm px-4 py-3 flex items-center justify-between">
+    <div>
+      <h2 class="text-xl md:text-2xl font-bold text-gray-800">Notas de estudiantes</h2>
+      <p class="text-gray-600">Validación de calificaciones por semestre</p>
+    </div>
+    <div class="flex items-center gap-2">
+      <select [(ngModel)]="carreraFiltro" class="px-3 py-2 border rounded-lg text-sm">
+        <option value="">Todas las carreras</option>
+        <option *ngFor="let c of carreras" [value]="c">{{ c }}</option>
+      </select>
+      <input [(ngModel)]="search" type="text" placeholder="Buscar por estudiante" class="px-3 py-2 border rounded-lg text-sm w-72" />
+      <div class="text-sm text-gray-500">Mínima: <span class="font-semibold">{{ minNota }}</span></div>
+    </div>
+  </div>
+
+  <!-- Tabla -->
+  <div class="bg-white rounded-xl border border-gray-200 shadow-sm overflow-auto">
+    <table class="min-w-full text-sm">
+      <thead class="bg-gray-50 text-gray-700 text-xs uppercase">
+        <tr>
+          <th class="px-3 py-2 text-left">Estudiante</th>
+          <th class="px-3 py-2 text-left">Carrera</th>
+          <th class="px-3 py-2 text-center">S1</th>
+          <th class="px-3 py-2 text-center">S2</th>
+          <th class="px-3 py-2 text-center">S3</th>
+          <th class="px-3 py-2 text-center">S4</th>
+          <th class="px-3 py-2 text-center">S5</th>
+          <th class="px-3 py-2 text-center">Promedio</th>
+          <th class="px-3 py-2 text-center">Estado</th>
+          <th class="px-3 py-2 text-center">Acciones</th>
+        </tr>
+      </thead>
+      <tbody class="divide-y divide-gray-100">
+        <tr *ngFor="let e of filtered" class="odd:bg-white even:bg-gray-50">
+          <td class="px-3 py-2 font-medium text-gray-800">{{ e.nombre }}</td>
+          <td class="px-3 py-2 text-gray-700">{{ e.carrera }}</td>
+          <td class="px-3 py-2 text-center" [ngClass]="{'text-red-600 font-semibold': e.s1!==null && e.s1<minNota}">{{ e.s1 === null ? '-' : e.s1 }}</td>
+          <td class="px-3 py-2 text-center" [ngClass]="{'text-red-600 font-semibold': e.s2!==null && e.s2<minNota}">{{ e.s2 === null ? '-' : e.s2 }}</td>
+          <td class="px-3 py-2 text-center" [ngClass]="{'text-red-600 font-semibold': e.s3!==null && e.s3<minNota}">{{ e.s3 === null ? '-' : e.s3 }}</td>
+          <td class="px-3 py-2 text-center" [ngClass]="{'text-red-600 font-semibold': e.s4!==null && e.s4<minNota}">{{ e.s4 === null ? '-' : e.s4 }}</td>
+          <td class="px-3 py-2 text-center" [ngClass]="{'text-red-600 font-semibold': e.s5!==null && e.s5<minNota}">{{ e.s5 === null ? '-' : e.s5 }}</td>
+          <td class="px-3 py-2 text-center font-semibold text-gray-800">{{ promedio(e) }}</td>
+          <td class="px-3 py-2 text-center">
+            <span class="text-xs px-2 py-0.5 rounded-full"
+                  [ngClass]="{
+                    'bg-green-100 text-green-700': e.estado==='aprobado',
+                    'bg-yellow-100 text-yellow-700': e.estado==='pendiente',
+                    'bg-red-100 text-red-700': e.estado==='rechazado'
+                  }">{{ e.estado | uppercase }}</span>
+          </td>
+          <td class="px-3 py-2">
+            <div class="flex items-center justify-center gap-2">
+              <button (click)="aceptar(e.id)" class="px-3 py-1.5 text-xs rounded-md text-white"
+                      [ngClass]="elegible(e) && e.estado==='pendiente' ? 'bg-green-600 hover:bg-green-700' : 'bg-gray-400 cursor-not-allowed'"
+                      [disabled]="!elegible(e) || e.estado!=='pendiente'">
+                <i class="fa fa-check mr-1"></i> Aceptar
+              </button>
+              <button (click)="rechazar(e.id)" class="px-3 py-1.5 text-xs rounded-md bg-red-600 text-white hover:bg-red-700"
+                      [disabled]="e.estado!=='pendiente'">
+                <i class="fa fa-xmark mr-1"></i> Rechazar
+              </button>
+              <button (click)="generarCertificado(e.id)" class="px-3 py-1.5 text-xs rounded-md bg-indigo-600 text-white hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed" 
+                      [disabled]="e.estado!=='aprobado'">
+                <i class="fa fa-file-pdf mr-1"></i> Generar certificado
+              </button>
+            </div>
+          </td>
+        </tr>
+        <tr *ngIf="filtered.length===0">
+          <td colspan="10" class="px-4 py-6 text-center text-gray-500">Sin resultados</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</section>

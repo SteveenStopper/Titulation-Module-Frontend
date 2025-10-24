@@ -1,0 +1,30 @@
+<section class="space-y-4">
+  <!-- Header -->
+  <div class="bg-white rounded-xl border border-gray-200 shadow-sm px-4 py-3">
+    <h1 class="text-xl font-bold text-gray-800">Tribunal Evaluador</h1>
+    <p class="text-gray-600 text-sm">Estudiantes asignados al tribunal.</p>
+  </div>
+
+  <!-- Dashboard (Flowbite table) -->
+  <div class="bg-white rounded-xl border border-gray-200 shadow-sm">
+    <div class="relative overflow-x-auto p-4">
+      <table class="w-full text-sm text-left text-gray-500">
+        <thead class="text-xs text-gray-700 uppercase bg-gray-50">
+          <tr>
+            <th scope="col" class="px-6 py-3">Estudiante</th>
+            <th scope="col" class="px-6 py-3">Carrera</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let e of estudiantesAsignados" class="bg-white border-b hover:bg-gray-50">
+            <th scope="row" class="px-6 py-4 font-medium text-gray-900 whitespace-nowrap">{{ e.nombre }}</th>
+            <td class="px-6 py-4">{{ e.carrera }}</td>
+          </tr>
+          <tr *ngIf="estudiantesAsignados.length===0" class="bg-white">
+            <td colspan="2" class="px-6 py-6 text-center text-gray-500">No hay estudiantes asignados.</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>

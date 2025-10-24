@@ -1,0 +1,121 @@
+<div class="flex h-screen bg-gray-100">
+  <!-- Sidebar -->
+  <aside class="fixed top-0 left-0 z-40 w-64 h-screen transition-transform -translate-x-full sm:translate-x-0">
+    <div class="h-full px-4 py-5 bg-white border-r border-gray-200 flex flex-col">
+      <div class="flex-1 overflow-y-auto">
+        <a routerLink="/coordinador/inicio" class="flex items-center ps-2.5 mb-5">
+          <img src="assets/Logo.png" class="h-12 md:h-14 me-3 object-contain drop-shadow-md select-none" alt="Instituto Superior Tecnológico Los Andes" />
+        </a>
+        <ul class="space-y-2 font-medium">
+          <!-- Inicio -->
+          <li>
+            <a routerLink="/coordinador/inicio" routerLinkActive="bg-gray-200 text-gray-900" class="flex items-center p-2 text-gray-700 rounded-lg hover:bg-gray-100">
+              <i class="fa-solid fa-house w-5 h-5 me-3"></i>
+              <span>Inicio</span>
+            </a>
+          </li>
+          <!-- Cronogramas (sección) -->
+          <li>
+            <button type="button" (click)="toggleCronos()" class="w-full flex items-center p-2 text-gray-700 rounded-lg hover:bg-gray-100">
+              <i class="fa-regular fa-calendar w-5 h-5 me-3"></i>
+              <span class="flex-1 text-left">Cronogramas</span>
+              <i class="fa-solid" [ngClass]="cronosOpen ? 'fa-chevron-down' : 'fa-chevron-right'"></i>
+            </button>
+            <ul *ngIf="cronosOpen" class="mt-1 ms-8 space-y-1">
+              <li>
+                <a routerLink="/coordinador/cronogramas/uic" routerLinkActive="text-blue-700" class="flex items-center p-2 text-gray-600 rounded hover:bg-gray-50">
+                  <i class="fa-solid fa-building-columns me-2"></i>
+                  <span>Unidad Integración Curricular / UIC</span>
+                </a>
+              </li>
+              <li>
+                <a routerLink="/coordinador/cronogramas/complexivo" routerLinkActive="text-blue-700" class="flex items-center p-2 text-gray-600 rounded hover:bg-gray-50">
+                  <i class="fa-solid fa-file-pen me-2"></i>
+                  <span>Examen Complexivo</span>
+                </a>
+              </li>
+            </ul>
+          </li>
+          <!-- Comisión Académica (sección) -->
+          <li>
+            <button type="button" (click)="toggleComision()" class="w-full flex items-center p-2 text-gray-700 rounded-lg hover:bg-gray-100">
+              <i class="fa-solid fa-users-gear w-5 h-5 me-3"></i>
+              <span class="flex-1 text-left">Comisión Académica</span>
+              <i class="fa-solid" [ngClass]="comisionOpen ? 'fa-chevron-down' : 'fa-chevron-right'"></i>
+            </button>
+            <ul *ngIf="comisionOpen" class="mt-1 ms-8 space-y-1">
+              <li>
+                <a routerLink="/coordinador/comision/tribunal-evaluador" routerLinkActive="text-blue-700" class="flex items-center p-2 text-gray-600 rounded hover:bg-gray-50">
+                  <i class="fa-solid fa-scale-balanced me-2"></i>
+                  <span>Asignar tribunal evaluador UIC</span>
+                </a>
+              </li>
+              <li>
+                <a routerLink="/coordinador/comision/veedores" routerLinkActive="text-blue-700" class="flex items-center p-2 text-gray-600 rounded hover:bg-gray-50">
+                  <i class="fa-solid fa-eye me-2"></i>
+                  <span>Asignar veedores examen complexivo</span>
+                </a>
+              </li>
+            </ul>
+          </li>
+          
+          <!-- Reportes -->
+          <li>
+            <a routerLink="/coordinador/reportes" routerLinkActive="bg-gray-200 text-gray-900" class="flex items-center p-2 text-gray-700 rounded-lg hover:bg-gray-100">
+              <i class="fa-solid fa-chart-column w-5 h-5 me-3"></i>
+              <span>Reportes</span>
+            </a>
+          </li>
+          <!-- Administrador -->
+          <li *ngIf="isAdmin">
+            <a routerLink="/administrador/inicio" class="flex items-center p-2 text-gray-700 rounded-lg hover:bg-gray-100">
+              <i class="fa-solid fa-user-gear w-5 h-5 me-3"></i>
+              <span>Administrador</span>
+            </a>
+          </li>
+        </ul>
+      </div>
+
+      <!-- Footer: Perfil / Cerrar sesión -->
+      <div class="mt-4 border-t pt-4">
+        <div class="relative">
+          <button type="button" (click)="toggleProfile()" class="w-full flex items-center gap-3 p-2 rounded-lg hover:bg-gray-100">
+            <span class="inline-flex h-9 w-9 items-center justify-center rounded-full bg-amber-600 text-white font-semibold">
+              {{ userInitials }}
+            </span>
+            <div class="text-left">
+              <div class="text-sm font-medium text-gray-800">{{ userName }}</div>
+              <div class="text-xs text-gray-500">{{ userRole }}</div>
+            </div>
+            <i class="fa-solid fa-ellipsis-vertical ml-auto text-gray-500"></i>
+          </button>
+          <div *ngIf="isProfileOpen" class="absolute left-0 right-0 bottom-12 z-50 bg-white border border-gray-200 rounded-lg shadow-md">
+            <button type="button" (click)="logout()" class="w-full text-left px-4 py-2 text-sm hover:bg-gray-50">
+              <i class="fa-solid fa-right-from-bracket mr-2"></i> Cerrar sesión
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </aside>
+
+  <!-- Main Content -->
+  <div class="p-4 sm:ml-64 w-full">
+    <div class="sticky top-0 z-30">
+      <div class="bg-white/90 backdrop-blur border border-gray-200 rounded-xl shadow-sm">
+        <div class="px-4 py-3 flex items-center justify-between">
+          <div class="flex items-center gap-2">
+            <i class="fa fa-user-tie text-amber-600"></i>
+            <span class="text-sm text-gray-500">Panel</span>
+            <span class="text-gray-800 font-semibold">Coordinador de Investigación</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="p-6 rounded-xl mt-6 bg-gradient-to-b from-white to-gray-50 min-h-[calc(100vh-2rem)]">
+      <router-outlet></router-outlet>
+    </div>
+  </div>
+
+</div>

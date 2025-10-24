@@ -1,0 +1,124 @@
+<div class="flex h-screen bg-gray-100">
+  <!-- Sidebar -->
+  <aside class="fixed top-0 left-0 z-40 w-64 h-screen transition-transform -translate-x-full sm:translate-x-0">
+    <div class="h-full px-4 py-5 bg-white border-r border-gray-200 flex flex-col">
+      <div class="flex-1 overflow-y-auto">
+        <a routerLink="/administrador/inicio" class="flex items-center ps-2.5 mb-5">
+          <img src="assets/Logo.png" class="h-12 md:h-14 me-3 object-contain drop-shadow-md select-none" alt="Instituto Superior Tecnológico Los Andes" />
+        </a>
+        <ul class="space-y-2 font-medium">
+          <!-- Inicio -->
+          <li>
+            <a routerLink="/administrador/inicio" routerLinkActive="bg-gray-200 text-gray-900" class="flex items-center p-2 text-gray-700 rounded-lg hover:bg-gray-100">
+              <i class="fa-solid fa-house w-5 h-5 me-3"></i>
+              <span>Inicio</span>
+            </a>
+          </li>
+          <!-- Gestión de períodos -->
+          <li>
+            <a routerLink="/administrador/gestion-periodos" routerLinkActive="bg-gray-200 text-gray-900" class="flex items-center p-2 text-gray-700 rounded-lg hover:bg-gray-100">
+              <i class="fa-solid fa-calendar-days w-5 h-5 me-3"></i>
+              <span>Gestión de períodos</span>
+            </a>
+          </li>
+          <!-- Reportes -->
+          <li>
+            <a routerLink="/administrador/reportes" routerLinkActive="bg-gray-200 text-gray-900" class="flex items-center p-2 text-gray-700 rounded-lg hover:bg-gray-100">
+              <i class="fa-solid fa-chart-column w-5 h-5 me-3"></i>
+              <span>Reportes</span>
+            </a>
+          </li>
+
+          <!-- Administración -->
+          <li class="pt-2">
+            <div class="px-2 text-xs uppercase tracking-wide text-gray-500">Administración</div>
+            <ul class="mt-2 space-y-1">
+              <li>
+                <a routerLink="/coordinador" class="flex items-center p-2 text-gray-700 rounded-lg hover:bg-gray-100">
+                  <i class="fa-solid fa-user-tie w-5 h-5 me-3"></i>
+                  <span>Coordinador</span>
+                </a>
+              </li>
+              <li>
+                <a routerLink="/docente" class="flex items-center p-2 text-gray-700 rounded-lg hover:bg-gray-100">
+                  <i class="fa-solid fa-chalkboard-user w-5 h-5 me-3"></i>
+                  <span>Docente</span>
+                </a>
+              </li>
+              <li>
+                <a routerLink="/ingles" routerLinkActive="bg-gray-200 text-gray-900" class="flex items-center p-2 text-gray-700 rounded-lg hover:bg-gray-100">
+                  <i class="fa-solid fa-language w-5 h-5 me-3"></i>
+                  <span>Inglés</span>
+                </a>
+              </li>
+              <li>
+                <a routerLink="/secretaria" class="flex items-center p-2 text-gray-700 rounded-lg hover:bg-gray-100">
+                  <i class="fa-solid fa-file-pen w-5 h-5 me-3"></i>
+                  <span>Secretaría</span>
+                </a>
+              </li>
+              <li>
+                <a routerLink="/tesoreria" class="flex items-center p-2 text-gray-700 rounded-lg hover:bg-gray-100">
+                  <i class="fa-solid fa-sack-dollar w-5 h-5 me-3"></i>
+                  <span>Tesorería</span>
+                </a>
+              </li>
+              <li>
+                <a routerLink="/vicerrector" class="flex items-center p-2 text-gray-700 rounded-lg hover:bg-gray-100">
+                  <i class="fa-solid fa-user-shield w-5 h-5 me-3"></i>
+                  <span>Vicerrector</span>
+                </a>
+              </li>
+              <li>
+                <a routerLink="/vinculacion-practicas" routerLinkActive="bg-gray-200 text-gray-900" class="flex items-center p-2 text-gray-700 rounded-lg hover:bg-gray-100">
+                  <i class="fa-solid fa-people-arrows w-5 h-5 me-3"></i>
+                  <span>Vinculación/Prácticas</span>
+                </a>
+              </li>
+            </ul>
+          </li>
+        </ul>
+      </div>
+
+      <!-- Footer: Perfil / Cerrar sesión -->
+      <div class="mt-4 border-t pt-4">
+        <div class="relative">
+          <button type="button" (click)="toggleProfile()" class="w-full flex items-center gap-3 p-2 rounded-lg hover:bg-gray-100">
+            <span class="inline-flex h-9 w-9 items-center justify-center rounded-full bg-emerald-600 text-white font-semibold">
+              {{ userInitials }}
+            </span>
+            <div class="text-left">
+              <div class="text-sm font-medium text-gray-800">{{ userName }}</div>
+              <div class="text-xs text-gray-500">{{ userRole }}</div>
+            </div>
+            <i class="fa-solid fa-ellipsis-vertical ml-auto text-gray-500"></i>
+          </button>
+          <div *ngIf="isProfileOpen" class="absolute left-0 right-0 bottom-12 z-50 bg-white border border-gray-200 rounded-lg shadow-md">
+            <button type="button" (click)="logout()" class="w-full text-left px-4 py-2 text-sm hover:bg-gray-50">
+              <i class="fa-solid fa-right-from-bracket mr-2"></i> Cerrar sesión
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </aside>
+
+  <!-- Main Content -->
+  <div class="p-4 sm:ml-64 w-full">
+    <div class="sticky top-0 z-30">
+      <div class="bg-white/90 backdrop-blur border border-gray-200 rounded-xl shadow-sm">
+        <div class="px-4 py-3 flex items-center justify-between">
+          <div class="flex items-center gap-2">
+            <i class="fa fa-user-gear text-emerald-600"></i>
+            <span class="text-sm text-gray-500">Panel</span>
+            <span class="text-gray-800 font-semibold">Administrador</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="p-6 rounded-xl mt-6 bg-gradient-to-b from-white to-gray-50 min-h-[calc(100vh-2rem)]">
+      <router-outlet></router-outlet>
+    </div>
+  </div>
+</div>

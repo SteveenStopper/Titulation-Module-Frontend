@@ -1,0 +1,105 @@
+<section class="space-y-6">
+  <!-- Header card like the screenshot -->
+  <div class="bg-white rounded-xl border border-gray-200 shadow-sm px-4 py-3 flex items-center justify-between">
+    <div>
+      <h2 class="text-xl md:text-2xl font-bold text-gray-800">Inicio</h2>
+      <p class="text-gray-600">Bienvenido al panel de Coordinador.</p>
+    </div>
+    <div class="relative">
+      <button type="button" (click)="toggleNotif()" class="relative inline-flex items-center justify-center h-8 w-8 rounded-full bg-rose-600 text-white hover:bg-rose-700" aria-label="Notificaciones" [attr.aria-expanded]="isNotifOpen">
+        <i class="fa-solid fa-bell text-sm"></i>
+        <span *ngIf="pendingCount > 0" class="absolute -top-1 -right-1 inline-flex items-center justify-center px-1 py-0.5 text-[10px] font-medium leading-none bg-white text-rose-600 border border-rose-600 rounded-full min-w-[16px]">
+          {{ pendingCount }}
+        </span>
+      </button>
+    </div>
+  </div>
+
+  <!-- Cards resumen -->
+  <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+    <div class="p-6 bg-white rounded-xl border border-gray-200 shadow-sm">
+      <div class="flex items-center gap-3">
+        <i class="fa fa-clipboard-list text-indigo-600 text-xl"></i>
+        <div>
+          <h3 class="text-gray-500 text-sm">Total en Proceso</h3>
+          <p class="text-3xl font-bold text-gray-800">{{ totalEnProceso }}</p>
+          <p class="text-gray-500 text-sm">Estudiantes en curso</p>
+        </div>
+      </div>
+    </div>
+    <div class="p-6 bg-white rounded-xl border border-gray-200 shadow-sm">
+      <div class="flex items-center gap-3">
+        <i class="fa fa-user-xmark text-amber-600 text-xl"></i>
+        <div>
+          <h3 class="text-gray-500 text-sm">Sin Tutor</h3>
+          <p class="text-3xl font-bold text-gray-800">{{ sinTutor }}</p>
+          <p class="text-gray-500 text-sm">Estudiantes por asignar</p>
+        </div>
+      </div>
+    </div>
+    <div class="p-6 bg-white rounded-xl border border-gray-200 shadow-sm">
+      <div class="flex items-center gap-3">
+        <i class="fa fa-user-graduate text-emerald-600 text-xl"></i>
+        <div>
+          <h3 class="text-gray-500 text-sm">Total Estudiantes</h3>
+          <p class="text-3xl font-bold text-gray-800">{{ totalEstudiantes }}</p>
+          <p class="text-gray-500 text-sm">Matrículas vigentes</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Panel de notificaciones (slide-over) -->
+  <div *ngIf="panelNotificacionesAbierto" class="fixed inset-0 z-50">
+    <div class="absolute inset-0 bg-black/20" (click)="toggleNotif()"></div>
+    <aside class="absolute right-0 top-0 h-full w-80 bg-white shadow-xl border-l border-gray-200 flex flex-col">
+      <div class="p-4 border-b flex items-center justify-between">
+        <div class="font-semibold text-gray-800">Notificaciones</div>
+        <button (click)="marcarTodasLeidas()" class="text-xs text-rose-600 hover:underline">Marcar todas como leídas</button>
+      </div>
+      <div class="flex-1 overflow-y-auto divide-y">
+        <div *ngFor="let n of notifications" class="p-4 flex gap-3" [class.bg-rose-50]="!n.leida">
+          <div class="mt-1"><i class="fa fa-bell text-rose-600"></i></div>
+          <div class="flex-1">
+            <div class="text-sm font-medium text-gray-800">{{ n.text }}</div>
+            <div class="text-[10px] text-gray-400 mt-1">{{ n.time }}</div>
+          </div>
+          <button *ngIf="!n.leida" (click)="marcarLeida(n)" class="text-xs text-emerald-700 hover:underline">Leída</button>
+        </div>
+      </div>
+      <div class="p-3 border-t text-right">
+        <button (click)="toggleNotif()" class="px-3 py-1.5 text-sm rounded-md bg-gray-800 text-white hover:bg-gray-900">Cerrar</button>
+      </div>
+    </aside>
+  </div>
+
+  <!-- Distribución por Modalidad -->
+  <div class="bg-white rounded-xl border border-gray-200 shadow-sm">
+    <div class="px-4 py-3 border-b border-gray-200">
+      <h3 class="font-semibold text-gray-800">Distribución por Modalidad</h3>
+      <p class="text-sm text-gray-500">Porcentaje de estudiantes por modalidad</p>
+    </div>
+    <div class="p-4 space-y-4">
+      <!-- UIC bar -->
+      <div>
+        <div class="flex items-center justify-between mb-1">
+          <span class="text-sm font-medium text-gray-700">Unidad Integración Curricular / UIC</span>
+          <span class="text-sm text-gray-600">{{ uicPercent }}%</span>
+        </div>
+        <div class="w-full h-3 bg-gray-100 rounded-full overflow-hidden">
+          <div class="h-3 bg-blue-600" [style.width.%]="uicPercent"></div>
+        </div>
+      </div>
+      <!-- Complexivo bar -->
+      <div>
+        <div class="flex items-center justify-between mb-1">
+          <span class="text-sm font-medium text-gray-700">Examen Complexivo</span>
+          <span class="text-sm text-gray-600">{{ complexivoPercent }}%</span>
+        </div>
+        <div class="w-full h-3 bg-gray-100 rounded-full overflow-hidden">
+          <div class="h-3 bg-amber-600" [style.width.%]="complexivoPercent"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>

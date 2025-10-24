@@ -1,0 +1,212 @@
+<section class="space-y-4">
+  <!-- Header -->
+  <div class="bg-white rounded-xl border border-gray-200 shadow-sm px-4 py-3">
+    <h2 class="text-xl md:text-2xl font-bold text-gray-800">Pagos</h2>
+    <p class="text-gray-600">Gestión de pagos por concepto.</p>
+  </div>
+
+  <!-- Tabs -->
+  <div class="bg-white rounded-xl border border-gray-200 shadow-sm">
+    <div class="flex flex-wrap gap-2 px-3 pt-3">
+      <button *ngFor="let t of tabs"
+              class="px-3 py-1 rounded-t-md"
+              (click)="setTab(t.key)"
+              [ngClass]="activeTab===t.key ? 'bg-indigo-50 text-indigo-700 border-x border-t border-gray-200 -mb-px' : 'text-gray-600 hover:text-gray-800'">
+        {{ t.label }}
+      </button>
+    </div>
+    <div class="border-t border-gray-200 p-4">
+      <!-- Tab: Certificados -->
+      <ng-container *ngIf="activeTab==='certificados'">
+        <div class="flex items-center justify-between mb-3">
+          <div class="text-sm text-gray-600">Listado de pagos por certificados</div>
+          <input [(ngModel)]="searchCertificados" type="text" placeholder="Buscar por estudiante o referencia" class="px-3 py-2 border rounded-lg text-sm w-64" />
+        </div>
+        <div class="overflow-x-auto">
+          <table class="min-w-full text-sm">
+            <thead class="bg-gray-50 text-gray-700 text-xs uppercase">
+              <tr>
+                <th class="px-4 py-2 text-left">Estudiante</th>
+                <th class="px-4 py-2 text-left">Carrera</th>
+                <th class="px-4 py-2 text-left">Referencia</th>
+                <th class="px-4 py-2 text-right">Monto</th>
+                <th class="px-4 py-2 text-center">Comprobante</th>
+                <th class="px-4 py-2 text-center">Estado</th>
+                <th class="px-4 py-2 text-center">Acciones</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-gray-100">
+              <tr *ngFor="let it of filteredCertificados" class="odd:bg-white even:bg-gray-50">
+                <td class="px-4 py-3">{{ it.estudiante }}</td>
+                <td class="px-4 py-3">{{ it.carrera }}</td>
+                <td class="px-4 py-3">{{ it.referencia }}</td>
+                <td class="px-4 py-3 text-right font-semibold text-gray-800">${{ it.monto | number:'1.2-2' }}</td>
+                <td class="px-4 py-3 text-center">
+                  <button (click)="verComprobante(it.comprobanteUrl)" class="px-2 py-1 text-xs rounded-md border hover:bg-gray-50">Ver</button>
+                </td>
+                <td class="px-4 py-3 text-center">
+                  <span class="text-xs px-2 py-0.5 rounded-full"
+                        [ngClass]="{
+                          'bg-green-100 text-green-700': it.estado==='aprobado',
+                          'bg-yellow-100 text-yellow-700': it.estado==='pendiente',
+                          'bg-red-100 text-red-700': it.estado==='rechazado'
+                        }">
+                    {{ it.estado | uppercase }}
+                  </span>
+                </td>
+                <td class="px-4 py-3">
+                  <div class="flex items-center justify-center gap-2">
+                    <button (click)="aceptarCertificado(it.id)" class="px-3 py-1.5 text-xs rounded-md bg-green-600 text-white hover:bg-green-700">
+                      <i class="fa fa-check mr-1"></i> Aceptar
+                    </button>
+                    <button (click)="rechazarCertificado(it.id)" class="px-3 py-1.5 text-xs rounded-md bg-red-600 text-white hover:bg-red-700">
+                      <i class="fa fa-xmark mr-1"></i> Rechazar
+                    </button>
+                  </div>
+                </td>
+              </tr>
+              <tr *ngIf="filteredCertificados.length===0">
+                <td colspan="6" class="px-4 py-6 text-center text-gray-500">Sin resultados</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </ng-container>
+
+      <!-- Tab: Titulación -->
+      <ng-container *ngIf="activeTab==='titulacion'">
+        <div class="flex items-center justify-between mb-3">
+          <div class="text-sm text-gray-600">Listado de pagos por titulación</div>
+          <input [(ngModel)]="searchTitulacion" type="text" placeholder="Buscar por estudiante o referencia" class="px-3 py-2 border rounded-lg text-sm w-64" />
+        </div>
+        <div class="overflow-x-auto">
+          <table class="min-w-full text-sm">
+            <thead class="bg-gray-50 text-gray-700 text-xs uppercase">
+              <tr>
+                <th class="px-4 py-2 text-left">Estudiante</th>
+                <th class="px-4 py-2 text-left">Carrera</th>
+                <th class="px-4 py-2 text-left">Referencia</th>
+                <th class="px-4 py-2 text-right">Monto</th>
+                <th class="px-4 py-2 text-center">Comprobante</th>
+                <th class="px-4 py-2 text-center">Estado</th>
+                <th class="px-4 py-2 text-center">Acciones</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-gray-100">
+              <tr *ngFor="let it of filteredTitulacion" class="odd:bg-white even:bg-gray-50">
+                <td class="px-4 py-3">{{ it.estudiante }}</td>
+                <td class="px-4 py-3">{{ it.carrera }}</td>
+                <td class="px-4 py-3">{{ it.referencia }}</td>
+                <td class="px-4 py-3 text-right font-semibold text-gray-800">${{ it.monto | number:'1.2-2' }}</td>
+                <td class="px-4 py-3 text-center">
+                  <button (click)="verComprobante(it.comprobanteUrl)" class="px-2 py-1 text-xs rounded-md border hover:bg-gray-50">Ver</button>
+                </td>
+                <td class="px-4 py-3 text-center">
+                  <span class="text-xs px-2 py-0.5 rounded-full"
+                        [ngClass]="{
+                          'bg-green-100 text-green-700': it.estado==='aprobado',
+                          'bg-yellow-100 text-yellow-700': it.estado==='pendiente',
+                          'bg-red-100 text-red-700': it.estado==='rechazado'
+                        }">
+                    {{ it.estado | uppercase }}
+                  </span>
+                </td>
+                <td class="px-4 py-3">
+                  <div class="flex items-center justify-center gap-2">
+                    <button (click)="aceptarTitulacion(it.id)" class="px-3 py-1.5 text-xs rounded-md bg-green-600 text-white hover:bg-green-700">
+                      <i class="fa fa-check mr-1"></i> Aceptar
+                    </button>
+                    <button (click)="rechazarTitulacion(it.id)" class="px-3 py-1.5 text-xs rounded-md bg-red-600 text-white hover:bg-red-700">
+                      <i class="fa fa-xmark mr-1"></i> Rechazar
+                    </button>
+                  </div>
+                </td>
+              </tr>
+              <tr *ngIf="filteredTitulacion.length===0">
+                <td colspan="6" class="px-4 py-6 text-center text-gray-500">Sin resultados</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </ng-container>
+      <ng-container *ngIf="activeTab==='acta'">
+        <div class="flex items-center justify-between mb-3">
+          <div class="text-sm text-gray-600">Listado de pagos por acta de grado</div>
+          <input [(ngModel)]="searchActa" type="text" placeholder="Buscar por estudiante o referencia" class="px-3 py-2 border rounded-lg text-sm w-64" />
+        </div>
+        <div class="overflow-x-auto">
+          <table class="min-w-full text-sm">
+            <thead class="bg-gray-50 text-gray-700 text-xs uppercase">
+              <tr>
+                <th class="px-4 py-2 text-left">Estudiante</th>
+                <th class="px-4 py-2 text-left">Carrera</th>
+                <th class="px-4 py-2 text-left">Referencia</th>
+                <th class="px-4 py-2 text-right">Monto</th>
+                <th class="px-4 py-2 text-center">Comprobante</th>
+                <th class="px-4 py-2 text-center">Estado</th>
+                <th class="px-4 py-2 text-center">Acciones</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-gray-100">
+              <tr *ngFor="let it of filteredActa" class="odd:bg-white even:bg-gray-50">
+                <td class="px-4 py-3">{{ it.estudiante }}</td>
+                <td class="px-4 py-3">{{ it.carrera }}</td>
+                <td class="px-4 py-3">{{ it.referencia }}</td>
+                <td class="px-4 py-3 text-right font-semibold text-gray-800">${{ it.monto | number:'1.2-2' }}</td>
+                <td class="px-4 py-3 text-center">
+                  <button (click)="verComprobante(it.comprobanteUrl)" class="px-2 py-1 text-xs rounded-md border hover:bg-gray-50">Ver</button>
+                </td>
+                <td class="px-4 py-3 text-center">
+                  <span class="text-xs px-2 py-0.5 rounded-full"
+                        [ngClass]="{
+                          'bg-green-100 text-green-700': it.estado==='aprobado',
+                          'bg-yellow-100 text-yellow-700': it.estado==='pendiente',
+                          'bg-red-100 text-red-700': it.estado==='rechazado'
+                        }">
+                    {{ it.estado | uppercase }}
+                  </span>
+                </td>
+                <td class="px-4 py-3">
+                  <div class="flex items-center justify-center gap-2">
+                    <button (click)="aceptarActa(it.id)" class="px-3 py-1.5 text-xs rounded-md bg-green-600 text-white hover:bg-green-700">
+                      <i class="fa fa-check mr-1"></i> Aceptar
+                    </button>
+                    <button (click)="rechazarActa(it.id)" class="px-3 py-1.5 text-xs rounded-md bg-red-600 text-white hover:bg-red-700">
+                      <i class="fa fa-xmark mr-1"></i> Rechazar
+                    </button>
+                  </div>
+                </td>
+              </tr>
+              <tr *ngIf="filteredActa.length===0">
+                <td colspan="6" class="px-4 py-6 text-center text-gray-500">Sin resultados</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </ng-container>
+    </div>
+  </div>
+</section>
+
+<!-- Preview Modal -->
+<div *ngIf="isPreviewOpen" class="fixed inset-0 z-50 flex items-center justify-center">
+  <div class="absolute inset-0 bg-black/50" (click)="cerrarPreview()"></div>
+  <div class="relative bg-white w-[92vw] max-w-4xl max-h-[88vh] rounded-xl shadow-lg overflow-hidden">
+    <div class="flex items-center justify-between px-4 py-2 border-b">
+      <div class="font-medium text-gray-800">Comprobante</div>
+      <button (click)="cerrarPreview()" class="p-2 rounded hover:bg-gray-100" aria-label="Cerrar">
+        <i class="fa fa-xmark"></i>
+      </button>
+    </div>
+    <div class="p-3 overflow-auto" [ngClass]="previewType==='image' ? 'bg-gray-50' : ''">
+      <ng-container [ngSwitch]="previewType">
+        <img *ngSwitchCase="'image'" [src]="previewUrl!" alt="Comprobante" class="max-w-full h-auto mx-auto rounded" />
+        <iframe *ngSwitchCase="'pdf'" [src]="previewUrl!" class="w-full h-[70vh]" frameborder="0"></iframe>
+        <div *ngSwitchDefault class="text-center text-sm text-gray-600">
+          No se puede previsualizar este tipo de archivo. 
+          <a [href]="previewUrl!" target="_blank" class="text-indigo-600 hover:underline">Abrir en nueva pestaña</a>
+        </div>
+      </ng-container>
+    </div>
+  </div>
+  </div>

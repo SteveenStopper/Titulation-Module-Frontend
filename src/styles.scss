@@ -1,21 +1,12 @@
 /* You can add global styles to this file, and also import other style files */
-@use '@angular/material' as mat;
-@include mat.core();
-
-$my-primary: mat.define-palette(mat.$indigo-palette, 500);
-$my-accent: mat.define-palette(mat.$pink-palette, A200, A100, A400);
-$my-theme: mat.define-light-theme((
-  color: (
-    primary: $my-primary,
-    accent: $my-accent,
-  ),
-  typography: mat.define-typography-config(),
-  density: 0,
-));
-
-@include mat.all-component-themes($my-theme);
 @import url('https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500&display=swap');
 
+/* Tailwind CSS */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Estilos base existentes */
 html, body {
   margin: 0;
   padding: 0;
@@ -42,3 +33,13 @@ html, body {
 .mb-2 { margin-bottom: 1rem; }
 .mb-3 { margin-bottom: 1.5rem; }
 .mb-4 { margin-bottom: 2rem; }
+
+/* Animaciones globales para Tailwind */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.animate-fadeIn {
+  animation: fadeIn 0.3s ease-out forwards;
+}

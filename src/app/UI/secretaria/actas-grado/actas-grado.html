@@ -1,0 +1,54 @@
+<section class="space-y-4">
+  <!-- Header -->
+  <div class="bg-white rounded-xl border border-gray-200 shadow-sm px-4 py-3">
+    <h2 class="text-xl md:text-2xl font-bold text-gray-800">Acta de Grado</h2>
+    <p class="text-gray-600">Gestión de hojas de tribunal y calificación del tribunal</p>
+  </div>
+
+  <!-- Tabla -->
+  <div class="bg-white rounded-xl border border-gray-200 shadow-sm overflow-x-auto">
+    <table class="min-w-full text-sm">
+      <thead class="bg-gray-50 text-gray-700 text-xs uppercase">
+        <tr>
+          <th class="px-3 py-2 text-left">Estudiante</th>
+          <th class="px-3 py-2 text-left">Carrera</th>
+          <th class="px-3 py-2 text-left">Tribunal</th>
+          <th class="px-3 py-2 text-center">Calificación del tribunal</th>
+          <th class="px-3 py-2 text-center">Acciones</th>
+        </tr>
+      </thead>
+      <tbody class="divide-y divide-gray-100">
+        <tr *ngFor="let it of items" class="odd:bg-white even:bg-gray-50">
+          <td class="px-3 py-2 font-medium text-gray-800">{{ it.estudiante }}</td>
+          <td class="px-3 py-2 text-gray-700">{{ it.carrera }}</td>
+          <td class="px-3 py-2 text-gray-700">{{ it.tribunal }}</td>
+          <td class="px-3 py-2 text-center">
+            <input type="number" class="w-28 text-center border rounded-md px-2 py-1"
+                   [(ngModel)]="it.calificacionTribunal" min="0" max="10" step="0.1"
+                   [ngClass]="{
+                     'border-gray-300': !isCalificacionValida(it),
+                     'border-green-400': isCalificacionValida(it)
+                   }"
+                   placeholder="0 - 10" />
+          </td>
+          <td class="px-3 py-2">
+            <div class="flex items-center justify-center gap-2">
+              <button (click)="generarHoja(it.id)" class="px-3 py-1.5 text-xs rounded-md bg-indigo-600 text-white hover:bg-indigo-700">
+                <i class="fa fa-file-lines mr-1"></i> Generar hoja de tribunal
+              </button>
+              <button (click)="cargarHoja(it.id)" [disabled]="!isCalificacionValida(it)" class="px-3 py-1.5 text-xs rounded-md bg-amber-600 text-white hover:bg-amber-700 disabled:opacity-50 disabled:cursor-not-allowed">
+                <i class="fa fa-upload mr-1"></i> Cargar hoja de tribunal
+              </button>
+              <button (click)="guardar(it.id)" [disabled]="!isCalificacionValida(it)" class="px-3 py-1.5 text-xs rounded-md bg-green-600 text-white hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed">
+                <i class="fa fa-floppy-disk mr-1"></i> Guardar
+              </button>
+            </div>
+          </td>
+        </tr>
+        <tr *ngIf="items.length===0">
+          <td colspan="5" class="px-4 py-6 text-center text-gray-500">Sin registros</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</section>

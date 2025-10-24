@@ -74,11 +74,13 @@ export class AuthService {
 
   private getRoleFromEmail(email: string): string {
     // This is a simplified example - in a real app, the role would come from the server
+    if (email.includes('admin') || email.includes('administrador')) return 'admin';
     if (email.includes('estudiante')) return 'student';
     if (email.includes('coordinador')) return 'coordinator';
     if (email.includes('docente')) return 'teacher';
     if (email.includes('tesorer')) return 'treasury';
     if (email.includes('secretar')) return 'secretary';
+    if (email.includes('vicerrector')) return 'vice_chancellor';
     return 'user';
   }
 

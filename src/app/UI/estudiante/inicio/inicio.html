@@ -1,0 +1,111 @@
+<section class="space-y-6">
+  <!-- Header + Notificaciones -->
+  <div class="flex items-center justify-between">
+    <div>
+      <h2 class="text-2xl font-bold text-gray-800">Inicio</h2>
+      <p class="text-gray-600">Bienvenido al panel de Estudiante.</p>
+    </div>
+    <div class="relative">
+      <button type="button" (click)="toggleNotif()" class="relative inline-flex items-center justify-center h-8 w-8 rounded-full bg-rose-600 text-white hover:bg-rose-700" aria-label="Notificaciones" [attr.aria-expanded]="isNotifOpen">
+        <i class="fa-solid fa-bell text-sm"></i>
+        <span *ngIf="pendingCount > 0" class="absolute -top-1 -right-1 inline-flex items-center justify-center px-1 py-0.5 text-[10px] font-medium leading-none bg-white text-rose-600 border border-rose-600 rounded-full min-w-[16px]">
+          {{ pendingCount }}
+        </span>
+      </button>
+    </div>
+  </div>
+
+  <!-- Cards resumen -->
+  <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+    <div class="p-6 bg-white rounded-xl border border-gray-200 shadow-sm hover:shadow-md transition">
+      <div class="flex items-center gap-3">
+        <i class="fa fa-file text-indigo-600 text-xl"></i>
+        <div>
+          <h3 class="text-gray-500 text-sm">Documentos</h3>
+          <p class="text-3xl font-bold text-gray-800">{{ documentos.length }}</p>
+          <p class="text-gray-500 text-sm">Total de documentos</p>
+        </div>
+      </div>
+    </div>
+    <div class="p-6 bg-white rounded-xl border border-gray-200 shadow-sm hover:shadow-md transition">
+      <div class="flex items-center gap-3">
+        <i class="fa fa-receipt text-emerald-600 text-xl"></i>
+        <div>
+          <h3 class="text-gray-500 text-sm">Pagos</h3>
+          <p class="text-3xl font-bold text-gray-800 capitalize">{{ pagosEstado }}</p>
+          <p class="text-gray-500 text-sm">Estado de validación</p>
+        </div>
+      </div>
+    </div>
+    <div class="p-6 bg-white rounded-xl border border-gray-200 shadow-sm hover:shadow-md transition">
+      <div class="flex items-center gap-3">
+        <i class="fa fa-graduation-cap text-amber-600 text-xl"></i>
+        <div>
+          <h3 class="text-gray-500 text-sm">Modalidad</h3>
+          <p class="text-3xl font-bold text-gray-800 capitalize">{{ modalidadEstado.replace('_',' ') }}</p>
+          <p class="text-gray-500 text-sm">Proceso actual</p>
+        </div>
+      </div>
+    </div>
+    <div class="p-6 bg-white rounded-xl border border-gray-200 shadow-sm hover:shadow-md transition">
+      <div class="flex items-center gap-3">
+        <i class="fa fa-star text-indigo-600 text-xl"></i>
+        <div>
+          <h3 class="text-gray-500 text-sm">Notas</h3>
+          <p class="text-3xl font-bold text-gray-800 capitalize">{{ notasEstado }}</p>
+          <p class="text-gray-500 text-sm">Estado de validación por Secretaría</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Panel de notificaciones (slide-over) -->
+  <div *ngIf="panelNotificacionesAbierto" class="fixed inset-0 z-50">
+    <div class="absolute inset-0 bg-black/20" (click)="toggleNotif()"></div>
+    <aside class="absolute right-0 top-0 h-full w-80 bg-white shadow-xl border-l border-gray-200 flex flex-col">
+      <div class="p-4 border-b flex items-center justify-between">
+        <div class="font-semibold text-gray-800">Notificaciones</div>
+        <button (click)="marcarTodasLeidas()" class="text-xs text-rose-600 hover:underline">Marcar todas como leídas</button>
+      </div>
+      <div class="flex-1 overflow-y-auto divide-y">
+        <div *ngFor="let n of notificaciones" class="p-4 flex gap-3" [class.bg-rose-50]="!n.leida">
+          <div class="mt-1"><i class="fa fa-bell text-rose-600"></i></div>
+          <div class="flex-1">
+            <div class="text-sm font-medium text-gray-800">{{ n.titulo }}</div>
+            <div class="text-xs text-gray-600">{{ n.detalle }}</div>
+            <div class="text-[10px] text-gray-400 mt-1">{{ n.fecha }}</div>
+          </div>
+          <button *ngIf="!n.leida" (click)="marcarLeida(n)" class="text-xs text-emerald-700 hover:underline">Leída</button>
+        </div>
+      </div>
+      <div class="p-3 border-t text-right">
+        <button (click)="toggleNotif()" class="px-3 py-1.5 text-sm rounded-md bg-gray-800 text-white hover:bg-gray-900">Cerrar</button>
+      </div>
+    </aside>
+  </div>
+
+  <!-- Estado de documentos -->
+  <div class="bg-white rounded-xl border border-gray-200 shadow-sm">
+    <div class="px-4 py-3 border-b border-gray-200">
+      <h3 class="font-semibold text-gray-800">Estado de documentos</h3>
+    </div>
+    <div class="p-4">
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div *ngFor="let doc of docEstados" class="p-4 rounded-lg border" [ngClass]="{
+          'border-green-200 bg-green-50': doc.estado==='aprobado',
+          'border-yellow-200 bg-yellow-50': doc.estado==='pendiente',
+          'border-red-200 bg-red-50': doc.estado==='rechazado'
+        }">
+          <div class="flex items-center justify-between">
+            <div class="font-medium text-gray-800">{{ doc.nombre }}</div>
+            <span class="text-xs px-2 py-0.5 rounded-full" [ngClass]="{
+              'bg-green-100 text-green-700': doc.estado==='aprobado',
+              'bg-yellow-100 text-yellow-700': doc.estado==='pendiente',
+              'bg-red-100 text-red-700': doc.estado==='rechazado'
+            }">{{ doc.estado | uppercase }}</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>

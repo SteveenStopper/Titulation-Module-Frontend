@@ -1,0 +1,123 @@
+<section class="space-y-6">
+  <!-- Header -->
+  <div class="bg-white rounded-xl border border-gray-200 shadow-sm px-4 py-3 flex items-center justify-between">
+    <div>
+      <h2 class="text-xl md:text-2xl font-bold text-gray-800">Inicio</h2>
+      <p class="text-gray-600">Bienvenido al panel de Secretaría.</p>
+    </div>
+    <div class="relative">
+      <button type="button" (click)="toggleNotif()" class="relative inline-flex items-center justify-center h-8 w-8 rounded-full bg-rose-600 text-white hover:bg-rose-700" aria-label="Notificaciones" [attr.aria-expanded]="isNotifOpen">
+        <i class="fa-solid fa-bell text-sm"></i>
+        <span *ngIf="pendingCount > 0" class="absolute -top-1 -right-1 inline-flex items-center justify-center px-1 py-0.5 text-[10px] font-medium leading-none bg-white text-rose-600 border border-rose-600 rounded-full min-w-[16px]">
+          {{ pendingCount }}
+        </span>
+      </button>
+    </div>
+  </div>
+
+  <!-- KPIs -->
+  <div class="grid grid-cols-1 md:grid-cols-5 gap-3">
+    <div class="rounded-lg border p-4 bg-white">
+      <div class="flex items-center gap-3">
+        <i class="fa fa-file-signature text-indigo-600 text-xl"></i>
+        <div>
+          <div class="text-sm text-gray-500">Actas pendientes</div>
+          <div class="text-2xl font-bold">{{ kpis.actasPendientes }}</div>
+        </div>
+      </div>
+    </div>
+    <div class="rounded-lg border p-4 bg-white">
+      <div class="flex items-center gap-3">
+        <i class="fa fa-stamp text-emerald-600 text-xl"></i>
+        <div>
+          <div class="text-sm text-gray-500">Certificados emitidos (hoy)</div>
+          <div class="text-2xl font-bold">{{ kpis.certificadosEmitidosHoy }}</div>
+        </div>
+      </div>
+    </div>
+    <div class="rounded-lg border p-4 bg-white">
+      <div class="flex items-center gap-3">
+        <i class="fa fa-folder-open text-amber-600 text-xl"></i>
+        <div>
+          <div class="text-sm text-gray-500">Matrículas procesadas</div>
+          <div class="text-2xl font-bold">{{ kpis.matriculasProcesadas }}</div>
+        </div>
+      </div>
+    </div>
+    <div class="rounded-lg border p-4 bg-white">
+      <div class="flex items-center gap-3">
+        <i class="fa fa-user-check text-sky-600 text-xl"></i>
+        <div>
+          <div class="text-sm text-gray-500">Estudiantes atendidos</div>
+          <div class="text-2xl font-bold">{{ kpis.estudiantesAtendidos }}</div>
+        </div>
+      </div>
+    </div>
+    <div class="rounded-lg border p-4 bg-white">
+      <div class="flex items-center gap-3">
+        <i class="fa fa-list-ul text-rose-600 text-xl"></i>
+        <div>
+          <div class="text-sm text-gray-500">Solicitudes en curso</div>
+          <div class="text-2xl font-bold">{{ kpis.solicitudesEnCurso }}</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Panel de notificaciones (slide-over) -->
+  <div *ngIf="panelNotificacionesAbierto" class="fixed inset-0 z-50">
+    <div class="absolute inset-0 bg-black/20" (click)="toggleNotif()"></div>
+    <aside class="absolute right-0 top-0 h-full w-80 bg-white shadow-xl border-l border-gray-200 flex flex-col">
+      <div class="p-4 border-b flex items-center justify-between">
+        <div class="font-semibold text-gray-800">Notificaciones</div>
+        <button (click)="marcarTodasLeidas()" class="text-xs text-rose-600 hover:underline">Marcar todas como leídas</button>
+      </div>
+      <div class="flex-1 overflow-y-auto divide-y">
+        <div *ngFor="let n of notifications" class="p-4 flex gap-3" [class.bg-rose-50]="!n.leida">
+          <div class="mt-1"><i class="fa fa-bell text-rose-600"></i></div>
+          <div class="flex-1">
+            <div class="text-sm font-medium text-gray-800">{{ n.text }}</div>
+            <div class="text-[10px] text-gray-400 mt-1">{{ n.time }}</div>
+          </div>
+          <button *ngIf="!n.leida" (click)="marcarLeida(n)" class="text-xs text-emerald-700 hover:underline">Leída</button>
+        </div>
+      </div>
+      <div class="p-3 border-t text-right">
+        <button (click)="toggleNotif()" class="px-3 py-1.5 text-sm rounded-md bg-gray-800 text-white hover:bg-gray-900">Cerrar</button>
+      </div>
+    </aside>
+  </div>
+
+  <!-- Trámites recientes -->
+  <div class="bg-white rounded-xl border border-gray-200 shadow-sm p-4">
+    <div class="flex items-center justify-between mb-3">
+      <h3 class="font-semibold text-gray-800">Trámites recientes</h3>
+    </div>
+    <div class="overflow-x-auto">
+      <table class="min-w-full text-sm border border-gray-200 rounded-lg table-auto">
+        <thead class="bg-gray-50">
+          <tr class="text-gray-700 text-xs uppercase tracking-wider">
+            <th class="px-3 py-2 text-left">Estudiante</th>
+            <th class="px-3 py-2 text-left">Trámite</th>
+            <th class="px-3 py-2 text-left">Fecha</th>
+            <th class="px-3 py-2 text-left">Estado</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-gray-100">
+          <tr *ngFor="let r of recientes" class="odd:bg-white even:bg-gray-50">
+            <td class="px-3 py-2">{{ r.estudiante }}</td>
+            <td class="px-3 py-2">{{ r.tramite }}</td>
+            <td class="px-3 py-2">{{ r.fecha }}</td>
+            <td class="px-3 py-2">
+              <span [ngClass]="r.estado === 'completado' ? 'text-green-700 bg-green-50' : 'text-amber-700 bg-amber-50'"
+                    class="inline-flex items-center px-2 py-1 rounded text-xs font-medium">
+                <i class="fa fa-circle mr-1 text-[8px]" [ngClass]="r.estado === 'completado' ? 'text-green-600' : 'text-amber-500'"></i>
+                {{ r.estado }}
+              </span>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>

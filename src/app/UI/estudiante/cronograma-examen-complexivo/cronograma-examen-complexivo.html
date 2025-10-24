@@ -1,0 +1,55 @@
+<section class="space-y-6">
+  <ng-container *ngIf="(published$ | async) as data; else noData">
+    <!-- Encabezado (estilo igual a UIC) -->
+    <div class="bg-white rounded-xl border border-gray-200 shadow-sm p-4 text-center">
+      <div class="text-sm text-gray-600 font-semibold tracking-wide">{{ data.titulo || 'CRONOGRAMA DEL PROCESO DE TITULACIÓN' }}</div>
+      <div class="text-xs text-gray-500">{{ data.periodo || 'Sin período' }}</div>
+      <div class="mt-2 text-sm text-gray-700">{{ (data.proyecto || 'EXAMEN COMPLEXIVO') | uppercase }}</div>
+    </div>
+
+    <!-- Tabla solo lectura (misma estructura que UIC) -->
+    <div class="bg-white rounded-xl border border-gray-200 shadow-sm p-4 overflow-x-auto">
+      <table class="min-w-full text-sm">
+        <thead>
+          <tr class="bg-gray-50 text-gray-700">
+            <th class="p-2 text-left w-16">Nº</th>
+            <th class="p-2 text-left">Actividad / Descripción</th>
+            <th class="p-2 text-left">Responsable</th>
+            <th class="p-2 text-left w-72">Tiempo</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let fila of data?.filas; let i = index" class="border-t align-top">
+            <td class="p-2">{{ fila.nro || (i + 1) }}</td>
+            <td class="p-2 whitespace-pre-line">{{ fila.actividad || '-' }}</td>
+            <td class="p-2">{{ fila.responsable || '-' }}</td>
+            <td class="p-2">
+              <ng-container *ngIf="fila.fechaInicio && fila.fechaFin; else singleDate">
+                <div>
+                  <div class="text-xs text-gray-500">Del</div>
+                  <div>{{ fila.fechaInicio | date:'dd/MM/yyyy' }}</div>
+                </div>
+                <div class="mt-1">
+                  <div class="text-xs text-gray-500">Al</div>
+                  <div>{{ fila.fechaFin | date:'dd/MM/yyyy' }}</div>
+                </div>
+              </ng-container>
+              <ng-template #singleDate>
+                <div *ngIf="fila.fechaInicio || fila.fechaFin">
+                  <div class="text-xs text-gray-500">Fecha</div>
+                  <div>{{ (fila.fechaInicio || fila.fechaFin) | date:'dd/MM/yyyy' }}</div>
+                </div>
+              </ng-template>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </ng-container>
+
+  <ng-template #noData>
+    <div class="bg-white rounded-xl border border-gray-200 shadow-sm p-6 text-center text-gray-600">
+      Aún no hay un cronograma publicado por el Coordinador. Vuelve a intentarlo más tarde.
+    </div>
+  </ng-template>
+</section>

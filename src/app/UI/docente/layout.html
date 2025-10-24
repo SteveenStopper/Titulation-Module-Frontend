@@ -1,0 +1,132 @@
+<div class="flex h-screen bg-gray-100">
+  <!-- Sidebar -->
+  <aside class="fixed top-0 left-0 z-40 w-64 h-screen transition-transform -translate-x-full sm:translate-x-0">
+    <div class="h-full px-4 py-5 bg-white border-r border-gray-200 flex flex-col">
+      <div class="flex-1 overflow-y-auto">
+        <a routerLink="/docente/inicio" class="flex items-center ps-2.5 mb-5">
+          <img src="assets/Logo.png" class="h-12 md:h-14 me-3 object-contain drop-shadow-md select-none" alt="Instituto Superior Tecnológico Los Andes" />
+        </a>
+        <ul class="space-y-2 font-medium">
+          <!-- Inicio -->
+          <li>
+            <a routerLink="/docente/inicio" routerLinkActive="bg-gray-200 text-gray-900" class="flex items-center p-2 text-gray-700 rounded-lg hover:bg-gray-100">
+              <i class="fa-solid fa-house w-5 h-5 me-3"></i>
+              <span>Inicio</span>
+            </a>
+          </li>
+          <!-- Tutor UIC (collapsible) -->
+          <li>
+            <button type="button" (click)="toggleTutorUic()" class="w-full flex items-center p-2 text-gray-700 rounded-lg hover:bg-gray-100">
+              <i class="fa-solid fa-users-rectangle w-5 h-5 me-3"></i>
+              <span class="flex-1 text-left">Tutor UIC</span>
+              <i class="fa-solid" [ngClass]="isTutorUicOpen ? 'fa-chevron-up' : 'fa-chevron-down'"></i>
+            </button>
+            <ul *ngIf="isTutorUicOpen" class="mt-1 ps-8 space-y-1">
+              <li>
+                <a routerLink="/docente/tutor-uic/avance" routerLinkActive="text-gray-900 bg-gray-100" class="flex items-center gap-2 p-2 text-gray-700 rounded-lg hover:bg-gray-100">
+                  <i class="fa-solid fa-chart-line w-4 text-emerald-600"></i>
+                  <span>Avance</span>
+                </a>
+              </li>
+            </ul>
+          </li>
+          <!-- Docente Complexivo (collapsible) -->
+          <li>
+            <button type="button" (click)="toggleComplexivo()" class="w-full flex items-center p-2 text-gray-700 rounded-lg hover:bg-gray-100">
+              <i class="fa-solid fa-book-open-reader w-5 h-5 me-3"></i>
+              <span class="flex-1 text-left">Docente Complexivo</span>
+              <i class="fa-solid" [ngClass]="isComplexivoOpen ? 'fa-chevron-up' : 'fa-chevron-down'"></i>
+            </button>
+            <ul *ngIf="isComplexivoOpen" class="mt-1 ps-8 space-y-1">
+              <li>
+                <a routerLink="/docente/docente-complexivo/mis-materias" routerLinkActive="text-gray-900 bg-gray-100" class="flex items-center gap-2 p-2 text-gray-700 rounded-lg hover:bg-gray-100">
+                  <i class="fa-solid fa-list-check w-4 text-indigo-600"></i>
+                  <span>Mis materias</span>
+                </a>
+              </li>
+              <li>
+                <a routerLink="/docente/docente-complexivo/estudiantes" routerLinkActive="text-gray-900 bg-gray-100" class="flex items-center gap-2 p-2 text-gray-700 rounded-lg hover:bg-gray-100">
+                  <i class="fa-solid fa-user-graduate w-4 text-amber-600"></i>
+                  <span>Estudiantes</span>
+                </a>
+              </li>
+            </ul>
+          </li>
+          <!-- Lector -->
+          <li>
+            <a routerLink="/docente/lector" routerLinkActive="bg-gray-200 text-gray-900" class="flex items-center p-2 text-gray-700 rounded-lg hover:bg-gray-100">
+              <i class="fa-solid fa-file-lines w-5 h-5 me-3"></i>
+              <span>Lector</span>
+            </a>
+          </li>
+          <!-- Veedor -->
+          <li>
+            <a routerLink="/docente/veedor" routerLinkActive="bg-gray-200 text-gray-900" class="flex items-center p-2 text-gray-700 rounded-lg hover:bg-gray-100">
+              <i class="fa-solid fa-eye w-5 h-5 me-3"></i>
+              <span>Veedor</span>
+            </a>
+          </li>
+          <!-- Tribunal Evaluador -->
+          <li>
+            <a routerLink="/docente/tribunal-evaluador" routerLinkActive="bg-gray-200 text-gray-900" class="flex items-center p-2 text-gray-700 rounded-lg hover:bg-gray-100">
+              <i class="fa-solid fa-scale-balanced w-5 h-5 me-3"></i>
+              <span>Tribunal Evaluador</span>
+            </a>
+          </li>
+          <!-- Administrador -->
+          <li *ngIf="isAdmin">
+            <a routerLink="/administrador/inicio" class="flex items-center p-2 text-gray-700 rounded-lg hover:bg-gray-100">
+              <i class="fa-solid fa-user-gear w-5 h-5 me-3"></i>
+              <span>Administrador</span>
+            </a>
+          </li>
+        </ul>
+      </div>
+
+      <!-- Footer: Perfil / Cerrar sesión -->
+      <div class="mt-4 border-t pt-4">
+        <div class="relative">
+          <button type="button" (click)="toggleProfile()" class="w-full flex items-center gap-3 p-2 rounded-lg hover:bg-gray-100">
+            <span class="inline-flex h-9 w-9 items-center justify-center rounded-full bg-emerald-600 text-white font-semibold">
+              {{ userInitials }}
+            </span>
+            <div class="text-left">
+              <div class="text-sm font-medium text-gray-800">{{ userName }}</div>
+              <div class="text-xs text-gray-500">{{ userRole }}</div>
+            </div>
+            <i class="fa-solid fa-ellipsis-vertical ml-auto text-gray-500"></i>
+          </button>
+          <div *ngIf="isProfileOpen" class="absolute left-0 right-0 bottom-12 z-50 bg-white border border-gray-200 rounded-lg shadow-md">
+            <button type="button" (click)="logout()" class="w-full text-left px-4 py-2 text-sm hover:bg-gray-50">
+              <i class="fa-solid fa-right-from-bracket mr-2"></i> Cerrar sesión
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </aside>
+
+  <!-- Main Content -->
+  <div class="p-4 sm:ml-64 w-full">
+    <div class="sticky top-0 z-30">
+      <div class="bg-white/90 backdrop-blur border border-gray-200 rounded-xl shadow-sm">
+        <div class="px-4 py-3 flex items-center justify-between">
+          <div class="flex items-center gap-2">
+            <i class="fa fa-user-tie text-emerald-600"></i>
+            <span class="text-sm text-gray-500">Panel</span>
+            <span class="text-gray-800 font-semibold">Docente</span>
+          </div>
+          <div class="flex items-center gap-2">
+            <span class="text-xs text-gray-500">Período activo</span>
+            <span class="text-xs px-2 py-1 rounded-full bg-blue-100 text-blue-700">{{ activePeriod || 'Sin período' }}</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="p-6 rounded-xl mt-6 bg-gradient-to-b from-white to-gray-50 min-h-[calc(100vh-2rem)]">
+      <router-outlet></router-outlet>
+    </div>
+  </div>
+
+</div>

@@ -23,6 +23,6 @@ export const NoAuthGuard: CanActivateFn = (): Observable<boolean | UrlTree> | bo
     return true;
   }
   
-  // Redirect to dashboard if already authenticated
-  return router.createUrlTree(['/dashboard']);
+  // Redirect to Estudiante if already authenticated
+  return router.createUrlTree(['/estudiante']);
 };

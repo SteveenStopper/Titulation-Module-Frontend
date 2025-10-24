@@ -1,0 +1,139 @@
+<section class="space-y-4">
+  <!-- Header -->
+  <div class="bg-white rounded-xl border border-gray-200 shadow-sm px-4 py-3">
+    <h1 class="text-xl font-bold text-gray-800">Docente Complexivo</h1>
+    <p class="text-gray-600 text-sm">Gestión de materias.</p>
+  </div>
+
+  <!-- Mis materias -->
+  <div *ngIf="!seleccionMateriaId" class="space-y-3">
+    <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
+      <div *ngFor="let m of materias" class="rounded-xl border border-gray-200 bg-white shadow-sm p-4">
+        <div class="flex items-center justify-between mb-2">
+          <div class="flex items-center gap-2">
+            <i class="fa-solid fa-book text-indigo-600"></i>
+            <h3 class="font-semibold text-gray-800">{{ m.nombre }}</h3>
+          </div>
+          <span class="text-xs px-2 py-0.5 rounded-full"
+                [ngClass]="m.publicado ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-amber-50 text-amber-700 border border-amber-200'">
+            {{ m.publicado ? 'Publicado' : 'Pendiente' }}
+          </span>
+        </div>
+        <div class="text-sm text-gray-600 flex flex-col gap-1">
+          <div><span class="font-medium text-gray-700">Código:</span> {{ m.codigo }}</div>
+          <div><span class="font-medium text-gray-700">Periodo:</span> {{ m.periodo }}</div>
+          <div class="flex items-center gap-2">
+            <span class="font-medium text-gray-700">Estudiantes asignados:</span>
+            <span class="inline-flex items-center gap-1"><i class="fa-solid fa-user-graduate text-amber-600"></i>{{ m.estudiantesAsignados }}</span>
+          </div>
+        </div>
+        <div class="mt-3 flex items-center gap-2">
+          <button type="button" class="px-3 py-1.5 rounded-md bg-gray-900 text-white text-sm"
+                  [disabled]="!m.publicado" (click)="onClickVerEstudiantes(m)">
+            Ver estudiantes
+          </button>
+        </div>
+      </div>
+    </div>
+    <div *ngIf="publicadasAsignadas.length===0" class="text-sm text-gray-500">
+      No hay materias publicadas y asignadas para ti aún.
+    </div>
+  </div>
+
+  <!-- Estudiantes: asistencia -->
+  <div *ngIf="seleccionMateriaId" class="space-y-3">
+    <div class="bg-white rounded-xl border border-gray-200 shadow-sm px-4 py-3 flex items-center justify-between">
+      <div class="flex items-center gap-3">
+        <button class="px-3 py-1.5 rounded-md bg-white border text-sm hover:bg-gray-50" (click)="volverMisMaterias()">
+          <i class="fa-solid fa-arrow-left mr-1"></i> Volver
+        </button>
+        <div class="flex items-center gap-2">
+          <i class="fa-solid fa-user-graduate text-amber-600"></i>
+          <h2 class="font-semibold text-gray-800">Estudiantes · {{ materiaSeleccionada?.nombre || 'Materia' }} ({{ materiaSeleccionada?.codigo || '-' }})</h2>
+        </div>
+      </div>
+      <div class="flex items-center gap-3">
+        <div class="text-sm text-gray-600">Fecha: <span class="font-medium text-gray-800">{{ fechaHoy }}</span></div>
+        <button class="px-3 py-1.5 rounded-md bg-white border text-sm hover:bg-gray-50" (click)="exportarAsistenciaPdf()">
+          <i class="fa-solid fa-file-pdf mr-1 text-red-600"></i> Exportar PDF
+        </button>
+      </div>
+    </div>
+
+    <div class="bg-white rounded-xl border border-gray-200 shadow-sm">
+      <div class="p-4 overflow-x-auto">
+        <table class="min-w-full text-sm table-auto">
+          <thead>
+            <tr>
+              <th colspan="3" class="px-3 py-2 text-center text-sm font-semibold text-gray-800">Fecha: {{ fechaHoy }}</th>
+            </tr>
+            <tr class="bg-gray-50 text-gray-700 text-xs uppercase tracking-wide">
+              <th class="px-3 py-2 text-left">Estudiante</th>
+              <th class="px-3 py-2 text-center">Asistencia</th>
+              <th class="px-3 py-2 text-center">Asistencia</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-gray-100">
+            <tr *ngFor="let es of estudiantesMateria" class="odd:bg-white even:bg-gray-50">
+              <td class="px-3 py-2 font-medium text-gray-800">{{ es.nombre }}</td>
+              <td class="px-3 py-2 text-center">
+                <span class="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full"
+                      [ngClass]="es.presente ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-rose-50 text-rose-700 border border-rose-200'">
+                  <i class="fa-solid" [ngClass]="es.presente ? 'fa-check' : 'fa-xmark'"></i>
+                  {{ es.presente ? 'Presente' : 'Ausente' }}
+                </span>
+              </td>
+              <td class="px-3 py-2 text-center">
+                <input type="checkbox" [(ngModel)]="es.presente" class="h-4 w-4 accent-emerald-600" />
+              </td>
+            </tr>
+            <tr *ngIf="estudiantesMateria.length===0">
+              <td colspan="3" class="px-3 py-6 text-center text-gray-500">No hay estudiantes en esta materia.</td>
+            </tr>
+          </tbody>
+        </table>
+        <div class="mt-4 flex justify-end">
+          <button class="px-3 py-1.5 rounded-md bg-emerald-600 text-white text-sm hover:bg-emerald-700" (click)="guardarAsistencia()">
+            Guardar asistencia
+          </button>
+        </div>
+
+        <!-- Historial integrado -->
+        <div class="mt-6 border-t pt-4">
+          <div class="flex items-center justify-between mb-2">
+            <h3 class="font-semibold text-gray-800">Historial de asistencias</h3>
+            <span class="text-xs text-gray-500" *ngIf="attendanceHistory.length>0">Total días: {{ attendanceHistory.length }}</span>
+          </div>
+          <div *ngIf="attendanceHistory.length===0" class="text-sm text-gray-500">Aún no hay asistencias guardadas.</div>
+          <div *ngFor="let h of historyExceptToday" class="border border-gray-100 rounded-lg mb-3">
+            <div class="p-3 overflow-x-auto">
+              <table class="min-w-full text-sm table-auto">
+                <thead>
+                  <tr>
+                    <th colspan="2" class="px-3 py-2 text-center text-sm font-semibold text-gray-800">Fecha: {{ h.date }}</th>
+                  </tr>
+                  <tr class="bg-gray-50 text-gray-700 text-xs uppercase tracking-wide">
+                    <th class="px-3 py-2 text-left">Estudiante</th>
+                    <th class="px-3 py-2 text-center">Asistencia</th>
+                  </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-100">
+                  <tr *ngFor="let i of h.items" class="odd:bg-white even:bg-gray-50">
+                    <td class="px-3 py-2 font-medium text-gray-800">{{ i.nombre }}</td>
+                    <td class="px-3 py-2 text-center">
+                      <span class="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full"
+                            [ngClass]="i.presente ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-rose-50 text-rose-700 border border-rose-200'">
+                        <i class="fa-solid" [ngClass]="i.presente ? 'fa-check' : 'fa-xmark'"></i>
+                        {{ i.presente ? 'Presente' : 'Ausente' }}
+                      </span>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
