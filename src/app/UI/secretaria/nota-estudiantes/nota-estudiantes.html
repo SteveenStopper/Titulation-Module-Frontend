@@ -40,7 +40,7 @@
           <td class="px-3 py-2 text-center" [ngClass]="{'text-red-600 font-semibold': e.s2!==null && e.s2<minNota}">{{ e.s2 === null ? '-' : e.s2 }}</td>
           <td class="px-3 py-2 text-center" [ngClass]="{'text-red-600 font-semibold': e.s3!==null && e.s3<minNota}">{{ e.s3 === null ? '-' : e.s3 }}</td>
           <td class="px-3 py-2 text-center" [ngClass]="{'text-red-600 font-semibold': e.s4!==null && e.s4<minNota}">{{ e.s4 === null ? '-' : e.s4 }}</td>
-          <td class="px-3 py-2 text-center" [ngClass]="{'text-red-600 font-semibold': e.s5!==null && e.s5<minNota}">{{ e.s5 === null ? '-' : e.s5 }}</td>
+          <td class="px-3 py-2 text-center" [ngClass]="{'text-red-600 font-semibold': e.s5!=null && e.s5<minNota}">{{ e.s5 == null ? '-' : e.s5 }}</td>
           <td class="px-3 py-2 text-center font-semibold text-gray-800">{{ promedio(e) }}</td>
           <td class="px-3 py-2 text-center">
             <span class="text-xs px-2 py-0.5 rounded-full"
@@ -52,16 +52,16 @@
           </td>
           <td class="px-3 py-2">
             <div class="flex items-center justify-center gap-2">
-              <button (click)="aceptar(e.id)" class="px-3 py-1.5 text-xs rounded-md text-white"
+              <button (click)="aceptar(e.estudiante_id)" class="px-3 py-1.5 text-xs rounded-md text-white"
                       [ngClass]="elegible(e) && e.estado==='pendiente' ? 'bg-green-600 hover:bg-green-700' : 'bg-gray-400 cursor-not-allowed'"
                       [disabled]="!elegible(e) || e.estado!=='pendiente'">
                 <i class="fa fa-check mr-1"></i> Aceptar
               </button>
-              <button (click)="rechazar(e.id)" class="px-3 py-1.5 text-xs rounded-md bg-red-600 text-white hover:bg-red-700"
+              <button (click)="rechazar(e.estudiante_id)" class="px-3 py-1.5 text-xs rounded-md bg-red-600 text-white hover:bg-red-700"
                       [disabled]="e.estado!=='pendiente'">
                 <i class="fa fa-xmark mr-1"></i> Rechazar
               </button>
-              <button (click)="generarCertificado(e.id)" class="px-3 py-1.5 text-xs rounded-md bg-indigo-600 text-white hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed" 
+              <button (click)="generarCertificado(e.estudiante_id)" class="px-3 py-1.5 text-xs rounded-md bg-indigo-600 text-white hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed" 
                       [disabled]="e.estado!=='aprobado'">
                 <i class="fa fa-file-pdf mr-1"></i> Generar certificado
               </button>
@@ -74,4 +74,16 @@
       </tbody>
     </table>
   </div>
+
+  <!-- Dialogo Rechazo -->
+  <p-dialog [(visible)]="showRejectDialog" [modal]="true" [style]="{width: '32rem'}" [draggable]="false" [resizable]="false" header="Rechazar validación">
+    <div class="space-y-3">
+      <p class="text-sm text-gray-600">Escribe la observación del rechazo. Este texto será enviado al estudiante.</p>
+      <textarea pInputTextarea [(ngModel)]="rejectObs" rows="5" class="w-full p-2 border rounded-md" placeholder="Observación obligatoria"></textarea>
+      <div class="flex justify-end gap-2 pt-2">
+        <button type="button" (click)="cancelReject()" class="px-3 py-1.5 text-xs rounded-md bg-gray-200 hover:bg-gray-300">Cancelar</button>
+        <button type="button" (click)="confirmReject()" class="px-3 py-1.5 text-xs rounded-md bg-red-600 text-white hover:bg-red-700">Confirmar rechazo</button>
+      </div>
+    </div>
+  </p-dialog>
 </section>

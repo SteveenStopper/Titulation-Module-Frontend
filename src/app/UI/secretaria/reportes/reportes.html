@@ -1,1 +1,94 @@
-<p>reportes works!</p>
+<div class="space-y-6">
+  <!-- Encabezado y filtros -->
+  <div class="bg-white border border-gray-200 rounded-xl shadow-sm p-4">
+    <div class="flex items-center gap-4">
+      <div class="text-sm font-semibold text-gray-700">Reportes de Secretaría</div>
+      <div class="ml-auto flex items-center gap-3">
+        <div class="flex items-center gap-2">
+          <label class="text-xs text-gray-500">Período</label>
+          <select class="text-sm border rounded-md px-2 py-1" (change)="onChangePeriod($event)">
+            <option [value]="">Seleccione un período</option>
+            <option *ngFor="let p of (periods$ | async)" [value]="p.id">{{ p.name }}</option>
+          </select>
+        </div>
+        <div class="flex items-center gap-2">
+          <label class="text-xs text-gray-500">Carrera</label>
+          <select class="text-sm border rounded-md px-2 py-1" (change)="onChangeCareer($event)">
+            <option [value]="">Todas</option>
+            <option *ngFor="let c of (careers$ | async)" [value]="c.id">{{ c.nombre }}</option>
+          </select>
+        </div>
+        <div class="flex items-center gap-2">
+          <label class="text-xs text-gray-500">Rango</label>
+          <select class="text-sm border rounded-md px-2 py-1" (change)="onChangeDays($event)">
+            <option [value]="7">Últimos 7 días</option>
+            <option [value]="14">Últimos 14 días</option>
+            <option [value]="30">Últimos 30 días</option>
+          </select>
+        </div>
+        <button class="text-xs px-3 py-1.5 rounded-md bg-blue-600 text-white hover:bg-blue-700" (click)="onExportReport()">Exportar PDF</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- KPIs -->
+  <div class="grid grid-cols-1 sm:grid-cols-3 lg:grid-cols-5 gap-4">
+    <div class="bg-white border border-gray-200 rounded-xl p-4">
+      <div class="text-xs text-gray-500">Actas pendientes</div>
+      <div class="text-2xl font-semibold text-gray-800">{{ (kpis$ | async)?.actasPendientes ?? 0 }}</div>
+    </div>
+    <div class="bg-white border border-gray-200 rounded-xl p-4">
+      <div class="text-xs text-gray-500">Certificados hoy</div>
+      <div class="text-2xl font-semibold text-gray-800">{{ (kpis$ | async)?.certificadosEmitidosHoy ?? 0 }}</div>
+    </div>
+    <div class="bg-white border border-gray-200 rounded-xl p-4">
+      <div class="text-xs text-gray-500">Matrículas procesadas</div>
+      <div class="text-2xl font-semibold text-gray-800">{{ (kpis$ | async)?.matriculasProcesadas ?? 0 }}</div>
+    </div>
+    <div class="bg-white border border-gray-200 rounded-xl p-4">
+      <div class="text-xs text-gray-500">Estudiantes atendidos</div>
+      <div class="text-2xl font-semibold text-gray-800">{{ (kpis$ | async)?.estudiantesAtendidos ?? 0 }}</div>
+    </div>
+    <div class="bg-white border border-gray-200 rounded-xl p-4">
+      <div class="text-xs text-gray-500">Solicitudes en curso</div>
+      <div class="text-2xl font-semibold text-gray-800">{{ (kpis$ | async)?.solicitudesEnCurso ?? 0 }}</div>
+    </div>
+  </div>
+
+  <!-- Actividad reciente -->
+  <div class="bg-white border border-gray-200 rounded-xl shadow-sm">
+    <div class="px-5 py-3 border-b text-sm font-semibold text-gray-700">Actividad reciente</div>
+    <div class="p-4">
+      <ng-container *ngIf="(recientes$ | async) as items">
+        <div *ngIf="items.length === 0" class="text-sm text-gray-500">No hay actividad en el rango seleccionado.</div>
+        <div *ngIf="items.length > 0" class="overflow-x-auto">
+          <table class="min-w-full text-sm">
+            <thead>
+              <tr class="text-left text-gray-500">
+                <th class="py-2 pr-4">Estudiante</th>
+                <th class="py-2 pr-4">Trámite</th>
+                <th class="py-2 pr-4">Fecha</th>
+                <th class="py-2 pr-4">Estado</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y">
+              <tr *ngFor="let it of items">
+                <td class="py-2 pr-4 text-gray-800">{{ it.estudiante }}</td>
+                <td class="py-2 pr-4 text-gray-700">{{ it.tramite }}</td>
+                <td class="py-2 pr-4 text-gray-500">{{ it.fecha | date:'short' }}</td>
+                <td class="py-2 pr-4">
+                  <span class="px-2 py-0.5 rounded text-xs"
+                        [ngClass]="{
+                          'bg-emerald-100 text-emerald-700': it.estado==='completado',
+                          'bg-amber-100 text-amber-700': it.estado==='pendiente',
+                          'bg-rose-100 text-rose-700': it.estado==='rechazado'
+                        }">{{ it.estado }}</span>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </ng-container>
+    </div>
+  </div>
+</div>

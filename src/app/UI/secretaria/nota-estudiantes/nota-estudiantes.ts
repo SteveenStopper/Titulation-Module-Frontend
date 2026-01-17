@@ -1,11 +1,16 @@
 import { Component } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { ToastrService } from 'ngx-toastr';
+import { DocumentsService } from '../../../services/documents.service';
+import { SecretariaService, SecretariaPromedioItem } from '../../../services/secretaria.service';
+import { NotificationsService } from '../../../services/notifications.service';
+import { DialogModule } from 'primeng/dialog';
 
 @Component({
   selector: 'app-nota-estudiantes',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, DialogModule],
   templateUrl: './nota-estudiantes.html',
   styleUrl: './nota-estudiantes.scss'
 })
@@ -24,32 +29,30 @@ export class NotaEstudiantes {
   search = '';
   // Filtro por carrera
   carreraFiltro = '';
+  // Estado
+  loading = false;
+  page = 1;
+  pageSize = 20;
 
   // Lista de carreras (únicas) derivada de los datos
   get carreras(): string[] {
-    return Array.from(new Set(this.estudiantes.map(e => e.carrera)));
+    return Array.from(new Set(this.items.map(e => e.carrera)));
   }
 
-  // Datos mock: calificaciones por semestre (1..5). null = sin nota. Escala 0-10
-  estudiantes: Array<{
-    id: number;
-    nombre: string;
-    carrera: string;
-    s1: number | null; s2: number | null; s3: number | null;
-    s4: number | null; s5: number | null;
-    estado: 'pendiente' | 'aprobado' | 'rechazado';
-  }> = [
-    { id: 1, nombre: 'Ana Pérez', carrera: 'Sistemas', s1: 8.2, s2: 7.7, s3: 9.0, s4: 8.5, s5: 8.8, estado: 'pendiente' },
-    { id: 2, nombre: 'Luis Romero', carrera: 'Electromecánica', s1: 6.9, s2: 7.5, s3: 8.0, s4: 8.3, s5: 7.9, estado: 'pendiente' },
-    { id: 3, nombre: 'María Vásquez', carrera: 'Contabilidad', s1: 7.0, s2: 7.2, s3: null, s4: 8.1, s5: null, estado: 'pendiente' },
-  ];
+  // Datos desde backend
+  items: SecretariaPromedioItem[] = [];
+
+  // Modal rechazo
+  showRejectDialog = false;
+  rejectObs = '';
+  rejectTargetId: number | null = null;
 
   // Lista filtrada
   get filtered() {
     const q = this.search.trim().toLowerCase();
-    return this.estudiantes.filter(e =>
+    return this.items.filter(e =>
       (!this.carreraFiltro || e.carrera === this.carreraFiltro) &&
-      (!q || e.nombre.toLowerCase().includes(q))
+      (!q || (e.nombre || '').toLowerCase().includes(q))
     );
   }
 
@@ -59,7 +62,7 @@ export class NotaEstudiantes {
 
   private valoresDe(e: any): Array<number | null> {
     const n = this.semestresDe(e);
-    const arr = [e.s1, e.s2, e.s3, e.s4, e.s5];
+    const arr = [e.s1, e.s2, e.s3, e.s4, null];
     return arr.slice(0, n);
   }
 
@@ -81,24 +84,105 @@ export class NotaEstudiantes {
     return !this.sinNotas(e) && !this.tieneBajas(e);
   }
 
-  aceptar(id: number) {
-    const e = this.estudiantes.find(x => x.id === id);
-    if (!e) return;
-    if (!this.elegible(e)) return; // seguridad extra
-    e.estado = 'aprobado';
+  constructor(
+    private secretaria: SecretariaService,
+    private documents: DocumentsService,
+    private toast: ToastrService,
+    private notifications: NotificationsService,
+  ) {
+    this.loadPromedios();
   }
 
-  rechazar(id: number) {
-    const e = this.estudiantes.find(x => x.id === id);
-    if (!e) return;
-    e.estado = 'rechazado';
+  loadPromedios() {
+    this.loading = true;
+    this.secretaria.listPromedios(this.page, this.pageSize)
+      .subscribe({
+        next: (resp) => {
+          this.items = resp?.data || [];
+          this.loading = false;
+        },
+        error: (err) => {
+          this.loading = false;
+          this.toast.error(err?.error?.message || 'No se pudo cargar promedios');
+        }
+      });
   }
 
-  generarCertificado(id: number) {
-    const e = this.estudiantes.find(x => x.id === id);
+  generarCertificado(estudiante_id: number) {
+    const e = this.items.find(x => x.estudiante_id === estudiante_id);
     if (!e) return;
-    if (e.estado !== 'aprobado') return;
-    console.log('Generar certificado de notas para', e.nombre, ' - Carrera:', e.carrera);
-    // TODO: integrar con backend: POST /api/secretaria/certificados/notas { userId, academicPeriodId }
+    if (!this.elegible(e)) { this.toast.warning('El estudiante no cumple los requisitos'); return; }
+    this.secretaria.generarCertNotas(estudiante_id).subscribe({
+      next: (res: any) => {
+        const docId = res?.documento_id || res?.documentId || res?.id || res?.document?.id || res?.certificado_doc_id;
+        if (!docId) { this.toast.info('Certificado generado, pero no se obtuvo el documento'); return; }
+        this.documents.download(docId).subscribe(blob => {
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = `certificado_notas_${(e.nombre||'estudiante').replace(/\s+/g,'_')}.pdf`;
+          a.click();
+          URL.revokeObjectURL(url);
+        });
+      },
+      error: (err) => {
+        this.toast.error(err?.error?.message || 'No se pudo generar el certificado');
+      }
+    });
+  }
+
+  aceptar(estudiante_id: number) {
+    const e = this.items.find(x => x.estudiante_id === estudiante_id);
+    if (!e) return;
+    if (!this.elegible(e)) { this.toast.warning('El estudiante no cumple los requisitos'); return; }
+    this.secretaria.approve(estudiante_id).subscribe({
+      next: () => {
+        (e as any).estado = 'aprobado';
+        this.toast.success('Aprobado correctamente');
+      },
+      error: (err) => this.toast.error(err?.error?.message || 'No se pudo aprobar')
+    });
+  }
+
+  rechazar(estudiante_id: number) {
+    const e = this.items.find(x => x.estudiante_id === estudiante_id);
+    if (!e) return;
+    this.rejectTargetId = estudiante_id;
+    this.rejectObs = '';
+    this.showRejectDialog = true;
+  }
+
+  confirmReject() {
+    if (!this.rejectTargetId) return;
+    const estudiante_id = this.rejectTargetId;
+    const obs = (this.rejectObs || '').trim();
+    if (!obs) { this.toast.warning('La observación es obligatoria'); return; }
+    this.secretaria.reject(estudiante_id, obs).subscribe({
+      next: () => {
+        const e = this.items.find(x => x.estudiante_id === estudiante_id);
+        if (e) (e as any).estado = 'rechazado';
+        this.notifications.create({
+          id_user: estudiante_id,
+          type: 'secretaria_rechazo',
+          title: 'Secretaría: Validación rechazada',
+          message: obs,
+          entity_type: 'secretaria',
+          entity_id: estudiante_id,
+        }).subscribe({
+          next: () => this.toast.info('Rechazado y notificado'),
+          error: () => this.toast.error('No se pudo enviar la notificación'),
+        });
+        this.showRejectDialog = false;
+        this.rejectTargetId = null;
+        this.rejectObs = '';
+      },
+      error: (err) => this.toast.error(err?.error?.message || 'No se pudo rechazar'),
+    });
+  }
+
+  cancelReject() {
+    this.showRejectDialog = false;
+    this.rejectTargetId = null;
+    this.rejectObs = '';
   }
 }

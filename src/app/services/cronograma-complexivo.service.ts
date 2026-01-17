@@ -1,5 +1,6 @@
 import { Injectable } from '@angular/core';
-import { BehaviorSubject } from 'rxjs';
+import { BehaviorSubject, Observable } from 'rxjs';
+import { HttpClient } from '@angular/common/http';
 import { CronogramaUIC, CronoFila } from './cronograma-uic.service';
 
 @Injectable({ providedIn: 'root' })
@@ -18,6 +19,9 @@ export class CronogramaComplexivoService {
 
   private publishedSubject = new BehaviorSubject<CronogramaUIC | null>(null);
   public published$ = this.publishedSubject.asObservable();
+  private apiUrl = '/api/cronogramas/complexivo';
+
+  constructor(private http: HttpClient) {}
 
   getDraft(): CronogramaUIC {
     return JSON.parse(JSON.stringify(this.draft));
@@ -38,13 +42,21 @@ export class CronogramaComplexivoService {
     this.draft.filas = this.draft.filas.map((f, i) => ({ ...f, nro: i + 1 }));
   }
 
-  publish(): CronogramaUIC {
-    const published = JSON.parse(JSON.stringify(this.draft));
-    this.publishedSubject.next(published);
-    const periodo = published.periodo || 'SIN_PERIODO';
-    localStorage.setItem(this.byPeriodPrefix + periodo, JSON.stringify(published));
-    localStorage.setItem(this.lastPublishedKey, JSON.stringify(published));
-    return published;
+  publish(): Observable<CronogramaUIC> {
+    const draft = JSON.parse(JSON.stringify(this.draft));
+    const body = {
+      title: draft.titulo || 'CRONOGRAMA DEL PROCESO DE TITULACIÓN',
+      period_label: draft.periodo || 'SIN_PERIODO',
+      project_label: draft.proyecto || 'EXAMEN COMPLEXIVO',
+      items: (draft.filas || []).map((f: any) => ({
+        row_number: f.nro,
+        activity_description: f.actividad,
+        responsible: f.responsable,
+        date_start: f.fechaInicio ? new Date(f.fechaInicio).toISOString() : undefined,
+        date_end: f.fechaFin ? new Date(f.fechaFin).toISOString() : undefined,
+      }))
+    };
+    return this.http.post<CronogramaUIC>(`${this.apiUrl}/publicar`, body);
   }
 
   loadDraft(): CronogramaUIC | null {
@@ -71,5 +83,15 @@ export class CronogramaComplexivoService {
   getUltimoPublicado(): CronogramaUIC | null {
     const saved = localStorage.getItem(this.lastPublishedKey);
     return saved ? JSON.parse(saved) : null;
+  }
+
+  getByPeriodId(academicPeriodId: number) {
+    return this.http.get<CronogramaUIC | null>(`${this.apiUrl}`, { params: { academicPeriodId } as any });
+  }
+
+  createDraft(academicPeriodId: number) {
+    return this.http.get<CronogramaUIC | null>(`/api/cronogramas/draft`, {
+      params: { academicPeriodId, modalidad: 'EXAMEN_COMPLEXIVO' } as any
+    });
   }
 }

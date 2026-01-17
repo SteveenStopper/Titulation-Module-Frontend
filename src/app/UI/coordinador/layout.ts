@@ -2,6 +2,7 @@ import { Component } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterModule, Router, NavigationEnd } from '@angular/router';
 import { AuthService } from '../../services/auth.service';
+import { PeriodService } from '../../services/period.service';
 
 @Component({
   selector: 'app-coordinador-layout',
@@ -21,18 +22,20 @@ export class CoordinadorLayout {
   cronosOpen = false;
   comisionOpen = false;
   isAdmin = false;
+  activePeriod: string | null = null;
 
-  constructor(private router: Router, private auth: AuthService) {
+  constructor(private router: Router, private auth: AuthService, private periodSvc: PeriodService) {
     const u = this.auth.currentUserValue;
     if (u) {
-      this.userName = u.name || this.userName;
-      this.userRole = this.mapRole(u.role);
-      this.isAdmin = this.auth.hasRole('admin');
+      this.userName = u.firstname + ' ' + u.lastname;
+      this.userRole = this.mapRole(u.roles[0]);
+      this.isAdmin = this.auth.hasRole('Administrador');
     }
-    this.auth.currentUser$.subscribe((user: any) => {
+    this.auth.currentUser$.subscribe((user) => {
       if (user) {
-        this.userName = user.name || 'Coordinador';
-        this.userRole = this.mapRole(user.role);
+        this.userName = user.firstname + ' ' + user.lastname;
+        this.userRole = this.mapRole(user.roles[0]);
+        this.isAdmin = this.auth.hasRole('Administrador');
       } else {
         this.userName = 'Coordinador';
         this.userRole = 'Invitado';
@@ -49,6 +52,10 @@ export class CoordinadorLayout {
         if (!insideComision) this.comisionOpen = false;
       }
     });
+    // Sync active period from backend
+    this.activePeriod = this.periodSvc.getActivePeriod();
+    this.periodSvc.activePeriod$.subscribe(p => this.activePeriod = p);
+    this.periodSvc.fetchAndSetFromBackend().subscribe();
   }
 
   toggleProfile() {
@@ -68,10 +75,19 @@ export class CoordinadorLayout {
     this.auth.logout();
   }
 
-  private mapRole(role?: string): string {
-    switch (role) {
-      case 'coordinator': return 'Coordinador';
-      default: return 'Usuario';
-    }
+  private mapRole(role: string): string {
+    if (!role) return 'Coordinador';
+    
+    const roleMap: {[key: string]: string} = {
+      'Administrador': 'Administrador',
+      'Estudiante': 'Estudiante',
+      'Secretaria': 'Secretaría',
+      'Tesoreria': 'Tesorería',
+      'Coordinador': 'Coordinador',
+      'Docente': 'Docente',
+      'Vicerrector': 'Vicerrector'
+    };
+    
+    return roleMap[role] || 'Coordinador';
   }
 }

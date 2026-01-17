@@ -1,5 +1,6 @@
 import { Component } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { StudentCronogramaService, ComplexivoMateriaView } from '../../../services/student-cronograma.service';
 
 @Component({
   selector: 'app-tutorias',
@@ -9,34 +10,19 @@ import { CommonModule } from '@angular/common';
   styleUrl: './tutorias.scss'
 })
 export class Tutorias {
-  // Demo: materias asignadas al estudiante (hasta conectar backend)
-  materias = [
-    {
-      codigo: 'EC-101',
-      nombre: 'Lenguaje y Comunicación',
-      docente: 'Lcda. Andrea López',
-      horario: 'Lunes y Miércoles 08:00 - 10:00',
-      aula: 'Aula 204',
-      estado: 'En curso',
-      proximaSesion: '2025-10-22T08:00:00'
-    },
-    {
-      codigo: 'EC-205',
-      nombre: 'Matemática Aplicada',
-      docente: 'Ing. Diego Pérez',
-      horario: 'Martes y Jueves 10:00 - 12:00',
-      aula: 'Laboratorio 1',
-      estado: 'En curso',
-      proximaSesion: '2025-10-23T10:00:00'
-    },
-    {
-      codigo: 'EC-310',
-      nombre: 'Proyecto Integrador',
-      docente: 'Msc. Carla Medina',
-      horario: 'Viernes 14:00 - 17:00',
-      aula: 'Sala de Proyectos',
-      estado: 'Pendiente',
-      proximaSesion: ''
-    }
-  ];
+  materias: Array<{ codigo: string; nombre: string; docente: string | null; horario: string; aula: string; estado: string; proximaSesion: string; }> = [];
+
+  constructor(private svc: StudentCronogramaService) {
+    this.svc.getMyComplexivoMaterias().subscribe((rows: ComplexivoMateriaView[]) => {
+      this.materias = rows.map(r => ({
+        codigo: r.codigo,
+        nombre: r.nombre,
+        docente: r.docente,
+        horario: '',
+        aula: '',
+        estado: 'En curso',
+        proximaSesion: ''
+      }));
+    });
+  }
 }

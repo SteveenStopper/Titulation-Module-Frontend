@@ -9,6 +9,17 @@
   </div>
 </ng-container>
 
+<ng-container *ngIf="showErrorToast" class="toast-container">
+  <div class="fixed top-4 right-4 z-50 max-w-xs w-full bg-white rounded-lg shadow-lg border-l-4 border-red-500 p-4 animate-fadeIn">
+    <div class="flex items-center">
+      <svg class="w-5 h-5 text-red-500 mr-3" fill="currentColor" viewBox="0 0 20 20">
+        <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"></path>
+      </svg>
+      <span class="text-red-700 font-medium">{{ errorToastMessage }}</span>
+    </div>
+  </div>
+</ng-container>
+
 <div class="min-h-screen bg-gradient-to-br from-slate-100 via-blue-50 to-slate-200 flex items-center justify-center p-4">
   <div class="bg-white rounded-xl shadow-2xl overflow-hidden max-w-6xl w-full flex flex-col md:flex-row">
     <!-- Branding Panel -->
@@ -51,7 +62,7 @@
     </div>
 
     <!-- Form Panel -->
-    <div class="w-full md:w-1/2 p-10 flex flex-col justify-center">
+    <div class="w-full md:w-1/2 p-10 flex flex-col justify-center form-panel">
       <div class="text-center mb-8">
         <h2 class="text-3xl font-bold text-gray-800 mb-2">Iniciar sesión</h2>
         <p class="text-gray-600">Usa tus credenciales institucionales</p>
@@ -78,13 +89,16 @@
             <input 
               type="email" 
               formControlName="email"
-              placeholder="nombre.apellido@istla.edu.ec"
+              placeholder="alexsg@istla.edu.ec"
               autocomplete="email"
+              [class.border-red-500]="loginForm.get('email')?.invalid && loginForm.get('email')?.touched"
+              [class.focus:ring-red-500]="loginForm.get('email')?.invalid && loginForm.get('email')?.touched"
+              [class.focus:border-red-500]="loginForm.get('email')?.invalid && loginForm.get('email')?.touched"
               class="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"
             />
           </div>
-          <div *ngIf="loginForm.get('email')?.invalid && loginForm.get('email')?.touched" class="mt-2 text-red-600 text-sm flex items-center">
-            <svg class="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
+          <div *ngIf="loginForm.get('email')?.invalid && loginForm.get('email')?.touched" class="mt-2 text-red-600 text-sm flex items-start">
+            <svg class="w-4 h-4 mr-1 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
               <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd"></path>
             </svg>
             <span *ngIf="loginForm.get('email')?.hasError('required')">El correo electrónico es requerido</span>
@@ -107,11 +121,14 @@
               </svg>
             </div>
             <input 
-              [type]="showPassword ? 'text' : 'password'"
+              [type]="showPassword ? 'text' : 'password'" 
               formControlName="password"
-              placeholder="Ingrese su contraseña institucional"
+              placeholder="••••••••"
               autocomplete="current-password"
-              class="w-full pl-10 pr-12 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"
+              [class.border-red-500]="(loginForm.get('password')?.invalid && loginForm.get('password')?.touched) || error"
+              [class.focus:ring-red-500]="(loginForm.get('password')?.invalid && loginForm.get('password')?.touched) || error"
+              [class.focus:border-red-500]="(loginForm.get('password')?.invalid && loginForm.get('password')?.touched) || error"
+              class="w-full pl-10 pr-10 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"
             />
             <button
               type="button"
@@ -128,45 +145,41 @@
               </svg>
             </button>
           </div>
-          <div *ngIf="loginForm.get('password')?.invalid && loginForm.get('password')?.touched" class="mt-2 text-red-600 text-sm flex items-center">
-            <svg class="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
+          <div *ngIf="loginForm.get('password')?.invalid && loginForm.get('password')?.touched" class="mt-2 text-red-600 text-sm flex items-start">
+            <svg class="w-4 h-4 mr-1 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
               <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd"></path>
             </svg>
-            <span *ngIf="loginForm.get('password')?.hasError('required')">La contraseña es requerida</span>
-            <span *ngIf="loginForm.get('password')?.hasError('minlength')">La contraseña debe tener al menos 8 caracteres</span>
+            <span>La contraseña es requerida y debe tener al menos 8 caracteres</span>
           </div>
         </div>
 
         <!-- Submit Button -->
-        <div class="mb-6">
-          <button
-            type="submit"
-            [disabled]="!loginForm.valid || isLoading"
-            class="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-4 rounded-lg shadow-md hover:shadow-lg transform hover:-translate-y-0.5 transition-all duration-200 flex items-center justify-center"
-          >
-            <svg *ngIf="isLoading" class="animate-spin -ml-1 mr-3 h-5 w-5 text-white" fill="none" viewBox="0 0 24 24">
+        <button 
+          type="submit" 
+          [disabled]="loginForm.invalid || isLoading"
+          class="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-4 rounded-lg shadow-md hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition duration-150 ease-in-out disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          <span *ngIf="!isLoading" class="flex items-center justify-center">
+            <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1"></path>
+            </svg>
+            Iniciar sesión
+          </span>
+          <span *ngIf="isLoading" class="flex items-center justify-center">
+            <svg class="animate-spin -ml-1 mr-2 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
               <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
               <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
             </svg>
-            <span>{{ isLoading ? 'Verificando credenciales...' : 'Acceder al Sistema' }}</span>
-          </button>
-        </div>
-
-        <!-- Error Message -->
-        <div *ngIf="error" class="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg mb-4 flex items-center">
-          <svg class="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 20 20">
-            <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd"></path>
-          </svg>
-          {{ error }}
-        </div>
+            Procesando...
+          </span>
+        </button>
 
         <!-- Help Text -->
-        <div class="text-center text-gray-600 text-sm bg-gray-50 p-4 rounded-lg border border-gray-200">
-          <svg class="w-4 h-4 inline mr-1 text-blue-600" fill="currentColor" viewBox="0 0 20 20">
-            <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"></path>
-          </svg>
+        <div class="mt-4 text-center text-sm text-gray-600">
           ¿Problemas para acceder?
-          <a (click)="showPasswordRecovery()" class="text-blue-600 hover:underline cursor-pointer font-medium">Contacte al Departamento de Sistemas</a>
+          <a (click)="showPasswordRecovery()" class="text-blue-600 hover:underline cursor-pointer font-medium ml-1">
+            Contacte al Departamento de Sistemas
+          </a>
         </div>
       </form>
     </div>

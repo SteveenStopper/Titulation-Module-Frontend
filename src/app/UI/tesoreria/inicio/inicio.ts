@@ -1,5 +1,7 @@
 import { Component } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { NotificationsService } from '../../../services/notifications.service';
+import { HttpClient } from '@angular/common/http';
 
 @Component({
   selector: 'app-inicio',
@@ -9,21 +11,21 @@ import { CommonModule } from '@angular/common';
   styleUrl: './inicio.scss'
 })
 export class Inicio {
-  // KPIs mock del período actual
+  // KPIs iniciales (se actualizan desde backend)
   kpis = {
-    recaudadoPeriodo: 12450.75,
-    vouchersPendientes: 18,
-    pagosHoy: 27,
-    deudasVencidas: 9,
-    arancelesActivos: 6,
+    recaudadoPeriodo: 0,
+    vouchersPendientes: 0,
+    pagosHoy: 0,
+    deudasVencidas: 0,
+    arancelesActivos: 0,
   };
 
-  // Notificaciones mock
-  notifications = [
-    { id: 1, text: '3 pagos pendientes de validación', time: 'hace 10 min', leida: false },
-    { id: 2, text: 'Nuevo arancel “Matrícula 2026” creado', time: 'hace 2 h', leida: false },
-  ];
+  // Notificaciones
+  notifications: Array<{ id: number; text: string; time: string; leida: boolean }> = [];
   get notificationsCount() { return this.notifications.length; }
+  // Mostrar solo no leídas por defecto
+  onlyUnread = true;
+  get visibleNotifications() { return this.onlyUnread ? this.notifications.filter(n => !n.leida) : this.notifications; }
   notificationsOpen = false;
   toggleNotifications() { this.notificationsOpen = !this.notificationsOpen; }
 
@@ -33,18 +35,49 @@ export class Inicio {
   get isNotifOpen() { return this.panelNotificacionesAbierto; }
   toggleNotif() { this.panelNotificacionesAbierto = !this.panelNotificacionesAbierto; }
   marcarLeida(n: { id: number }) {
-    const i = this.notifications.findIndex(x => x.id === n.id);
-    if (i >= 0) this.notifications[i].leida = true;
+    this.notificationsSvc.markRead(n.id).subscribe({ complete: () => {
+      const i = this.notifications.findIndex(x => x.id === n.id);
+      if (i >= 0) this.notifications[i].leida = true;
+    }});
   }
   marcarTodasLeidas() {
-    this.notifications = this.notifications.map(n => ({ ...n, leida: true }));
+    this.notificationsSvc.markAllRead().subscribe({ complete: () => {
+      this.notifications = this.notifications.map(n => ({ ...n, leida: true }));
+    }});
   }
 
-  // Pagos recientes mock
-  recentPayments: Array<{ estudiante: string; concepto: string; monto: number; fecha: string; estado: 'aprobado' | 'pendiente' }>
-    = [
-      { estudiante: 'Ana Pérez', concepto: 'Matrícula', monto: 120.00, fecha: '2025-10-06', estado: 'aprobado' },
-      { estudiante: 'Luis Romero', concepto: 'Derechos UIC', monto: 80.00, fecha: '2025-10-06', estado: 'pendiente' },
-      { estudiante: 'María Vásquez', concepto: 'Examen Complexivo', monto: 100.00, fecha: '2025-10-05', estado: 'aprobado' },
-    ];
+  constructor(private notificationsSvc: NotificationsService, private http: HttpClient) {
+    this.notificationsSvc.listMy().subscribe(list => {
+      this.notifications = (list || []).map(n => ({
+        id: Number((n as any).id_notification),
+        text: (n as any).title,
+        time: new Date((n as any).created_at).toLocaleString(),
+        leida: !!(n as any).is_read,
+      }));
+    });
+    // KPIs reales
+    this.http.get<any>('/api/tesoreria/dashboard').subscribe((d) => {
+      this.kpis = {
+        recaudadoPeriodo: Number(d?.recaudadoPeriodo || 0),
+        vouchersPendientes: Number(d?.vouchersPendientes || 0),
+        pagosHoy: Number(d?.pagosHoy || 0),
+        deudasVencidas: Number(d?.deudasVencidas || 0),
+        arancelesActivos: Number(d?.arancelesActivos || 0),
+      };
+    });
+    // Pagos recientes reales (usar resumen página 1)
+    this.http.get<any>('/api/tesoreria/resumen?page=1&pageSize=5').subscribe((resp) => {
+      const data = Array.isArray(resp?.data) ? resp.data : [];
+      this.recentPayments = data.map((r: any) => ({
+        estudiante: String(r?.nombre || `ID ${r?.estudiante_id || ''}`),
+        concepto: 'Comprobante',
+        monto: 0,
+        fecha: new Date(r?.creado_en || Date.now()).toLocaleDateString(),
+        estado: 'pendiente',
+      }));
+    });
+  }
+
+  // Pagos recientes
+  recentPayments: Array<{ estudiante: string; concepto: string; monto: number; fecha: string; estado: 'aprobado' | 'pendiente' }> = [];
 }

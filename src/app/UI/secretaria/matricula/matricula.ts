@@ -1,6 +1,10 @@
 import { Component } from '@angular/core';
+import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { ToastrService } from 'ngx-toastr';
+import { DocumentsService } from '../../../services/documents.service';
+import { NotificationsService } from '../../../services/notifications.service';
 
 @Component({
   selector: 'app-secretaria-matricula',
@@ -12,75 +16,89 @@ import { FormsModule } from '@angular/forms';
 export class Matricula {
   // Búsqueda
   search = '';
-  // Filtro por carrera
+  // Filtro por carrera (si backend provee campo en el futuro)
   carreraFiltro = '';
 
-  // Lista de carreras únicas derivada de los items
-  get carreras(): string[] {
-    return Array.from(new Set(this.items.map(i => i.carrera)));
+  // Lista renderizada desde backend
+  items: any[] = [];
+  loading = false;
+  page = 1;
+  pageSize = 10;
+  totalPages = 1;
+  total = 0;
+  // Control de estado por fila (expuestas al template)
+  processing = new Set<number>();
+  decided = new Set<number>();
+  // Estado visual por documento (en_revision | aprobado | rechazado)
+  statuses: Record<number, 'en_revision'|'aprobado'|'rechazado'> = {};
+
+  constructor(
+    private toast: ToastrService,
+    private documents: DocumentsService,
+    private notifications: NotificationsService,
+    private sanitizer: DomSanitizer,
+  ) {
+    this.load();
   }
 
-  // Mock de registros de matrícula con documentos
-  items: Array<{
-    id: number;
-    estudiante: string;
-    carrera: string;
-    solicitudUrl?: string | null;
-    oficioUrl?: string | null;
-    certificados: {
-      vinculacion?: string | null;
-      practicas?: string | null;
-      ingles?: string | null;
-    };
-    estado: 'pendiente'|'aprobado'|'rechazado';
-  }> = [
-    {
-      id: 1,
-      estudiante: 'Ana Pérez',
-      carrera: 'Sistemas',
-      solicitudUrl: 'assets/mock/solicitud_ana.pdf',
-      oficioUrl: 'assets/mock/oficio_ana.jpg',
-      certificados: {
-        vinculacion: 'assets/mock/cert_vinc_ana.pdf',
-        practicas: 'assets/mock/cert_prac_ana.jpg',
-        ingles: 'assets/mock/cert_ing_ana.pdf',
+  load() {
+    this.loading = true;
+    // Solo documentos de matrícula (excluir comprobantes de pagos)
+    this.documents.list({ category: 'matricula', page: this.page, pageSize: this.pageSize }).subscribe({
+      next: (res: any) => {
+        const data = Array.isArray(res?.data) ? res.data : (Array.isArray(res) ? res : []);
+        const pag = res?.pagination || {};
+        this.total = Number(pag.total || 0);
+        this.totalPages = Number(pag.totalPages || 1);
+        // Agrupar por usuario para presentar por estudiante (simple)
+        const byUser = new Map<number, any>();
+        for (const d of data) {
+          const uid = Number(d.usuario_id || d.id_user);
+          if (!Number.isFinite(uid)) continue;
+          const g = byUser.get(uid) || { id: uid, estudiante: `Usuario ${uid}`, carrera: '-', documentos: [] as any[] };
+          g.documentos.push(d);
+          byUser.set(uid, g);
+        }
+        // Expandimos a tabla por documento con campos amigables
+        this.items = Array.from(byUser.values()).flatMap((g: any) => (
+          g.documentos.map((d: any) => ({
+            id: d.documento_id,
+            estudiante: g.estudiante,
+            carrera: g.carrera,
+            tipo: d.tipo,
+            usuario_id: d.usuario_id,
+            filename: d.nombre_archivo,
+            created_at: d.creado_en,
+            estado: d.estado || 'en_revision',
+          }))
+        ));
+        // Inicializar estado visual por defecto
+        for (const it of this.items) {
+          const st = (it as any).estado as ('en_revision'|'aprobado'|'rechazado'|undefined);
+          this.statuses[it.id] = (st || 'en_revision');
+        }
       },
-      estado: 'pendiente',
-    },
-    {
-      id: 2,
-      estudiante: 'Luis Romero',
-      carrera: 'Electromecánica',
-      solicitudUrl: 'assets/mock/solicitud_luis.pdf',
-      oficioUrl: null,
-      certificados: {
-        vinculacion: 'assets/mock/cert_vinc_luis.jpg',
-        practicas: null,
-        ingles: 'assets/mock/cert_ing_luis.pdf',
-      },
-      estado: 'pendiente',
-    },
-    {
-      id: 3,
-      estudiante: 'María Vásquez',
-      carrera: 'Contabilidad',
-      solicitudUrl: null,
-      oficioUrl: 'assets/mock/oficio_maria.pdf',
-      certificados: {
-        vinculacion: null,
-        practicas: 'assets/mock/cert_prac_maria.pdf',
-        ingles: null,
-      },
-      estado: 'rechazado',
-    },
-  ];
+      error: () => this.toast.error('No se pudo cargar documentos'),
+      complete: () => { this.loading = false; }
+    });
+  }
 
   get filtered() {
     const q = this.search.trim().toLowerCase();
-    return this.items.filter(i =>
-      (!this.carreraFiltro || i.carrera === this.carreraFiltro) &&
-      (!q || i.estudiante.toLowerCase().includes(q))
-    );
+    return this.items.filter(i => (!q || String(i.estudiante || '').toLowerCase().includes(q)));
+  }
+
+  changePage(delta: number) {
+    const next = this.page + delta;
+    if (next < 1 || next > this.totalPages) return;
+    this.page = next;
+    this.load();
+  }
+
+  changePageSize(size: number) {
+    this.pageSize = size;
+    this.page = 1;
+    this.load();
   }
 
   // Toasts
@@ -100,44 +118,145 @@ export class Matricula {
   aceptar(id: number) {
     const it = this.items.find(x => x.id === id);
     if (!it) return;
-    it.estado = 'aprobado';
-    this.showToast(`Matrícula de ${it.estudiante} aprobada correctamente`, 'success');
+    if (this.processing.has(id) || this.decided.has(id)) return;
+    this.processing.add(id);
+    // Persistir estado y notificar
+    this.documents.setStatus(Number(id), 'aprobado').subscribe({
+      next: () => {
+        this.decided.add(id);
+        this.statuses[id] = 'aprobado';
+        this.showToast(`Documento aprobado`, 'success');
+        // Notificación (no bloqueante)
+        this.notifications.create({
+          id_user: Number(it.usuario_id),
+          type: 'secretaria_aprobado',
+          title: 'Secretaría: Documento aprobado',
+          message: `Tu documento (${this.mapTipo(it.tipo)}) fue aprobado`,
+          entity_type: 'document',
+          entity_id: Number(id),
+        }).subscribe({ complete: () => {} });
+      },
+      error: () => {
+        this.showToast('No se pudo actualizar el estado', 'error');
+      },
+      complete: () => { this.processing.delete(id); }
+    });
   }
 
-  rechazar(id: number) {
+  // Modal de rechazo
+  rejectOpen = false;
+  rejectId: number | null = null;
+  rejectObs = '';
+
+  abrirRechazo(id: number) {
+    if (this.processing.has(id) || this.decided.has(id)) return;
+    this.rejectId = id;
+    this.rejectObs = '';
+    this.rejectOpen = true;
+  }
+
+  cancelarRechazo() {
+    this.rejectOpen = false;
+    this.rejectId = null;
+    this.rejectObs = '';
+  }
+
+  confirmarRechazo() {
+    const id = this.rejectId;
+    const obs = (this.rejectObs || '').trim();
+    if (!id || !obs) { this.showToast('La observación es obligatoria', 'error'); return; }
     const it = this.items.find(x => x.id === id);
     if (!it) return;
-    it.estado = 'rechazado';
-    this.showToast(`Matrícula de ${it.estudiante} rechazada`, 'error');
+    this.processing.add(id);
+    this.documents.setStatus(Number(id), 'rechazado', obs).subscribe({
+      next: () => {
+        this.decided.add(id);
+        this.statuses[id] = 'rechazado';
+        this.showToast(`Documento rechazado`, 'success');
+        // Notificación (no bloqueante)
+        this.notifications.create({
+          id_user: Number(it.usuario_id),
+          type: 'secretaria_rechazo',
+          title: 'Secretaría: Documento rechazado',
+          message: obs,
+          entity_type: 'document',
+          entity_id: Number(id),
+        }).subscribe({ complete: () => {} });
+      },
+      error: () => {
+        this.showToast('No se pudo actualizar el estado', 'error');
+      },
+      complete: () => {
+        this.processing.delete(id);
+        this.cancelarRechazo();
+      }
+    });
   }
 
   // Preview modal
   isPreviewOpen = false;
   previewUrl: string | null = null;
+  previewSafeUrl: SafeResourceUrl | null = null;
   previewType: 'image'|'pdf'|'other' = 'other';
   previewTitle = 'Documento';
 
-  private openPreview(url?: string | null, title?: string) {
-    if (!url) return;
-    this.previewUrl = url;
+  private openPreviewFromBlob(blob: Blob, filename: string, title?: string) {
     this.previewTitle = title || 'Documento';
-    const lower = url.toLowerCase();
-    if (/\.(png|jpg|jpeg|webp|gif)$/.test(lower)) this.previewType = 'image';
-    else if (lower.endsWith('.pdf')) this.previewType = 'pdf';
-    else this.previewType = 'other';
+    const lower = (filename || '').toLowerCase();
+    // Detectar tipo por extensión si el blob viene con mime genérico
+    let type: 'image'|'pdf'|'other' = 'other';
+    if (/\.(png|jpg|jpeg|webp|gif)$/.test(lower)) type = 'image';
+    else if (lower.endsWith('.pdf')) type = 'pdf';
+    this.previewType = type;
+
+    let blobForView = blob;
+    if (type === 'pdf' && blob.type !== 'application/pdf') {
+      blobForView = new Blob([blob], { type: 'application/pdf' });
+    } else if (type === 'image' && !/^image\//.test(blob.type)) {
+      // Inferir mime de la extensión
+      const ext = lower.split('.').pop() || '';
+      const mime = ext === 'png' ? 'image/png'
+        : (ext === 'jpg' || ext === 'jpeg') ? 'image/jpeg'
+        : ext === 'webp' ? 'image/webp'
+        : ext === 'gif' ? 'image/gif'
+        : 'image/*';
+      blobForView = new Blob([blob], { type: mime });
+    }
+
+    const url = window.URL.createObjectURL(blobForView);
+    this.previewUrl = url;
+    this.previewSafeUrl = this.sanitizer.bypassSecurityTrustResourceUrl(url);
     this.isPreviewOpen = true;
   }
 
-  verSolicitud(url?: string | null) { this.openPreview(url, 'Solicitud'); }
-  verOficio(url?: string | null) { this.openPreview(url, 'Oficio'); }
-  verCertVinc(url?: string | null) { this.openPreview(url, 'Certificado - Vinculación'); }
-  verCertPrac(url?: string | null) { this.openPreview(url, 'Certificado - Prácticas Pre Profesionales'); }
-  verCertIngles(url?: string | null) { this.openPreview(url, 'Certificado - Inglés'); }
+  verDocumento(item: any) {
+    const id = item?.id;
+    if (!id) return;
+    this.documents.download(Number(id)).subscribe({
+      next: (blob) => this.openPreviewFromBlob(blob, item?.filename || `${item?.tipo || 'documento'}.pdf`, this.mapTipo(item?.tipo)),
+      error: () => this.toast.error('No se pudo descargar el documento')
+    });
+  }
 
   cerrarPreview() {
     this.isPreviewOpen = false;
+    if (this.previewUrl) {
+      try { window.URL.revokeObjectURL(this.previewUrl); } catch {}
+    }
     this.previewUrl = null;
+    this.previewSafeUrl = null;
     this.previewType = 'other';
     this.previewTitle = 'Documento';
+  }
+
+  private mapTipo(t: string): string {
+    switch (t) {
+      case 'solicitud': return 'Solicitud';
+      case 'oficio': return 'Oficio';
+      case 'cert_vinculacion': return 'Cert. Vinculación';
+      case 'cert_practicas': return 'Cert. Prácticas';
+      case 'cert_ingles': return 'Cert. Inglés';
+      default: return 'Documento';
+    }
   }
 }

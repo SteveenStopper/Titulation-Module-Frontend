@@ -17,37 +17,37 @@
 
   <!-- Cards resumen -->
   <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-    <div class="p-6 bg-white rounded-xl border border-gray-200 shadow-sm hover:shadow-md transition">
+    <a routerLink="/estudiante/matriculacion" class="block p-6 bg-white rounded-xl border border-gray-200 shadow-sm hover:shadow-md transition">
       <div class="flex items-center gap-3">
         <i class="fa fa-file text-indigo-600 text-xl"></i>
         <div>
           <h3 class="text-gray-500 text-sm">Documentos</h3>
-          <p class="text-3xl font-bold text-gray-800">{{ documentos.length }}</p>
+          <p class="text-3xl font-bold text-gray-800">{{ documentosCount }}</p>
           <p class="text-gray-500 text-sm">Total de documentos</p>
         </div>
       </div>
-    </div>
-    <div class="p-6 bg-white rounded-xl border border-gray-200 shadow-sm hover:shadow-md transition">
+    </a>
+    <a routerLink="/estudiante/pagos" class="block p-6 bg-white rounded-xl border border-gray-200 shadow-sm hover:shadow-md transition">
       <div class="flex items-center gap-3">
         <i class="fa fa-receipt text-emerald-600 text-xl"></i>
         <div>
-          <h3 class="text-gray-500 text-sm">Pagos</h3>
+          <h3 class="text-gray-500 text-sm">Arancel</h3>
           <p class="text-3xl font-bold text-gray-800 capitalize">{{ pagosEstado }}</p>
           <p class="text-gray-500 text-sm">Estado de validación</p>
         </div>
       </div>
-    </div>
-    <div class="p-6 bg-white rounded-xl border border-gray-200 shadow-sm hover:shadow-md transition">
+    </a>
+    <a routerLink="/estudiante/gestion-modalidad" class="block p-6 bg-white rounded-xl border border-gray-200 shadow-sm hover:shadow-md transition">
       <div class="flex items-center gap-3">
         <i class="fa fa-graduation-cap text-amber-600 text-xl"></i>
         <div>
           <h3 class="text-gray-500 text-sm">Modalidad</h3>
-          <p class="text-3xl font-bold text-gray-800 capitalize">{{ modalidadEstado.replace('_',' ') }}</p>
-          <p class="text-gray-500 text-sm">Proceso actual</p>
+          <p class="text-3xl font-bold text-gray-800">{{ modalidadSeleccionadaLabel }}</p>
+          <p class="text-gray-500 text-sm">{{ estadoMatriculaLabel }}</p>
         </div>
       </div>
-    </div>
-    <div class="p-6 bg-white rounded-xl border border-gray-200 shadow-sm hover:shadow-md transition">
+    </a>
+    <a routerLink="/estudiante/matriculacion" class="block p-6 bg-white rounded-xl border border-gray-200 shadow-sm hover:shadow-md transition">
       <div class="flex items-center gap-3">
         <i class="fa fa-star text-indigo-600 text-xl"></i>
         <div>
@@ -56,7 +56,7 @@
           <p class="text-gray-500 text-sm">Estado de validación por Secretaría</p>
         </div>
       </div>
-    </div>
+    </a>
   </div>
 
   <!-- Panel de notificaciones (slide-over) -->
@@ -65,10 +65,15 @@
     <aside class="absolute right-0 top-0 h-full w-80 bg-white shadow-xl border-l border-gray-200 flex flex-col">
       <div class="p-4 border-b flex items-center justify-between">
         <div class="font-semibold text-gray-800">Notificaciones</div>
-        <button (click)="marcarTodasLeidas()" class="text-xs text-rose-600 hover:underline">Marcar todas como leídas</button>
+        <div class="flex items-center gap-3">
+          <button (click)="onlyUnread = !onlyUnread" class="text-xs text-gray-700 hover:underline">
+            {{ onlyUnread ? 'Ver todas' : 'Solo no leídas' }}
+          </button>
+          <button (click)="marcarTodasLeidas()" class="text-xs text-rose-600 hover:underline">Marcar todas como leídas</button>
+        </div>
       </div>
       <div class="flex-1 overflow-y-auto divide-y">
-        <div *ngFor="let n of notificaciones" class="p-4 flex gap-3" [class.bg-rose-50]="!n.leida">
+        <div *ngFor="let n of visibleNotificaciones" class="p-4 flex gap-3" [class.bg-rose-50]="!n.leida">
           <div class="mt-1"><i class="fa fa-bell text-rose-600"></i></div>
           <div class="flex-1">
             <div class="text-sm font-medium text-gray-800">{{ n.titulo }}</div>
@@ -85,7 +90,7 @@
   </div>
 
   <!-- Estado de documentos -->
-  <div class="bg-white rounded-xl border border-gray-200 shadow-sm">
+  <a routerLink="/estudiante/matriculacion" class="block bg-white rounded-xl border border-gray-200 shadow-sm hover:shadow-md transition">
     <div class="px-4 py-3 border-b border-gray-200">
       <h3 class="font-semibold text-gray-800">Estado de documentos</h3>
     </div>
@@ -107,5 +112,5 @@
         </div>
       </div>
     </div>
-  </div>
+  </a>
 </section>

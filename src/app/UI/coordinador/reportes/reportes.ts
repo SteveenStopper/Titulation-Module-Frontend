@@ -1,8 +1,10 @@
-import { Component, AfterViewInit, OnDestroy } from '@angular/core';
+import { Component } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-
-declare const ApexCharts: any;
+import { HttpClient } from '@angular/common/http';
+import { PeriodService } from '../../../services/period.service';
+import { BehaviorSubject, Observable, combineLatest, firstValueFrom, of } from 'rxjs';
+import { catchError, map, shareReplay, startWith, switchMap } from 'rxjs/operators';
 
 @Component({
   selector: 'app-reportes',
@@ -11,155 +13,201 @@ declare const ApexCharts: any;
   templateUrl: './reportes.html',
   styleUrl: './reportes.scss'
 })
-export class Reportes implements AfterViewInit, OnDestroy {
-  // Selector de período (mock hasta backend)
-  periodOptions: string[] = [
-    'PERIODO SEPTIEMBRE 2025 – DICIEMBRE 2025',
-    'PERIODO ENERO 2026 – ABRIL 2026',
-    'PERIODO MAYO 2026 – AGOSTO 2026'
-  ];
-  selectedPeriod: string | undefined = undefined;
+export class Reportes {
+  periods$!: Observable<Array<{ id: number; name: string }>>;
+  careers$!: Observable<Array<{ id: number; nombre: string }>>;
 
-  // KPIs principales
-  stats = {
-    inscritos: 0,
-    uic: 0,
-    complexivo: 0,
-    vouchersPendientes: 0,
-    vouchersAprobados: 0,
-    defensasProgramadas: 0,
-    documentosPendientes: 0
-  };
+  selectedPeriodId$ = new BehaviorSubject<number | null>(null);
+  selectedCareerId$ = new BehaviorSubject<number | null>(null);
 
-  // Derivados para etiquetas y variación
-  get vouchersRechazados(): number {
-    const rech = this.stats.inscritos - this.stats.vouchersAprobados - this.stats.vouchersPendientes;
-    return Math.max(0, rech);
+  dash$!: Observable<{ totalEnProceso: number; sinTutor: number; totalEstudiantes: number; uicPercent: number; complexivoPercent: number }>;
+  sinTutor$!: Observable<Array<{ id_user: number; fullname: string; career_id: number | null; career_name: string | null; suggested_tutor: string | null }>>;
+  conTutor$!: Observable<Array<{ id_user: number; fullname: string; career_id: number | null; career_name: string | null; tutor_id: number | null; tutor_name: string | null }>>;
+
+  today = new Date();
+
+  constructor(private http: HttpClient, private periodSvc: PeriodService) {
+    this.periods$ = this.periodSvc.listAll().pipe(
+      map((arr: any[]) => (arr || []).map((p: any) => ({ id: Number(p.id_academic_periods), name: String(p.name) }))),
+      catchError(() => of([] as Array<{ id: number; name: string }>)),
+      shareReplay(1)
+    );
+
+    this.careers$ = this.http.get<Array<{ id: number; nombre: string }>>('/api/uic/admin/carreras').pipe(
+      catchError(() => of([] as Array<{ id: number; nombre: string }>)),
+      shareReplay(1)
+    );
+
+    const activeName = this.periodSvc.getActivePeriod();
+    if (activeName && typeof activeName === 'string') {
+      this.periods$.subscribe((rows) => {
+        const match = (rows || []).find(r => r.name === activeName);
+        if (match?.id) this.selectedPeriodId$.next(Number(match.id));
+      });
+    }
+
+    this.dash$ = this.selectedPeriodId$.pipe(
+      switchMap((pid) => this.http.get<any>(`/api/uic/admin/dashboard${pid ? `?academicPeriodId=${pid}` : ''}`).pipe(
+        map((d) => ({
+          totalEnProceso: Number(d?.totalEnProceso || 0),
+          sinTutor: Number(d?.sinTutor || 0),
+          totalEstudiantes: Number(d?.totalEstudiantes || 0),
+          uicPercent: Number(d?.uicPercent || 0),
+          complexivoPercent: Number(d?.complexivoPercent || 0),
+        })),
+        catchError(() => of({ totalEnProceso: 0, sinTutor: 0, totalEstudiantes: 0, uicPercent: 0, complexivoPercent: 0 }))
+      )),
+      startWith({ totalEnProceso: 0, sinTutor: 0, totalEstudiantes: 0, uicPercent: 0, complexivoPercent: 0 }),
+      shareReplay(1)
+    );
+
+    this.sinTutor$ = combineLatest([this.selectedPeriodId$, this.selectedCareerId$]).pipe(
+      switchMap(([pid, cid]) => this.http.get<any[]>(`/api/uic/admin/estudiantes-sin-tutor${this.buildQuery({ academicPeriodId: pid, careerId: cid })}`).pipe(
+        map(list => (Array.isArray(list) ? list : [])),
+        catchError(() => of([]))
+      )),
+      startWith([] as any[]),
+      shareReplay(1)
+    );
+
+    this.conTutor$ = combineLatest([this.selectedPeriodId$, this.selectedCareerId$]).pipe(
+      switchMap(([pid, cid]) => this.http.get<any[]>(`/api/uic/admin/estudiantes-con-tutor${this.buildQuery({ academicPeriodId: pid, careerId: cid })}`).pipe(
+        map(list => (Array.isArray(list) ? list : [])),
+        catchError(() => of([]))
+      )),
+      startWith([] as any[]),
+      shareReplay(1)
+    );
   }
-  get weeklyChangePct(): number {
-    // Mock: variación según período seleccionado
-    const idx = Math.max(0, this.periodOptions.indexOf(this.selectedPeriod || ''));
-    return [12, 23, -5][idx] ?? 10;
+
+  onChangePeriod(event: Event) {
+    const select = event.target as HTMLSelectElement | null;
+    const v = select && select.value ? Number(select.value) : null;
+    this.selectedPeriodId$.next(v);
   }
 
-  // Detalle (mock)
-  detalleEstudiantes: Array<{
-    nombre: string;
-    modalidad: 'UIC' | 'EXAMEN COMPLEXIVO';
-    estadoVoucher: 'pendiente' | 'aprobado' | 'rechazado';
-    defensa?: string | null;
-  }> = [];
-
-  ngOnInit() {
-    this.selectedPeriod = undefined; // obliga a seleccionar
+  onChangeCareer(event: Event) {
+    const select = event.target as HTMLSelectElement | null;
+    const v = select && select.value ? Number(select.value) : null;
+    this.selectedCareerId$.next(v);
   }
 
-  ngAfterViewInit() {
-    // Render inicial si ya hay un período seleccionado (en general es undefined hasta que el usuario seleccione)
-    setTimeout(() => this.renderOrUpdateChart(), 0);
-  }
-
-  ngOnDestroy() {
-    this.destroyChart();
-  }
-
-  onPeriodChange() {
-    this.recomputeStats();
-    this.renderOrUpdateChart();
-  }
-
-  private recomputeStats() {
-    // Mock determinista simple en base a periodo seleccionado
-    const idx = Math.max(0, this.periodOptions.indexOf(this.selectedPeriod || ''));
-    const base = [120, 140, 100][idx] ?? 120;
-    const uic = Math.round(base * 0.56);
-    const complex = base - uic;
-    const pend = Math.round(base * 0.18);
-    const apr = Math.round(base * 0.76);
-    const def = Math.round(uic * 0.35);
-    const docs = Math.round(base * 0.12);
-    this.stats = {
-      inscritos: base,
-      uic,
-      complexivo: complex,
-      vouchersPendientes: pend,
-      vouchersAprobados: apr,
-      defensasProgramadas: def,
-      documentosPendientes: docs
-    };
-
-    // Generar detalle de ejemplo
-    const nombres = ['Ana', 'Luis', 'María', 'José', 'Valeria', 'Carlos', 'Andrea', 'Pedro'];
-    this.detalleEstudiantes = Array.from({ length: 10 }).map((_, i) => ({
-      nombre: `${nombres[i % nombres.length]} ${i + 1}`,
-      modalidad: i % 2 === 0 ? 'UIC' : 'EXAMEN COMPLEXIVO',
-      estadoVoucher: (['pendiente', 'aprobado', 'rechazado'] as const)[i % 3],
-      defensa: i % 4 === 0 ? '2025-11-2' + (i % 10) : null
-    }));
+  private buildQuery(params: { [k: string]: any }) {
+    const qp = Object.entries(params)
+      .filter(([, val]) => val !== null && val !== undefined && val !== '')
+      .map(([k, v]) => `${encodeURIComponent(k)}=${encodeURIComponent(String(v))}`)
+      .join('&');
+    return qp ? `?${qp}` : '';
   }
 
   // Exportaciones
-  exportKpisCsv() {
-    const rows = [
+  async exportKpisCsv() {
+    const dash = await firstValueFrom(this.dash$);
+    const rows: (string | number)[][] = [
       ['KPI', 'Valor'],
-      ['Inscritos', String(this.stats.inscritos)],
-      ['UIC', String(this.stats.uic)],
-      ['Examen Complexivo', String(this.stats.complexivo)],
-      ['Vouchers Pendientes', String(this.stats.vouchersPendientes)],
-      ['Vouchers Aprobados', String(this.stats.vouchersAprobados)],
-      ['Defensas Programadas', String(this.stats.defensasProgramadas)],
-      ['Documentos Pendientes', String(this.stats.documentosPendientes)]
+      ['Total en proceso', dash.totalEnProceso],
+      ['Sin tutor (UIC)', dash.sinTutor],
+      ['Total estudiantes (período)', dash.totalEstudiantes],
+      ['UIC %', dash.uicPercent],
+      ['Examen Complexivo %', dash.complexivoPercent],
     ];
-    this.downloadCsv(rows, 'reportes-kpis.csv');
+    this.downloadCsv(rows, 'coordinador-kpis.csv');
   }
 
-  exportDetalleCsv() {
-    const rows = [
-      ['Nombre', 'Modalidad', 'Estado Voucher', 'Defensa'],
-      ...this.detalleEstudiantes.map(d => [d.nombre, d.modalidad, d.estadoVoucher, d.defensa ?? ''])
+  async exportDetalleCsv() {
+    const [sinTutor, conTutor] = await Promise.all([
+      firstValueFrom(this.sinTutor$),
+      firstValueFrom(this.conTutor$)
+    ]);
+    const rows: (string | number)[][] = [
+      ['Tipo', 'Estudiante', 'Carrera', 'Tutor'],
+      ...sinTutor.map(r => ['Sin tutor', r.fullname, r.career_name || '', r.suggested_tutor || '']),
+      ...conTutor.map(r => ['Con tutor', r.fullname, r.career_name || '', r.tutor_name || '']),
     ];
-    this.downloadCsv(rows, 'reportes-detalle-estudiantes.csv');
+    this.downloadCsv(rows, 'coordinador-detalle-estudiantes.csv');
   }
 
-  printPdf() {
-    const w = window.open('', '_blank');
+  async printPdf() {
+    const w = window.open('', '_blank', 'noopener,noreferrer');
     if (!w) return;
+
+    const [periods, careers, pid, cid, dash, sinTutor, conTutor] = await Promise.all([
+      firstValueFrom(this.periods$),
+      firstValueFrom(this.careers$),
+      firstValueFrom(this.selectedPeriodId$),
+      firstValueFrom(this.selectedCareerId$),
+      firstValueFrom(this.dash$),
+      firstValueFrom(this.sinTutor$),
+      firstValueFrom(this.conTutor$),
+    ]);
+
     const origin = window.location.origin;
+    const periodLabel = pid ? (periods.find(p => Number(p.id) === Number(pid))?.name || '') : 'Activo';
+    const careerLabel = cid ? (careers.find(c => Number(c.id) === Number(cid))?.nombre || '') : 'Todas';
+    const ts = new Date().toLocaleString();
+
     const style = `
       <style>
-        @page { margin: 16mm; }
-        body { font-family: Arial, sans-serif; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-        h2 { margin: 0 0 8px; margin-top: 16px; }
-        .kpis { display:grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin: 12px 0; }
-        .card { border:1px solid #ddd; border-radius:8px; padding:10px; }
-        table { width:100%; border-collapse: collapse; margin-top: 12px; }
-        th,td { border:1px solid #333; padding:6px; font-size:12px; }
-        th { background:#eee; }
+        @page { margin: 14mm; }
+        body { font-family: Arial, sans-serif; -webkit-print-color-adjust: exact; print-color-adjust: exact; color:#111827; }
+        h1 { margin: 0 0 6px; font-size: 20px; }
+        h2 { margin: 18px 0 8px; font-size: 14px; }
+        .header { display:flex; align-items:center; gap:12px; }
+        .right { margin-left:auto; text-align:right; font-weight:600; }
+        .muted { color:#6b7280; font-weight:500; font-size:12px; }
+        .kpis { display:grid; grid-template-columns: repeat(5, 1fr); gap: 10px; margin: 12px 0; }
+        .card { border:1px solid #e5e7eb; border-radius:10px; padding:10px; background:#fff; }
+        .card .title { font-size:12px; color:#6b7280; }
+        .card .value { font-size:18px; font-weight:700; margin-top:4px; }
+        table { width:100%; border-collapse: collapse; margin-top: 8px; }
+        th, td { border: 1px solid #d1d5db; padding: 6px 8px; font-size: 12px; }
+        th { background: #f3f4f6; text-align:left; }
+        .footer { position: fixed; bottom: 10mm; left: 14mm; right: 14mm; font-size: 11px; color: #6b7280; display:flex; justify-content: space-between; }
+        @media print { .pagenum:after { content: counter(page); } }
       </style>`;
+
     const header = `
-      <div style="display:flex;align-items:center;gap:12px;">
-        <img src="${origin}/assets/Logo.png" style="height:48px;"/>
-        <div style="flex:1"></div>
-        <div style="font-weight:600;">${this.selectedPeriod || 'Período no seleccionado'}</div>
+      <div class="header">
+        <img src="${origin}/assets/Logo.png" style="height:44px;"/>
+        <div class="right">
+          <div>Coordinación</div>
+          <div class="muted">Período: ${periodLabel} · Carrera: ${careerLabel}</div>
+        </div>
       </div>
-      <h2>Reportes del Coordinador</h2>`;
+      <h1>Reporte del Coordinador</h1>`;
+
     const kpis = `
       <div class="kpis">
-        <div class="card"><div>Inscritos</div><div style="font-size:18px;font-weight:700">${this.stats.inscritos}</div></div>
-        <div class="card"><div>UIC</div><div style="font-size:18px;font-weight:700">${this.stats.uic}</div></div>
-        <div class="card"><div>Examen Complexivo</div><div style="font-size:18px;font-weight:700">${this.stats.complexivo}</div></div>
-        <div class="card"><div>Vouchers Pendientes</div><div style="font-size:18px;font-weight:700">${this.stats.vouchersPendientes}</div></div>
-        <div class="card"><div>Vouchers Aprobados</div><div style="font-size:18px;font-weight:700">${this.stats.vouchersAprobados}</div></div>
-        <div class="card"><div>Defensas Programadas</div><div style="font-size:18px;font-weight:700">${this.stats.defensasProgramadas}</div></div>
+        <div class="card"><div class="title">Total en proceso</div><div class="value">${dash.totalEnProceso}</div></div>
+        <div class="card"><div class="title">Sin tutor (UIC)</div><div class="value">${dash.sinTutor}</div></div>
+        <div class="card"><div class="title">Total estudiantes</div><div class="value">${dash.totalEstudiantes}</div></div>
+        <div class="card"><div class="title">UIC</div><div class="value">${dash.uicPercent}%</div></div>
+        <div class="card"><div class="title">Complexivo</div><div class="value">${dash.complexivoPercent}%</div></div>
       </div>`;
-    const detalleRows = this.detalleEstudiantes.map(d => `
-      <tr><td>${d.nombre}</td><td>${d.modalidad}</td><td>${d.estadoVoucher}</td><td>${d.defensa ?? ''}</td></tr>`).join('');
-    const detalle = `
+
+    const sinTutorRows = (sinTutor || []).map(r => `<tr><td>${r.fullname}</td><td>${r.career_name || ''}</td><td>${r.suggested_tutor || ''}</td></tr>`).join('');
+    const conTutorRows = (conTutor || []).map(r => `<tr><td>${r.fullname}</td><td>${r.career_name || ''}</td><td>${r.tutor_name || ''}</td></tr>`).join('');
+
+    const tables = `
+      <h2>Estudiantes sin tutor (${(sinTutor || []).length})</h2>
       <table>
-        <thead><tr><th>Nombre</th><th>Modalidad</th><th>Estado Voucher</th><th>Defensa</th></tr></thead>
-        <tbody>${detalleRows}</tbody>
+        <thead><tr><th>Estudiante</th><th>Carrera</th><th>Tutor sugerido</th></tr></thead>
+        <tbody>${sinTutorRows || '<tr><td colspan="3" class="muted">Sin registros</td></tr>'}</tbody>
+      </table>
+
+      <h2>Estudiantes con tutor (${(conTutor || []).length})</h2>
+      <table>
+        <thead><tr><th>Estudiante</th><th>Carrera</th><th>Tutor</th></tr></thead>
+        <tbody>${conTutorRows || '<tr><td colspan="3" class="muted">Sin registros</td></tr>'}</tbody>
       </table>`;
-    w.document.write(`<!doctype html><html><head><meta charset="utf-8">${style}</head><body>${header}${kpis}${detalle}<script>setTimeout(()=>{window.print()},100)</script></body></html>`);
+
+    const footer = `
+      <div class="footer">
+        <div>Generado: ${ts}</div>
+        <div>Página <span class="pagenum"></span></div>
+      </div>`;
+
+    w.document.write(`<!doctype html><html><head><meta charset="utf-8">${style}</head><body>${header}${kpis}${tables}${footer}<script>setTimeout(()=>{window.print()},100)</script></body></html>`);
     w.document.close();
   }
 
@@ -169,78 +217,5 @@ export class Reportes implements AfterViewInit, OnDestroy {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url; a.download = filename; a.click(); URL.revokeObjectURL(url);
-  }
-
-  // -----------------------
-  // ApexCharts integration
-  // -----------------------
-  private chart: any | null = null;
-
-  private buildChartOptions() {
-    const days = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'];
-    // Generar datos semanales proportionados a KPIs actuales
-    const total = Math.max(1, this.stats.inscritos);
-    const uicBase = Math.round(this.stats.uic / 7);
-    const compBase = Math.round(this.stats.complexivo / 7);
-    const rand = (b: number, i: number) => Math.max(0, Math.round(b + (i % 2 === 0 ? b * 0.2 : -b * 0.15)));
-    const uicSeries = days.map((_, i) => rand(uicBase, i));
-    const compSeries = days.map((_, i) => rand(compBase, i + 1));
-
-    return {
-      tooltip: {
-        enabled: true,
-        shared: true,
-        intersect: false,
-        x: { show: true },
-        custom: ({ series, dataPointIndex, w }: any) => {
-          const cats = w?.globals?.categoryLabels || [];
-          const title = cats[dataPointIndex] ?? '';
-          const names = w?.config?.series?.map((s: any) => s?.name) || [];
-          const colors = w?.config?.series?.map((s: any) => s?.color) || [];
-          const rows = (series || []).map((arr: number[], i: number) => {
-            const val = Array.isArray(arr) ? arr[dataPointIndex] : arr;
-            const name = names[i] ?? `Serie ${i+1}`;
-            const color = colors[i] ?? '#555';
-            return `<div style="display:flex;align-items:center;gap:8px;padding:2px 0;">
-                      <span style="width:8px;height:8px;border-radius:9999px;background:${color};display:inline-block"></span>
-                      <span style="font-size:12px;color:#111;margin-right:6px;min-width:120px;">${name}</span>
-                      <span style="font-size:12px;color:#111;font-weight:600">${val} estudiantes</span>
-                    </div>`;
-          }).join('');
-          return `<div style="padding:8px 10px;">`
-                 + (title ? `<div style=\"font-size:12px;color:#6b7280;border-bottom:1px solid #e5e7eb;margin-bottom:6px;padding-bottom:4px;\">${title}</div>` : '')
-                 + rows + `</div>`;
-        }
-      },
-      grid: { show: false, strokeDashArray: 4, padding: { left: 2, right: 2, top: -26 } },
-      series: [
-        { name: 'UIC', data: uicSeries, color: '#1A56DB' },
-        { name: 'Examen Complexivo', data: compSeries, color: '#7E3BF2' }
-      ],
-      chart: { height: '100%', maxWidth: '100%', type: 'area', fontFamily: 'Inter, sans-serif', dropShadow: { enabled: false }, toolbar: { show: false } },
-      legend: { show: true },
-      fill: { type: 'gradient', gradient: { opacityFrom: 0.55, opacityTo: 0, shade: '#1C64F2', gradientToColors: ['#1C64F2'] } },
-      dataLabels: { enabled: false },
-      markers: { size: 3, hover: { size: 5 } },
-      stroke: { width: 3, curve: 'smooth' },
-      xaxis: { categories: days, labels: { show: false }, axisBorder: { show: false }, axisTicks: { show: false } },
-      yaxis: { show: false, labels: { formatter: (v: number) => String(v) } }
-    };
-  }
-
-  private renderOrUpdateChart() {
-    const el = document.getElementById('tooltip-chart');
-    if (!el || (typeof ApexCharts === 'undefined')) return;
-    const opts = this.buildChartOptions();
-    if (this.chart) {
-      this.chart.updateOptions(opts);
-    } else {
-      this.chart = new ApexCharts(el, opts);
-      this.chart.render();
-    }
-  }
-
-  private destroyChart() {
-    if (this.chart) { try { this.chart.destroy(); } catch {} finally { this.chart = null; } }
   }
 }

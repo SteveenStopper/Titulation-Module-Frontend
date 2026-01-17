@@ -1,6 +1,7 @@
 import { Routes } from '@angular/router';
 import { LoginComponent } from './auth/login/login';
 import { AuthGuard, NoAuthGuard } from './guards/auth.guard';
+import { StudentGuard } from './guards/student.guard';
 import { EstudianteLayout } from './UI/estudiante/layout';
 import { Inicio } from './UI/estudiante/inicio/inicio';
 import { Matricula } from './UI/estudiante/matricula/matricula';
@@ -10,6 +11,7 @@ import { AvanceUic } from './UI/estudiante/avance-uic/avance-uic';
 import { Pagos as EstPagos } from './UI/estudiante/pagos/pagos';
 import { CronogramaExamenComplexivo } from './UI/estudiante/cronograma-examen-complexivo/cronograma-examen-complexivo';
 import { Tutorias } from './UI/estudiante/tutorias/tutorias';
+import { UICOnlyGuard, ComplexivoOnlyGuard } from './guards/modality.guard';
 import { CoordinadorLayout } from './UI/coordinador/layout';
 import { Inicio as CoordInicio } from './UI/coordinador/inicio/inicio';
 import { CronogramaUic as CoordCronogramaUic } from './UI/coordinador/cronograma-uic/cronograma-uic';
@@ -17,6 +19,8 @@ import { CronogramaExamenComplexivo as CoordCronogramaExamenComplexivo } from '.
 import { Reportes } from './UI/coordinador/reportes/reportes';
 import { TribunalEvaluador } from './UI/coordinador/tribunal-evaluador/tribunal-evaluador';
 import { VeedorExamenComplexivo } from './UI/coordinador/veedor-examen-complexivo/veedor-examen-complexivo';
+import { ComisionAsignarTutorComponent } from './UI/coordinador/comision-asignar-tutor/asignar-tutor';
+import { ComisionAsignarLectorComponent } from './UI/coordinador/comision-asignar-lector/asignar-lector';
 import { TesoreriaLayout } from './UI/tesoreria/layout';
 import { Inicio as TesInicio } from './UI/tesoreria/inicio/inicio';
 import { Aranceles } from './UI/tesoreria/aranceles/aranceles';
@@ -52,6 +56,7 @@ import { VinculacionPracticasLayout } from './UI/vinculacion_practicas/layout';
 import { Inicio as VPInicio } from './UI/vinculacion_practicas/inicio/inicio';
 import { Calificacion as VPCalificacion } from './UI/vinculacion_practicas/vinculacion/calificacion/calificacion';
 import { CalificacionPracticas as VPPracticasCalificacion } from './UI/vinculacion_practicas/practicas_pre_profesionales/calificacion/calificacion';
+import { UnauthorizedComponent } from './auth/unauthorized/unauthorized';
 
 export const routes: Routes = [
   { 
@@ -63,6 +68,7 @@ export const routes: Routes = [
     path: 'ingles',
     component: InglesLayout,
     canActivate: [AuthGuard],
+    data: { roles: ['Ingles'] },
     children: [
       { path: '', redirectTo: 'inicio', pathMatch: 'full' },
       { path: 'inicio', component: InglesInicio },
@@ -73,6 +79,7 @@ export const routes: Routes = [
     path: 'vinculacion-practicas',
     component: VinculacionPracticasLayout,
     canActivate: [AuthGuard],
+    data: { roles: ['Vinculacion_Practicas'] },
     children: [
       { path: '', redirectTo: 'inicio', pathMatch: 'full' },
       { path: 'inicio', component: VPInicio },
@@ -84,6 +91,7 @@ export const routes: Routes = [
     path: 'administrador',
     component: AdministradorLayout,
     canActivate: [AuthGuard],
+    data: { roles: ['Administrador'] },
     children: [
       { path: '', redirectTo: 'inicio', pathMatch: 'full' },
       { path: 'inicio', component: AdminInicio },
@@ -98,6 +106,7 @@ export const routes: Routes = [
     path: 'docente',
     component: DocenteLayout,
     canActivate: [AuthGuard],
+    data: { roles: ['Docente'] },
     children: [
       { path: '', redirectTo: 'inicio', pathMatch: 'full' },
       { path: 'inicio', component: DocInicio },
@@ -115,6 +124,7 @@ export const routes: Routes = [
     path: 'tesoreria',
     component: TesoreriaLayout,
     canActivate: [AuthGuard],
+    data: { roles: ['Tesoreria'] },
     children: [
       { path: '', redirectTo: 'inicio', pathMatch: 'full' },
       { path: 'inicio', component: TesInicio },
@@ -126,7 +136,8 @@ export const routes: Routes = [
   {
     path: 'estudiante',
     component: EstudianteLayout,
-    canActivate: [AuthGuard],
+    canActivate: [AuthGuard, StudentGuard],
+    data: { roles: ['Estudiante'] },
     children: [
       { path: '', redirectTo: 'inicio', pathMatch: 'full' },
       { path: 'inicio', component: Inicio },
@@ -143,6 +154,7 @@ export const routes: Routes = [
     path: 'coordinador',
     component: CoordinadorLayout,
     canActivate: [AuthGuard],
+    data: { roles: ['Coordinador'] },
     children: [
       { path: '', redirectTo: 'inicio', pathMatch: 'full' },
       { path: 'inicio', component: CoordInicio },
@@ -150,6 +162,8 @@ export const routes: Routes = [
       { path: 'cronogramas/complexivo', component: CoordCronogramaExamenComplexivo },
       { path: 'comision/tribunal-evaluador', component: TribunalEvaluador },
       { path: 'comision/veedores', component: VeedorExamenComplexivo },
+      { path: 'comision/asignar-tutor', component: ComisionAsignarTutorComponent },
+      { path: 'comision/asignar-lector', component: ComisionAsignarLectorComponent },
       { path: 'reportes', component: Reportes },
     ]
   },
@@ -157,6 +171,7 @@ export const routes: Routes = [
     path: 'vicerrector',
     component: VicerrectorLayout,
     canActivate: [AuthGuard],
+    data: { roles: ['Vicerrector'] },
     children: [
       { path: '', redirectTo: 'inicio', pathMatch: 'full' },
       { path: 'inicio', component: VicInicio },
@@ -168,6 +183,7 @@ export const routes: Routes = [
     path: 'secretaria',
     component: SecretariaLayout,
     canActivate: [AuthGuard],
+    data: { roles: ['Secretaria'] },
     children: [
       { path: '', redirectTo: 'inicio', pathMatch: 'full' },
       { path: 'inicio', component: SecInicio },
@@ -181,6 +197,10 @@ export const routes: Routes = [
     path: '', 
     redirectTo: 'login', 
     pathMatch: 'full' 
+  },
+  {
+    path: 'unauthorized',
+    component: UnauthorizedComponent
   },
   { 
     path: '**', 

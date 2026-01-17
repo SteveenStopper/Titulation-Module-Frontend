@@ -27,7 +27,7 @@ export class CronogramaUicService {
   };
 
   private draftKey = 'cronograma_uic_draft';
-  private apiUrl = '/api/cronogramas/uic'; // Ajusta según tu API
+  private apiUrl = '/api/cronogramas/uic';
   private byPeriodPrefix = 'cronograma_uic_by_period:';
   private lastPublishedKey = 'cronograma_uic_last_published';
 
@@ -38,11 +38,7 @@ export class CronogramaUicService {
 
   // Obtener el último cronograma publicado desde la API
   getUltimoCronograma(): Observable<CronogramaUIC | null> {
-    // En un entorno real, harías una llamada HTTP como esta:
-    // return this.http.get<CronogramaUIC>(`${this.apiUrl}/ultimo`);
-    
-    // Por ahora, simulamos una respuesta vacía
-    return of(null);
+    return this.http.get<CronogramaUIC | null>(`${this.apiUrl}/ultimo`);
   }
 
   getDraft(): CronogramaUIC {
@@ -64,13 +60,21 @@ export class CronogramaUicService {
     this.draft.filas = this.draft.filas.map((f, i) => ({ ...f, nro: i + 1 }));
   }
 
-  publish(): CronogramaUIC {
-    const published = JSON.parse(JSON.stringify(this.draft));
-    this.publishedSubject.next(published);
-    const periodo = published.periodo || 'SIN_PERIODO';
-    localStorage.setItem(this.byPeriodPrefix + periodo, JSON.stringify(published));
-    localStorage.setItem(this.lastPublishedKey, JSON.stringify(published));
-    return published;
+  publish(): Observable<CronogramaUIC> {
+    const draft = JSON.parse(JSON.stringify(this.draft));
+    const body = {
+      title: draft.titulo || 'CRONOGRAMA DEL PROCESO DE TITULACIÓN',
+      period_label: draft.periodo || 'SIN_PERIODO',
+      project_label: draft.proyecto || 'PROYECTO DE TESIS',
+      items: (draft.filas || []).map((f: any) => ({
+        row_number: f.nro,
+        activity_description: f.actividad,
+        responsible: f.responsable,
+        date_start: f.fechaInicio ? new Date(f.fechaInicio).toISOString() : undefined,
+        date_end: f.fechaFin ? new Date(f.fechaFin).toISOString() : undefined,
+      }))
+    };
+    return this.http.post<CronogramaUIC>(`${this.apiUrl}/publicar`, body);
   }
 
   loadDraft(): CronogramaUIC | null {
@@ -81,7 +85,31 @@ export class CronogramaUicService {
     return null;
   }
 
+  getByPeriodId(academicPeriodId: number): Observable<CronogramaUIC | null> {
+    return this.http.get<CronogramaUIC | null>(`${this.apiUrl}`, { params: { academicPeriodId } as any });
+  }
+
+  // Crear o devolver borrador desde último publicado para el período indicado
+  createDraft(academicPeriodId: number): Observable<CronogramaUIC | null> {
+    return this.http.get<CronogramaUIC | null>(`/api/cronogramas/draft`, {
+      params: { academicPeriodId, modalidad: 'UIC' } as any
+    });
+  }
+
+  // Backward-compatible method used by some components
   getByPeriod(periodo: string): CronogramaUIC | null {
+    // If the old component passes a label, try local cache; if it's a numeric string id, we can't sync here
+    const asNum = Number(periodo);
+    if (!Number.isNaN(asNum) && String(asNum) === periodo.trim()) {
+      // Old code shouldn't call this with numeric; prefer getByPeriodId from the component instead.
+      // Return last published as a safe fallback.
+      return this.getUltimoPublicado();
+    }
+    // Legacy behavior: check localStorage by label
+    return this.getByPeriodLegacy(periodo);
+  }
+
+  private getByPeriodLegacy(periodo: string): CronogramaUIC | null {
     const saved = localStorage.getItem(this.byPeriodPrefix + periodo);
     return saved ? JSON.parse(saved) : null;
   }

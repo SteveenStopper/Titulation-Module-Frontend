@@ -80,9 +80,14 @@
           </div>
           <div class="flex items-center gap-2">
             <span class="text-xs text-gray-500">Período activo</span>
-            <span class="text-xs px-2 py-1 rounded-full bg-blue-100 text-blue-700">
-              {{ activePeriod || 'Sin período' }}
-            </span>
+            <ng-container *ngIf="(periodLoading$ | async); else tesPeriodVal">
+              <span class="text-xs px-2 py-1 rounded-full bg-blue-50 text-blue-600">Cargando...</span>
+            </ng-container>
+            <ng-template #tesPeriodVal>
+              <span class="text-xs px-2 py-1 rounded-full bg-blue-100 text-blue-700">
+                {{ activePeriod || 'Sin período' }}
+              </span>
+            </ng-template>
           </div>
         </div>
       </div>

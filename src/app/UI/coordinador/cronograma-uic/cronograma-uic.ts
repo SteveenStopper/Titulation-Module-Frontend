@@ -17,24 +17,39 @@ export class CronogramaUic {
   errors: string[] = [];
   // Fecha mínima global: una vez elegida alguna fecha, no se pueden elegir anteriores
   globalMinDate: string | null = null; // formato 'yyyy-MM-dd'
-  // Opciones temporales de período (hasta conectar backend)
-  periodOptions: string[] = [
-    'PERIODO SEPTIEMBRE 2025 – DICIEMBRE 2025',
-    'PERIODO ENERO 2026 – ABRIL 2026',
-    'PERIODO MAYO 2026 – AGOSTO 2026'
-  ];
+  // Opciones de período desde backend
+  periodOptions: Array<{ id_academic_periods: number; name: string }> = [];
+  selectedPeriodId: number | undefined;
 
   hasDraft = false;
   isLoading = false;
 
+  get hasSelectedPeriod(): boolean {
+    return Number.isFinite(Number(this.selectedPeriodId));
+  }
+
+  get isActivePeriodSelected(): boolean {
+    const active = this.periodSvc.getActivePeriod();
+    return !!active && !!this.model?.periodo && this.model.periodo === active;
+  }
+
   constructor(private svc: CronogramaUicService, private exportSvc: CronogramaExportService, private periodSvc: PeriodService) {
     // Iniciar con draft vacío hasta que el usuario seleccione un período
     this.model = this.svc.getDraft();
+    this.model.periodo = undefined;
     this.validate();
     this.recomputeGlobalMin();
+    // Cargar periodos desde backend
+    this.periodSvc.listAll().subscribe(list => {
+      const rows = Array.isArray(list) ? list : [];
+      this.periodOptions = rows
+        .map(p => ({ id_academic_periods: Number(p.id_academic_periods), name: String(p.name || '') }))
+        .filter(p => Number.isFinite(Number(p.id_academic_periods)));
+    });
   }
 
   addRow() {
+    if (!this.hasSelectedPeriod || !this.isActivePeriodSelected) return;
     this.svc.addRow();
     this.model = this.svc.getDraft();
     this.validate();
@@ -42,35 +57,76 @@ export class CronogramaUic {
   }
 
   removeRow(i: number) {
+    if (!this.hasSelectedPeriod || !this.isActivePeriodSelected) return;
     this.svc.removeRow(i);
     this.model = this.svc.getDraft();
     this.validate();
     this.recomputeGlobalMin();
   }
 
-  onPeriodoChange(periodo: string | undefined) {
-    if (!periodo) return;
-    const existente = this.svc.getByPeriod(periodo);
-    if (existente) {
-      this.model = existente;
-    } else {
-      const plantilla = this.svc.getUltimoPublicado();
-      if (plantilla) {
-        const clonado: CronogramaUIC = JSON.parse(JSON.stringify(plantilla));
-        clonado.periodo = periodo;
-        this.model = clonado;
-      } else {
-        const nuevo = this.svc.getDraft();
-        nuevo.periodo = periodo;
-        this.model = nuevo;
-      }
+  onPeriodoChange(periodId: number | undefined) {
+    if (!Number.isFinite(Number(periodId))) {
+      this.selectedPeriodId = undefined;
+      this.model = this.svc.getDraft();
+      this.model.periodo = undefined;
+      this.svc.setDraft(this.model);
+      this.errors = [];
+      this.recomputeGlobalMin();
+      return;
     }
-    this.svc.setDraft(this.model);
-    this.validate();
-    this.recomputeGlobalMin();
+    this.selectedPeriodId = Number(periodId);
+    const opt = this.periodOptions.find(p => Number(p.id_academic_periods) === Number(this.selectedPeriodId));
+    const selectedName = opt?.name || String(this.selectedPeriodId);
+
+    // Crear/obtener borrador desde backend (clona el último publicado de UIC)
+    this.isLoading = true;
+    this.svc.createDraft(Number(this.selectedPeriodId)).subscribe({
+      next: (data) => {
+        if (data) {
+          this.model = data as any;
+          // Mantener el nombre del período en el modelo por compatibilidad (publish/validación)
+          this.model.periodo = selectedName;
+        } else {
+          // Fallback local: plantilla o vacío
+          const plantilla = this.svc.getUltimoPublicado();
+          if (plantilla) {
+            const clonado: CronogramaUIC = JSON.parse(JSON.stringify(plantilla));
+            clonado.periodo = selectedName;
+            this.model = clonado;
+          } else {
+            const nuevo = this.svc.getDraft();
+            nuevo.periodo = selectedName;
+            this.model = nuevo;
+          }
+        }
+        this.svc.setDraft(this.model);
+        this.validate();
+        this.recomputeGlobalMin();
+      },
+      error: (_err) => {
+        const plantilla = this.svc.getUltimoPublicado();
+        if (plantilla) {
+          const clonado: CronogramaUIC = JSON.parse(JSON.stringify(plantilla));
+          clonado.periodo = selectedName;
+          this.model = clonado;
+        } else {
+          const nuevo = this.svc.getDraft();
+          nuevo.periodo = selectedName;
+          this.model = nuevo;
+        }
+        this.svc.setDraft(this.model);
+        this.validate();
+        this.recomputeGlobalMin();
+      },
+      complete: () => { this.isLoading = false; }
+    });
   }
 
   publish() {
+    if (!this.hasSelectedPeriod) {
+      alert('Seleccione un período antes de publicar.');
+      return;
+    }
     if (!this.validate()) {
       return;
     }
@@ -84,13 +140,90 @@ export class CronogramaUic {
       return;
     }
     this.svc.setDraft(this.model);
-    this.svc.saveAsPublished(this.model.periodo, this.model);
+    this.svc.publish().subscribe({
+      next: (_res) => {
+        this.svc.saveAsPublished(this.model.periodo!, this.model);
+        alert('Cronograma UIC publicado correctamente.');
+      },
+      error: (err) => {
+        alert(err?.error?.message || 'No se pudo publicar el cronograma UIC.');
+      }
+    });
   }
 
   onChange() {
+    if (!this.hasSelectedPeriod || !this.isActivePeriodSelected) return;
     this.svc.setDraft(this.model);
     this.validate();
     this.recomputeGlobalMin();
+  }
+
+  // Cargar un borrador editable independiente del período: usa el último publicado si existe, si no un borrador vacío
+  loadDraft() {
+    // Intentar crear/obtener borrador desde backend para el período seleccionado
+    const selectedName = this.model.periodo;
+    if (selectedName) {
+      // Buscar id_academic_periods correspondiente
+      this.periodSvc.listAll().subscribe(list => {
+        const found = (list || []).find(p => p.name === selectedName);
+        if (found?.id_academic_periods) {
+          this.svc.createDraft(found.id_academic_periods).subscribe(data => {
+            if (data) {
+              this.model = data as any;
+              this.model.periodo = selectedName;
+              this.svc.setDraft(this.model);
+              this.validate();
+              this.recomputeGlobalMin();
+            } else {
+              // Fallback local si BE no devolvió datos
+              const plantilla = this.svc.getUltimoPublicado();
+              if (plantilla) {
+                const clonado: CronogramaUIC = JSON.parse(JSON.stringify(plantilla));
+                clonado.periodo = selectedName;
+                this.model = clonado;
+              } else {
+                const nuevo = this.svc.getDraft();
+                nuevo.periodo = selectedName;
+                this.model = nuevo;
+              }
+              this.svc.setDraft(this.model);
+              this.validate();
+              this.recomputeGlobalMin();
+            }
+          });
+          return;
+        }
+        // Si no se encuentra id, proceder con fallback local
+        const plantilla = this.svc.getUltimoPublicado();
+        if (plantilla) {
+          const clonado: CronogramaUIC = JSON.parse(JSON.stringify(plantilla));
+          clonado.periodo = selectedName;
+          this.model = clonado;
+        } else {
+          const nuevo = this.svc.getDraft();
+          nuevo.periodo = selectedName;
+          this.model = nuevo;
+        }
+        this.svc.setDraft(this.model);
+        this.validate();
+        this.recomputeGlobalMin();
+      });
+    } else {
+      // Sin período seleccionado: mantener fallback local
+      const plantilla = this.svc.getUltimoPublicado();
+      if (plantilla) {
+        const clonado: CronogramaUIC = JSON.parse(JSON.stringify(plantilla));
+        clonado.periodo = undefined;
+        this.model = clonado;
+      } else {
+        const nuevo = this.svc.getDraft();
+        nuevo.periodo = undefined;
+        this.model = nuevo;
+      }
+      this.svc.setDraft(this.model);
+      this.validate();
+      this.recomputeGlobalMin();
+    }
   }
 
   // Reinicia únicamente las fechas de la fila indicada y mantiene la lógica de bloqueo global

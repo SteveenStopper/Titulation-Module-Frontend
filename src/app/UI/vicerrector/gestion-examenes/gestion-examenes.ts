@@ -1,6 +1,7 @@
 import { Component } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { HttpClient } from '@angular/common/http';
 
 @Component({
   selector: 'app-gestion-examenes',
@@ -20,55 +21,58 @@ export class GestionExamenes {
   // Límite de materias por carrera
   readonly MAX_MATERIAS = 4;
 
-  // Docentes disponibles para tutoría (mock)
-  docentes: Array<{ id: number; nombre: string }> = [
-    { id: 1, nombre: 'Ing. Ana Pérez' },
-    { id: 2, nombre: 'Ing. Luis Romero' },
-    { id: 3, nombre: 'Msc. María Vásquez' },
-    { id: 4, nombre: 'PhD. José Vera' },
-    { id: 5, nombre: 'Ing. Valeria Soto' },
-    { id: 6, nombre: 'Msc. Carlos Ruiz' },
-  ];
+  // Docentes disponibles para tutoría (cargados desde backend)
+  docentes: Array<{ id: number; nombre: string }> = [];
 
-  // Catálogo de materias por carrera (4 por carrera)
-  catalogoMaterias: Record<string, Array<{ id: number; nombre: string }>> = {
-    'Desarrollo de Software': [
-      { id: 101, nombre: 'Materia 1' },
-      { id: 102, nombre: 'Materia 2' },
-      { id: 103, nombre: 'Materia 3' },
-      { id: 104, nombre: 'Materia 4' },
-    ],
-    'Electromecánica': [
-      { id: 201, nombre: 'Materia 1' },
-      { id: 202, nombre: 'Materia 2' },
-      { id: 203, nombre: 'Materia 3' },
-      { id: 204, nombre: 'Materia 4' },
-    ],
-    'Contabilidad': [
-      { id: 301, nombre: 'Materia 1' },
-      { id: 302, nombre: 'Materia 2' },
-      { id: 303, nombre: 'Materia 3' },
-      { id: 304, nombre: 'Materia 4' },
-    ],
-  };
+  // Catálogo desde Instituto
+  carrerasCat: Array<{ id: number; nombre: string }> = [];
+  private carreraNameToId = new Map<string, number>();
+  materiasCat: Array<{ id: number; nombre: string }> = [];
+
+  // Catálogo de materias por carrera (dinámico desde Instituto)
+  catalogoMaterias: Record<string, Array<{ id: number; nombre: string }>> = {};
 
   // Registros creados por carrera (materia + tutor asignado)
   registros: Array<{
     id: number;           // id materia
     nombre: string;       // nombre materia
-    carrera: string;
+    carrera: string | null;
     tutorId: number | null;
     seleccionarTutorId?: number | null;
     editing?: boolean;
     publicado?: boolean;
-  }> = [
-    // ejemplo pre-existente (puede estar vacío)
-    { id: 101, nombre: 'Materia 1', carrera: 'Desarrollo de Software', tutorId: 1, publicado: false },
-  ];
+  }> = [];
+
+  // Toast (estilo similar a Tutor UIC)
+  showToast = false;
+  toastMsg = '';
+  toastOk = true;
+
+  constructor(private http: HttpClient) {
+    this.cargar(); // carga materias ya registradas en nuestro módulo
+    // Docentes (Instituto)
+    this.http.get<Array<{ id: number; nombre: string }>>('/api/vicerrector/docentes').subscribe(list => {
+      this.docentes = Array.isArray(list) ? list : [];
+    });
+    // Carreras (Instituto)
+    this.http.get<Array<{ id: number; nombre: string }>>('/api/vicerrector/carreras').subscribe(list => {
+      this.carrerasCat = Array.isArray(list) ? list : [];
+      this.carreraNameToId = new Map(this.carrerasCat.map(c => [c.nombre, c.id]));
+    });
+  }
 
   // Carreras del catálogo
   get carreras(): string[] {
-    return Object.keys(this.catalogoMaterias).sort();
+    // Mostrar nombres desde Instituto excluyendo las carreras con 4 materias ya registradas
+    const countByCarrera = new Map<string, number>();
+    for (const r of this.registros) {
+      if (!r.carrera) continue;
+      countByCarrera.set(r.carrera, (countByCarrera.get(r.carrera) || 0) + 1);
+    }
+    return this.carrerasCat
+      .map(c => c.nombre)
+      .filter(nombre => (countByCarrera.get(nombre) || 0) < this.MAX_MATERIAS)
+      .sort();
   }
 
   // Lista filtrada por carrera para la tabla
@@ -94,17 +98,6 @@ export class GestionExamenes {
     return this.registros.filter(r => r.carrera === this.carreraAsignacion && r.tutorId !== null).length;
   }
 
-  publicarTodo() {
-    if (!this.carreraAsignacion) return;
-    const aPublicar = this.registros.filter(r => r.carrera === this.carreraAsignacion && r.tutorId !== null);
-    if (aPublicar.length === 0) return;
-    // Simular envío a backend y marcar como publicado
-    for (const r of aPublicar) {
-      r.publicado = true;
-    }
-    console.log(`Publicadas ${aPublicar.length} materias para ${this.carreraAsignacion}`);
-  }
-
   // Materias disponibles para la carrera (excluye ya registradas)
   get materiasDeCarrera(): Array<{ id: number; nombre: string }> {
     if (!this.carreraAsignacion) return [];
@@ -120,11 +113,17 @@ export class GestionExamenes {
   }
 
   onChangeCarreraAsignacion() {
-    const lista = this.materiasDeCarrera;
-    this.materiaAsignacionId = lista.length ? lista[0].id : null;
     this.tutorAsignacionId = null;
-    // también filtra la tabla por la misma carrera seleccionada
     this.carreraFiltro = this.carreraAsignacion;
+    // cargar materias desde Instituto para esta carrera y ponerlas en el catálogo dinámico
+    const careerId = this.carreraNameToId.get(this.carreraAsignacion || '') || null;
+    if (!careerId) { this.catalogoMaterias[this.carreraAsignacion] = []; this.materiasCat = []; this.materiaAsignacionId = null; return; }
+    this.http.get<Array<{ id: number; nombre: string }>>(`/api/vicerrector/materias-catalogo?careerId=${careerId}`).subscribe(list => {
+      this.materiasCat = Array.isArray(list) ? list : [];
+      this.catalogoMaterias[this.carreraAsignacion] = this.materiasCat;
+      const lista = this.materiasDeCarrera;
+      this.materiaAsignacionId = lista.length ? lista[0].id : null;
+    });
   }
 
   onChangeMateriaAsignacion() {
@@ -142,9 +141,15 @@ export class GestionExamenes {
   }
 
   guardar(m: any) {
-    // Guardar la selección de tutor para la materia
-    m.tutorId = m.seleccionarTutorId ?? null;
-    m.editing = false;
+    const tutorId = m.seleccionarTutorId ?? null;
+    this.http.put(`/api/vicerrector/complexivo/materias/${m.id}/tutor`, { tutorId }).subscribe({
+      next: () => {
+        m.tutorId = tutorId;
+        m.editing = false;
+        this.toastOk = true; this.toastMsg = 'Tutor actualizado'; this.showToast = true; setTimeout(()=> this.showToast=false, 2500);
+      },
+      error: () => { this.toastOk = false; this.toastMsg = 'No se pudo actualizar el tutor'; this.showToast = true; setTimeout(()=> this.showToast=false, 3500); }
+    });
   }
 
   // Acciones del bloque superior (asignación directa por selects)
@@ -154,20 +159,22 @@ export class GestionExamenes {
     if (this.limiteAlcanzado) return;
     const cat = this.selectedMateria;
     if (!cat) return;
-    // Evitar duplicado
-    const existe = this.registros.some(r => r.carrera === this.carreraAsignacion && r.id === cat.id);
-    if (existe) return;
-    this.registros.push({
-      id: cat.id,
-      nombre: cat.nombre,
-      carrera: this.carreraAsignacion,
-      tutorId: this.tutorAsignacionId,
-      publicado: false,
+    const careerId = this.carreraNameToId.get(this.carreraAsignacion);
+    if (!careerId) return;
+    // Crear en nuestro módulo
+    this.http.post('/api/vicerrector/complexivo/materias', {
+      careerId: careerId,
+      code: String(cat.id),
+      name: cat.nombre,
+      tutorId: this.tutorAsignacionId
+    }).subscribe({
+      next: () => {
+        // refrescar lista desde backend
+        this.cargar();
+        this.toastOk = true; this.toastMsg = 'Materia registrada'; this.showToast = true; setTimeout(()=> this.showToast=false, 2500);
+      },
+      error: () => { this.toastOk = false; this.toastMsg = 'No se pudo registrar la materia'; this.showToast = true; setTimeout(()=> this.showToast=false, 3500); }
     });
-    // Reset materia/tutor para permitir seguir agregando
-    const lista = this.materiasDeCarrera;
-    this.materiaAsignacionId = lista.length ? lista[0].id : null;
-    this.tutorAsignacionId = null;
   }
 
   // Opciones de tutores
@@ -177,8 +184,29 @@ export class GestionExamenes {
     return this.docentes.filter(d => (m.editing ? true : d.id !== actual));
   }
 
-  opcionesDocentesTop() {
-    // En el registro superior aún no existe tutor asignado; mostramos todos
-    return this.docentes;
+  opcionesDocentesTop() { return this.docentes; }
+
+  private cargar() {
+    this.http.get<Array<{ id: number; nombre: string; carrera: string | null; tutorId: number | null }>>('/api/vicerrector/complexivo/materias').subscribe(list => {
+      const arr = Array.isArray(list) ? list : [];
+      this.registros = arr.map(r => ({
+        id: r.id,
+        nombre: r.nombre,
+        carrera: r.carrera ?? null,
+        tutorId: r.tutorId,
+        publicado: false,
+      }));
+    });
+  }
+
+  publicarTodo() {
+    const careerId = this.carreraNameToId.get(this.carreraAsignacion) || null;
+    if (!careerId) return;
+    this.http.post('/api/vicerrector/complexivo/materias/publicar', { careerId }).subscribe({
+      next: (res: any) => {
+        this.toastOk = true; this.toastMsg = `Publicación realizada. Total publicadas: ${res?.published ?? 0}`; this.showToast = true; setTimeout(()=> this.showToast=false, 3000);
+      },
+      error: () => { this.toastOk = false; this.toastMsg = 'No se pudo publicar'; this.showToast = true; setTimeout(()=> this.showToast=false, 3500); }
+    });
   }
 }

@@ -1,6 +1,10 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { HttpClientTestingModule } from '@angular/common/http/testing';
+import { provideRouter } from '@angular/router';
+import { of } from 'rxjs';
 
 import { Inicio } from './inicio';
+import { NotificationsService } from '../../../services/notifications.service';
 
 describe('Inicio', () => {
   let component: Inicio;
@@ -8,7 +12,18 @@ describe('Inicio', () => {
 
   beforeEach(async () => {
     await TestBed.configureTestingModule({
-      imports: [Inicio]
+      imports: [Inicio, HttpClientTestingModule],
+      providers: [
+        provideRouter([]),
+        {
+          provide: NotificationsService,
+          useValue: {
+            listMy: () => of([]),
+            markRead: () => of(void 0),
+            markAllRead: () => of(void 0),
+          },
+        },
+      ],
     })
     .compileComponents();
 

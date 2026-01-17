@@ -5,6 +5,33 @@
     <p class="text-gray-600">Estadísticas y distribución de materias y tutores</p>
   </div>
 
+  <!-- Export y filtros -->
+  <div class="flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
+    <div class="flex items-center gap-2">
+      <div>
+        <label class="block text-xs text-gray-500 mb-1">Período</label>
+        <select [(ngModel)]="selectedPeriodPrint" (ngModelChange)="onChangePeriodPrint()" class="px-3 py-2 border border-gray-300 rounded-md text-sm w-64 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+          <option [ngValue]="undefined" disabled>Seleccione un periodo</option>
+          <option *ngFor="let p of periodOptionsPrint" [ngValue]="p">{{ p }}</option>
+        </select>
+      </div>
+    </div>
+    <div class="flex flex-wrap items-center justify-end gap-2">
+      <button type="button" (click)="exportResumenCsv()" [disabled]="!canExportResumen" class="px-3 py-1.5 text-xs rounded-md bg-emerald-600 text-white hover:bg-emerald-700 disabled:opacity-60 disabled:cursor-not-allowed">
+        <i class="fa fa-file-csv mr-1"></i> CSV Resumen
+      </button>
+      <button type="button" (click)="exportDistribucionCsv()" [disabled]="!canExportDistribucion" class="px-3 py-1.5 text-xs rounded-md bg-emerald-600 text-white hover:bg-emerald-700 disabled:opacity-60 disabled:cursor-not-allowed">
+        <i class="fa fa-file-csv mr-1"></i> CSV Distribución
+      </button>
+      <button type="button" (click)="exportTopTutoresCsv()" [disabled]="!canExportTop" class="px-3 py-1.5 text-xs rounded-md bg-emerald-600 text-white hover:bg-emerald-700 disabled:opacity-60 disabled:cursor-not-allowed">
+        <i class="fa fa-file-csv mr-1"></i> CSV Top Tutores
+      </button>
+      <button type="button" (click)="printPdf()" class="px-3 py-1.5 text-xs rounded-md bg-indigo-600 text-white hover:bg-indigo-700">
+        <i class="fa fa-file-pdf mr-1"></i> Imprimir PDF
+      </button>
+    </div>
+  </div>
+
   <!-- Resumen -->
   <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
     <div *ngFor="let item of resumen" class="bg-white rounded-xl border border-gray-200 shadow-sm p-4 flex items-center gap-3">

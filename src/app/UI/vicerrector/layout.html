@@ -71,14 +71,18 @@
             <span class="text-sm text-gray-500">Panel</span>
             <span class="text-gray-800 font-semibold">Vicerrectorado</span>
           </div>
-          <div class="flex items-center gap-2">
+          <div class="flex items-center gap-3">
             <span class="text-xs text-gray-500">Período activo</span>
-            <span class="text-xs px-2 py-1 rounded-full bg-blue-100 text-blue-700">{{ activePeriod || 'Sin período' }}</span>
+            <ng-container *ngIf="(periodLoading$ | async); else vicPeriodVal">
+              <span class="text-xs px-2 py-1 rounded-full bg-blue-50 text-blue-600">Cargando...</span>
+            </ng-container>
+            <ng-template #vicPeriodVal>
+              <span class="text-xs px-2 py-1 rounded-full bg-blue-100 text-blue-700">{{ activePeriod || 'Sin período' }}</span>
+            </ng-template>
           </div>
         </div>
       </div>
     </div>
-
     <div class="p-6 rounded-xl mt-6 bg-gradient-to-b from-white to-gray-50 min-h-[calc(100vh-2rem)]">
       <router-outlet></router-outlet>
     </div>

@@ -1,6 +1,7 @@
 import { Component } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { PeriodService } from '../../../services/period.service';
 
 @Component({
   selector: 'app-gestion-periodos',
@@ -32,8 +33,20 @@ export class GestionPeriodos {
   formError = '';
   filtro = '';
 
-  constructor() {
+  constructor(private periodSvc: PeriodService) {
     this.cargar();
+    // Cargar lista desde backend y reflejar en UI
+    this.periodSvc.listAll().subscribe((rows) => {
+      if (Array.isArray(rows)) {
+        this.periodos = rows.map(r => ({
+          id: String(r.id_academic_periods),
+          nombre: r.name,
+          fechaInicio: r.date_start || '',
+          fechaFin: r.date_end || '',
+          estado: (r.status === 'activo' ? 'activo' : (r.status === 'cerrado' || r.status === 'inactivo') ? 'cerrado' : 'borrador')
+        }));
+      }
+    });
   }
 
   get activoActual() {
@@ -75,21 +88,78 @@ export class GestionPeriodos {
       return;
     }
 
+    // normalizar fechas a yyyy-MM-dd
+    const toISO = (s: string) => {
+      const str = (s || '').trim();
+      const ddmmyyyy = /^(\d{2})[\/\-](\d{2})[\/\-](\d{4})$/;
+      if (ddmmyyyy.test(str)) {
+        const [, dd, mm, yyyy] = str.match(ddmmyyyy) as any;
+        return `${yyyy}-${mm}-${dd}`;
+      }
+      return str; // ya viene yyyy-MM-dd
+    };
+    const fechaInicioISO = toISO(this.form.fechaInicio);
+    const fechaFinISO = toISO(this.form.fechaFin);
+
+    // Validar duplicado por nombre en FE (case-insensitive)
+    const nombreLower = this.form.nombre.trim().toLowerCase();
+    const dup = this.periodos.some(p => p.nombre.trim().toLowerCase() === nombreLower);
+    if (!this.isEditing && dup) {
+      this.formError = 'Ya existe un período con ese nombre';
+      return;
+    }
+
     if (this.isEditing) {
-      this.periodos = this.periodos.map(p => p.id === this.form.id ? {
-        ...p,
-        nombre: this.form.nombre.trim(),
-        fechaInicio: this.form.fechaInicio,
-        fechaFin: this.form.fechaFin,
-      } : p);
-    } else {
-      this.periodos.push({
-        id: this.form.id,
-        nombre: this.form.nombre.trim(),
-        fechaInicio: this.form.fechaInicio,
-        fechaFin: this.form.fechaFin,
-        estado: 'borrador'
+      // Persistir cambios en backend
+      this.periodSvc.updatePeriod(Number(this.form.id), {
+        name: this.form.nombre.trim(),
+        date_start: fechaInicioISO,
+        date_end: fechaFinISO,
+      }).subscribe({
+        next: () => {
+          this.periodSvc.listAll().subscribe((rows) => {
+            if (Array.isArray(rows)) {
+              this.periodos = rows.map(r => ({
+                id: String(r.id_academic_periods),
+                nombre: r.name,
+                fechaInicio: r.date_start || '',
+                fechaFin: r.date_end || '',
+                estado: (r.status === 'activo' ? 'activo' : (r.status === 'cerrado' || r.status === 'inactivo') ? 'cerrado' : 'borrador')
+              }));
+              this.guardar();
+            }
+          });
+          this.isModalOpen = false;
+        },
+        error: (err) => {
+          this.formError = String(err?.error?.message || err?.message || 'No se pudo actualizar el período en el servidor');
+        }
       });
+      return;
+    } else {
+      // Crear en backend
+      this.periodSvc.createPeriod({
+        name: this.form.nombre.trim(),
+        date_start: fechaInicioISO,
+        date_end: fechaFinISO
+      }).subscribe({
+        next: (created) => {
+          this.periodos.push({
+            id: String(created.id_academic_periods),
+            nombre: created.name,
+            fechaInicio: fechaInicioISO,
+            fechaFin: fechaFinISO,
+            estado: 'borrador'
+          });
+          this.guardar();
+          this.isModalOpen = false;
+        },
+        error: (err) => {
+          const msg = err?.error?.message || err?.message || 'No se pudo guardar el período en el servidor';
+          this.formError = String(msg);
+        }
+      });
+      return;
     }
     this.guardar();
     this.isModalOpen = false;
@@ -97,19 +167,52 @@ export class GestionPeriodos {
 
   activar(p: any) {
     if (!confirm(`¿Activar el período "${p.nombre}"?\nSe cerrará cualquier período activo anterior.`)) return;
-    // Solo uno activo a la vez: cerrar activo previo si existe
-    const anterior = this.periodos.find(x => x.estado === 'activo');
-    if (anterior && anterior.id !== p.id) {
-      anterior.estado = 'cerrado';
-    }
-    this.periodos = this.periodos.map(x => x.id === p.id ? { ...x, estado: 'activo' } : x);
-    this.guardar();
+    // Persistir en backend y refrescar lista
+    this.periodSvc.setActivePeriodBackend(Number(p.id), p.nombre).subscribe({
+      next: () => {
+        this.periodSvc.listAll().subscribe((rows) => {
+          if (Array.isArray(rows)) {
+            this.periodos = rows.map(r => ({
+              id: String(r.id_academic_periods),
+              nombre: r.name,
+              fechaInicio: r.date_start || '',
+              fechaFin: r.date_end || '',
+              estado: (r.status === 'activo' ? 'activo' : (r.status === 'cerrado' || r.status === 'inactivo') ? 'cerrado' : 'borrador')
+            }));
+            this.guardar();
+          }
+        });
+        this.periodSvc.fetchAndSetFromBackend().subscribe();
+      },
+      error: (err) => {
+        alert('No se pudo activar en el servidor: ' + (err?.error?.message || err?.message || 'Error'));
+      }
+    });
   }
 
   cerrar(p: any) {
     if (!confirm(`¿Cerrar el período "${p.nombre}"?`)) return;
-    this.periodos = this.periodos.map(x => x.id === p.id ? { ...x, estado: 'cerrado' } : x);
-    this.guardar();
+    this.periodSvc.closePeriod(Number(p.id)).subscribe({
+      next: () => {
+        this.periodSvc.listAll().subscribe((rows) => {
+          if (Array.isArray(rows)) {
+            this.periodos = rows.map(r => ({
+              id: String(r.id_academic_periods),
+              nombre: r.name,
+              fechaInicio: r.date_start || '',
+              fechaFin: r.date_end || '',
+              estado: (r.status === 'activo' ? 'activo' : (r.status === 'cerrado' || r.status === 'inactivo') ? 'cerrado' : 'borrador')
+            }));
+            this.guardar();
+          }
+        });
+        // limpiar período activo en FE porque pudo ser el activo
+        this.periodSvc.fetchAndSetFromBackend().subscribe();
+      },
+      error: (err) => {
+        alert('No se pudo cerrar en el servidor: ' + (err?.error?.message || err?.message || 'Error'));
+      }
+    });
   }
 
   private guardar() {

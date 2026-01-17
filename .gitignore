@@ -165,3 +165,9 @@ testem.log
 # System files
 .DS_Store
 Thumbs.db
+
+# coverage
+/coverage
+dist/test-out
+test.log
+karma.conf.js

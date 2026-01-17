@@ -23,13 +23,13 @@ export class AdministradorLayout {
   constructor(private auth: AuthService) {
     const u = this.auth.currentUserValue;
     if (u) {
-      this.userName = u.name || this.userName;
-      this.userRole = this.mapRole(u.role);
+      this.userName = u.firstname + ' ' + u.lastname;
+      this.userRole = this.mapRole(u.roles[0]);
     }
-    this.auth.currentUser$.subscribe((user: any) => {
+    this.auth.currentUser$.subscribe((user) => {
       if (user) {
-        this.userName = user.name || 'Administrador';
-        this.userRole = this.mapRole(user.role);
+        this.userName = user.firstname + ' ' + user.lastname;
+        this.userRole = this.mapRole(user.roles[0]);
       } else {
         this.userName = 'Administrador';
         this.userRole = 'Invitado';
@@ -44,10 +44,19 @@ export class AdministradorLayout {
     this.auth.logout();
   }
 
-  private mapRole(role?: string): string {
-    switch (role) {
-      case 'admin': return 'Administrador';
-      default: return 'Usuario';
-    }
+  private mapRole(role: string): string {
+    if (!role) return 'Usuario';
+    
+    const roleMap: {[key: string]: string} = {
+      'Administrador': 'Administrador',
+      'Estudiante': 'Estudiante',
+      'Secretaria': 'Secretaría',
+      'Tesoreria': 'Tesorería',
+      'Coordinador': 'Coordinador',
+      'Docente': 'Docente',
+      'Vicerrector': 'Vicerrector'
+    };
+    
+    return roleMap[role] || 'Usuario';
   }
 }

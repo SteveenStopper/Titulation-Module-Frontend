@@ -1,4 +1,9 @@
 <section class="space-y-4">
+  <div *ngIf="validationsLoading || !canProceed" class="p-3 rounded-md border" [ngClass]="validationsLoading ? 'bg-gray-50 border-gray-200 text-gray-700' : 'bg-amber-50 border-amber-200 text-amber-800'">
+    <div *ngIf="validationsLoading" class="text-sm">Verificando validaciones...</div>
+    <div *ngIf="!validationsLoading && !canProceed" class="text-sm">{{ validationsMsg }}</div>
+  </div>
+
   <div>
     <h3 class="text-lg font-semibold text-gray-800">Registro de pago</h3>
     <p class="text-sm text-gray-500">Selecciona el tipo de comprobante y sube la evidencia. Tesorería deberá aprobarlo.</p>
@@ -9,18 +14,18 @@
     <div>
       <label class="block text-sm font-medium text-gray-700 mb-1">Tipo de comprobante</label>
       <select [(ngModel)]="pago.tipo" class="w-full rounded-md border-gray-300 focus:border-blue-500 focus:ring-blue-500 text-sm"
-              [ngModelOptions]="{standalone: true}">
+              [ngModelOptions]="{standalone: true}" [disabled]="validationsLoading || !canProceed">
         <option value="">Seleccione</option>
-        <option value="deposito">Certificados</option>
-        <option value="transferencia">Titulación</option>
-        <option value="pago_en_linea">Acta de Grado</option>
+        <option value="certificados">Certificados</option>
+        <option value="titulacion">Titulación</option>
+        <option value="acta_grado">Acta de Grado</option>
       </select>
     </div>
     <!-- Referencia -->
     <div>
       <label class="block text-sm font-medium text-gray-700 mb-1">Referencia</label>
       <input type="text" [(ngModel)]="pago.referencia" [ngModelOptions]="{standalone: true}"
-             class="w-full rounded-md border-gray-300 focus:border-blue-500 focus:ring-blue-500 text-sm" placeholder="# de transacción / referencia"/>
+             [disabled]="validationsLoading || !canProceed" class="w-full rounded-md border-gray-300 focus:border-blue-500 focus:ring-blue-500 text-sm" placeholder="# de transacción / referencia"/>
     </div>
     <!-- Monto -->
     <div>
@@ -29,13 +34,13 @@
         <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-gray-500 text-sm">$</span>
         <input type="number" step="0.01" min="0"
                [(ngModel)]="pago.monto" [ngModelOptions]="{standalone: true}"
-               class="w-full rounded-md border-gray-300 focus:border-blue-500 focus:ring-blue-500 text-sm pl-7" placeholder="0.00"/>
+               [disabled]="validationsLoading || !canProceed" class="w-full rounded-md border-gray-300 focus:border-blue-500 focus:ring-blue-500 text-sm pl-7" placeholder="0.00"/>
       </div>
     </div>
     <!-- Comprobante -->
     <div>
-      <label class="block text-sm font-medium text-gray-700 mb-1">Foto del comprobante</label>
-      <input type="file" (change)="onPagoFile($event)" accept="image/*" class="block w-full text-sm text-gray-700 file:mr-3 file:py-2 file:px-3 file:rounded-md file:border-0 file:text-sm file:font-medium file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"/>
+      <label class="block text-sm font-medium text-gray-700 mb-1">Archivo del comprobante (PDF o imagen)</label>
+      <input #voucherFile type="file" (change)="onPagoFile($event)" accept="image/*,application/pdf" [disabled]="validationsLoading || !canProceed" class="block w-full text-sm text-gray-700 disabled:opacity-60 file:mr-3 file:py-2 file:px-3 file:rounded-md file:border-0 file:text-sm file:font-medium file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"/>
       <div class="text-xs text-gray-500 mt-1" *ngIf="pagoArchivoNombre">Archivo: {{ pagoArchivoNombre }}</div>
     </div>
   </div>
@@ -43,7 +48,7 @@
   <div class="pt-2">
     <button type="button" (click)="submitPago()"
             class="inline-flex items-center gap-2 px-4 py-2 rounded-md text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-60 text-sm"
-            [disabled]="!pago.tipo || !pago.referencia || !pago.monto || !pagoArchivo">
+            [disabled]="validationsLoading || !canProceed || !pago.tipo || !pago.referencia || pago.monto === null || pago.monto < 0 || !pagoArchivo">
       <i class="fa-solid fa-paper-plane"></i>
       Enviar a Tesorería
     </button>
@@ -52,5 +57,53 @@
       'text-green-700': pagoEstado==='aprobado',
       'text-red-700': pagoEstado==='rechazado'
     }" *ngIf="pagoEstado">Estado: {{ pagoEstado }}</span>
+  </div>
+</section>
+<section class="mt-8 space-y-3">
+  <div>
+    <h3 class="text-lg font-semibold text-gray-800">Historial de comprobantes</h3>
+    <p class="text-sm text-gray-500">Aquí verás tus envíos a Tesorería y su estado.</p>
+  </div>
+
+  <div *ngIf="loading" class="text-sm text-gray-500">Cargando...</div>
+  <div *ngIf="!loading && items.length === 0" class="text-sm text-gray-500">Sin comprobantes aún.</div>
+
+  <div *ngIf="!loading && items.length > 0" class="overflow-auto">
+    <table class="min-w-full text-sm">
+      <thead>
+        <tr class="text-left text-gray-600 border-b">
+          <th class="py-2 pr-4">Tipo</th>
+          <th class="py-2 pr-4">Referencia</th>
+          <th class="py-2 pr-4">Monto</th>
+          <th class="py-2 pr-4">Fecha</th>
+          <th class="py-2 pr-4">Estado</th>
+          <th class="py-2 pr-4">Observación</th>
+          <th class="py-2 pr-4">Acciones</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr *ngFor="let it of items" class="border-b hover:bg-gray-50">
+          <td class="py-2 pr-4">{{ labelTipo(it.voucher_type || it.v_type || it.tipo) }}</td>
+          <td class="py-2 pr-4">{{ it.reference || it.referencia || '-' }}</td>
+          <td class="py-2 pr-4">{{ (it.amount ?? it.monto) != null ? (it.amount ?? it.monto) : '-' }}</td>
+          <td class="py-2 pr-4">{{ (it.created_at || it.fecha || it.createdAt) | date:'dd/MM/yyyy' }}</td>
+          <td class="py-2 pr-4">
+            <span [ngClass]="{
+              'text-yellow-700': (it.status || it.estado) === 'en_revision' || !(it.status || it.estado),
+              'text-green-700': (it.status || it.estado) === 'aprobado',
+              'text-red-700': (it.status || it.estado) === 'rechazado'
+            }">{{ labelEstado(it.status || it.estado) }}</span>
+          </td>
+          <td class="py-2 pr-4">
+            <span *ngIf="(it.status || it.estado) === 'rechazado'">{{ it.observation || it.observacion || 'Sin detalle' }}</span>
+            <span *ngIf="(it.status || it.estado) !== 'rechazado'" class="text-gray-400">-</span>
+          </td>
+          <td class="py-2 pr-4">
+            <button class="px-2 py-1 rounded bg-slate-100 hover:bg-slate-200 mr-2" (click)="descargar(it)">Descargar</button>
+            <button *ngIf="(it.status || it.estado) === 'rechazado'" class="px-2 py-1 rounded bg-red-50 text-red-700 hover:bg-red-100 disabled:opacity-60" [disabled]="validationsLoading || !canProceed" (click)="eliminar(it)">Eliminar</button>
+          </td>
+        </tr>
+      </tbody>
+    </table>
   </div>
 </section>

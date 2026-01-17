@@ -23,23 +23,22 @@ export class TesoreriaLayout {
   isAdmin = false;
   // Período activo global
   activePeriod: string | null = null;
-  periodOptions: string[] = [
-    'PERIODO SEPTIEMBRE 2025 – DICIEMBRE 2025',
-    'PERIODO ENERO 2026 – ABRIL 2026',
-    'PERIODO MAYO 2026 – AGOSTO 2026'
-  ];
+  periodOptions: string[] = [];
+  // Loading flags
+  get periodLoading$() { return this.periodSvc.loadingActive$; }
+  get periodListLoading$() { return this.periodSvc.loadingList$; }
 
   constructor(private router: Router, private auth: AuthService, private periodSvc: PeriodService) {
     const u = this.auth.currentUserValue;
     if (u) {
-      this.userName = u.name || this.userName;
-      this.userRole = 'Tesorería';
-      this.isAdmin = this.auth.hasRole('admin');
+      this.userName = `${u.firstname} ${u.lastname}`;
+      this.userRole = this.mapRole(u.roles[0]);
+      this.isAdmin = this.auth.hasRole('Administrador');
     }
-    this.auth.currentUser$.subscribe((user: any) => {
+    this.auth.currentUser$.subscribe((user) => {
       if (user) {
-        this.userName = user.name || 'Tesorería';
-        this.userRole = 'Tesorería';
+        this.userName = `${user.firstname} ${user.lastname}`;
+        this.userRole = this.mapRole(user.roles[0]);
       } else {
         this.userName = 'Tesorería';
         this.userRole = 'Invitado';
@@ -48,6 +47,11 @@ export class TesoreriaLayout {
     // Sincronizar período activo global
     this.activePeriod = this.periodSvc.getActivePeriod();
     this.periodSvc.activePeriod$.subscribe(p => this.activePeriod = p);
+    this.periodSvc.fetchAndSetFromBackend().subscribe();
+    // Cargar periodos desde backend
+    this.periodSvc.listAll().subscribe(list => {
+      this.periodOptions = (list || []).map(p => p.name);
+    });
   }
 
   toggleProfile() { this.isProfileOpen = !this.isProfileOpen; }
@@ -55,5 +59,21 @@ export class TesoreriaLayout {
 
   onChangePeriod(p: string) {
     this.periodSvc.setActivePeriod(p);
+  }
+
+  private mapRole(role: string): string {
+    if (!role) return 'Tesorería';
+    const roleMap: {[k:string]: string} = {
+      'Administrador': 'Administrador',
+      'Estudiante': 'Estudiante',
+      'Secretaria': 'Secretaría',
+      'Tesoreria': 'Tesorería',
+      'Coordinador': 'Coordinador',
+      'Docente': 'Docente',
+      'Vicerrector': 'Vicerrector',
+      'Ingles': 'Inglés',
+      'Vinculacion_Practicas': 'Vinculación/Prácticas'
+    };
+    return roleMap[role] || 'Tesorería';
   }
 }

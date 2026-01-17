@@ -36,7 +36,8 @@
               <button (click)="generarHoja(it.id)" class="px-3 py-1.5 text-xs rounded-md bg-indigo-600 text-white hover:bg-indigo-700">
                 <i class="fa fa-file-lines mr-1"></i> Generar hoja de tribunal
               </button>
-              <button (click)="cargarHoja(it.id)" [disabled]="!isCalificacionValida(it)" class="px-3 py-1.5 text-xs rounded-md bg-amber-600 text-white hover:bg-amber-700 disabled:opacity-50 disabled:cursor-not-allowed">
+              <input type="file" accept="application/pdf" class="hidden" #fileInp (change)="onFileSelected($event, it.id)" />
+              <button (click)="fileInp.click()" [disabled]="!isCalificacionValida(it)" class="px-3 py-1.5 text-xs rounded-md bg-amber-600 text-white hover:bg-amber-700 disabled:opacity-50 disabled:cursor-not-allowed">
                 <i class="fa fa-upload mr-1"></i> Cargar hoja de tribunal
               </button>
               <button (click)="guardar(it.id)" [disabled]="!isCalificacionValida(it)" class="px-3 py-1.5 text-xs rounded-md bg-green-600 text-white hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed">

@@ -39,10 +39,15 @@
     <aside class="absolute right-0 top-0 h-full w-80 bg-white shadow-xl border-l border-gray-200 flex flex-col">
       <div class="p-4 border-b flex items-center justify-between">
         <div class="font-semibold text-gray-800">Notificaciones</div>
-        <button (click)="marcarTodasLeidas()" class="text-xs text-rose-600 hover:underline">Marcar todas como leídas</button>
+        <div class="flex items-center gap-3">
+          <button (click)="onlyUnread = !onlyUnread" class="text-xs text-gray-700 hover:underline">
+            {{ onlyUnread ? 'Ver todas' : 'Solo no leídas' }}
+          </button>
+          <button (click)="marcarTodasLeidas()" class="text-xs text-rose-600 hover:underline">Marcar todas como leídas</button>
+        </div>
       </div>
       <div class="flex-1 overflow-y-auto divide-y">
-        <div *ngFor="let n of notificaciones" class="p-4 flex gap-3" [class.bg-rose-50]="!n.leida">
+        <div *ngFor="let n of visibleNotificaciones" class="p-4 flex gap-3" [class.bg-rose-50]="!n.leida">
           <div class="mt-1"><i class="fa fa-bell text-rose-600"></i></div>
           <div class="flex-1">
             <div class="text-sm font-medium text-gray-800">{{ n.titulo }}</div>

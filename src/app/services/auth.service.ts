@@ -1,15 +1,18 @@
 import { Injectable } from '@angular/core';
-import { HttpClient } from '@angular/common/http';
-import { BehaviorSubject, Observable, of, throwError } from 'rxjs';
+import { HttpClient, HttpErrorResponse } from '@angular/common/http';
+import { BehaviorSubject, Observable, throwError } from 'rxjs';
 import { catchError, map, tap } from 'rxjs/operators';
 import { Router } from '@angular/router';
 
-interface User {
-  id: string;
+export interface User {
+  id_user: number;
   email: string;
-  name: string;
-  role: string;
-  token: string;
+  firstname: string;
+  lastname: string;
+  name?: string;
+  role?: string;
+  roles: string[];
+  is_active: boolean;
 }
 
 export interface LoginResponse {
@@ -21,19 +24,37 @@ export interface LoginResponse {
   providedIn: 'root'
 })
 export class AuthService {
+  // Usamos el apiBaseInterceptor, por lo que podemos usar rutas relativas que empiecen con /api
+  private apiUrl = '/api';
   private currentUserSubject: BehaviorSubject<User | null>;
   public currentUser$: Observable<User | null>;
+  private readonly TOKEN_KEY = 'auth_token';
+  private readonly USER_KEY = 'auth_user';
+
+  // Mapeo de roles a rutas por defecto
+  private readonly DEFAULT_ROUTES: { [key: string]: string } = {
+    'Estudiante': '/estudiante',
+    'Administrador': '/administrador/inicio',
+    'Coordinador': '/coordinador/inicio',
+    'Docente': '/docente/inicio',
+    'Tesoreria': '/tesoreria/inicio',
+    'Secretaria': '/secretaria/inicio',
+    'Vicerrector': '/vicerrector/inicio',
+    'Ingles': '/ingles/inicio',
+    'Vinculacion_Practicas': '/vinculacion-practicas/inicio'
+  };
 
   constructor(
     private http: HttpClient,
     private router: Router
   ) {
-    // Initialize with user from localStorage if exists
-    const storedUser = localStorage.getItem('currentUser');
-    this.currentUserSubject = new BehaviorSubject<User | null>(
-      storedUser ? JSON.parse(storedUser) : null
-    );
+    this.currentUserSubject = new BehaviorSubject<User | null>(this.getStoredUser());
     this.currentUser$ = this.currentUserSubject.asObservable();
+  }
+
+  private getStoredUser(): User | null {
+    const userData = localStorage.getItem(this.USER_KEY);
+    return userData ? JSON.parse(userData) : null;
   }
 
   public get currentUserValue(): User | null {
@@ -41,52 +62,122 @@ export class AuthService {
   }
 
   isAuthenticated(): boolean {
-    return !!this.currentUserValue;
+    return !!localStorage.getItem(this.TOKEN_KEY);
+  }
+
+  hasRole(role: string): boolean {
+    const user = this.currentUserValue;
+    return user ? user.roles.includes(role) : false;
+  }
+
+  hasAnyRole(roles: string[]): boolean {
+    if (!this.currentUserValue?.roles) return false;
+    return this.currentUserValue.roles.some(role => roles.includes(role));
+  }
+
+  getDefaultRoute(): string {
+    const user = this.currentUserValue;
+    if (!user) return '/login';
+
+    // Prioridad explícita de roles para ruta por defecto
+    const priority = [
+      'Administrador',
+      'Tesoreria',
+      'Secretaria',
+      'Coordinador',
+      'Docente',
+      'Vicerrector',
+      'Ingles',
+      'Vinculacion_Practicas',
+      'Estudiante',
+    ];
+
+    const userRole = priority.find(r => user.roles.includes(r) && this.DEFAULT_ROUTES[r]);
+    return userRole ? this.DEFAULT_ROUTES[userRole] : '/unauthorized';
   }
 
   login(email: string, password: string): Observable<LoginResponse> {
-    // In a real app, you would make an HTTP request to your authentication API
-    // For demo purposes, we'll simulate an API call with a timeout
-    return of({
-      user: {
-        id: '1',
-        email,
-        name: email.split('@')[0].split('.')[0],
-        role: this.getRoleFromEmail(email),
-        token: 'dummy-jwt-token'
-      },
-      token: 'dummy-jwt-token'
-    }).pipe(
-      tap(response => {
-        // Store user details and jwt token in local storage
-        localStorage.setItem('currentUser', JSON.stringify(response.user));
-        this.currentUserSubject.next(response.user);
-      })
-    );
+    return this.http.post<any>(`${this.apiUrl}/auth/login`, { email, password })
+      .pipe(
+        map((resp: any) => {
+          // Normalizar respuesta del backend (usuarios) al modelo User del FE
+          const beUser = resp?.user || {};
+          const user: User = {
+            id_user: beUser.usuario_id ?? beUser.id_user ?? 0,
+            email: beUser.correo ?? beUser.email ?? '',
+            firstname: beUser.nombre ?? beUser.firstname ?? '',
+            lastname: beUser.apellido ?? beUser.lastname ?? '',
+            name: beUser.name ?? `${beUser.nombre ?? ''} ${beUser.apellido ?? ''}`.trim(),
+            roles: Array.isArray(beUser.roles) ? beUser.roles : (Array.isArray(resp?.user?.roles) ? resp.user.roles : []),
+            is_active: (beUser.activo ?? beUser.is_active) ?? true,
+          };
+          const normalized: LoginResponse = { token: resp?.token, user };
+          return normalized;
+        }),
+        tap((response: LoginResponse) => {
+          if (response?.token) {
+            this.storeAuthData(response);
+            this.currentUserSubject.next(response.user);
+          }
+        }),
+        catchError(this.handleError)
+      );
   }
 
-  logout(): void {
-    // Remove user from local storage and set current user to null
-    localStorage.removeItem('currentUser');
+  private storeAuthData(response: LoginResponse): void {
+    localStorage.setItem(this.TOKEN_KEY, response.token);
+    localStorage.setItem(this.USER_KEY, JSON.stringify(response.user));
+  }
+
+  private clearAuthData(): void {
+    localStorage.removeItem(this.TOKEN_KEY);
+    localStorage.removeItem(this.USER_KEY);
+  }
+
+  logout(redirectToLogin: boolean = true): void {
+    this.clearAuthData();
     this.currentUserSubject.next(null);
-    this.router.navigate(['/login']);
+    if (redirectToLogin) {
+      this.router.navigate(['/login']);
+    }
   }
 
-  private getRoleFromEmail(email: string): string {
-    // This is a simplified example - in a real app, the role would come from the server
-    if (email.includes('admin') || email.includes('administrador')) return 'admin';
-    if (email.includes('estudiante')) return 'student';
-    if (email.includes('coordinador')) return 'coordinator';
-    if (email.includes('docente')) return 'teacher';
-    if (email.includes('tesorer')) return 'treasury';
-    if (email.includes('secretar')) return 'secretary';
-    if (email.includes('vicerrector')) return 'vice_chancellor';
-    return 'user';
+  getAuthHeaders(): { [header: string]: string } {
+    const token = localStorage.getItem(this.TOKEN_KEY);
+    return {
+      'Authorization': `Bearer ${token}`,
+      'Content-Type': 'application/json'
+    };
   }
 
-  // Helper method to check if user has specific role
-  hasRole(role: string): boolean {
-    const user = this.currentUserValue;
-    return user?.role === role;
+  private handleError(error: HttpErrorResponse) {
+    let errorMessage = 'Ocurrió un error inesperado';
+    
+    if (error.status === 0) {
+      errorMessage = 'No se pudo conectar con el servidor. Verifica tu conexión a internet.';
+    } else if (error.status === 401) {
+      errorMessage = 'Credenciales incorrectas. Por favor, verifica tu correo y contraseña.';
+    } else if (error.status === 403) {
+      errorMessage = 'No tienes permisos para acceder a este recurso.';
+    } else if (error.error?.message) {
+      errorMessage = error.error.message;
+    }
+    
+    return throwError(() => new Error(errorMessage));
+  }
+
+  // Verifica si el token está próximo a expirar (útil para renovación automática)
+  isTokenExpiringSoon(thresholdMinutes: number = 5): boolean {
+    const token = localStorage.getItem(this.TOKEN_KEY);
+    if (!token) return true;
+    
+    try {
+      const payload = JSON.parse(atob(token.split('.')[1]));
+      const now = Math.floor(Date.now() / 1000);
+      const expiresIn = payload.exp - now;
+      return expiresIn < (thresholdMinutes * 60);
+    } catch (e) {
+      return true;
+    }
   }
 }

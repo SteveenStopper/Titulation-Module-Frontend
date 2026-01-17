@@ -12,6 +12,27 @@
         <i class="fa fa-xmark"></i>
       </button>
     </div>
+
+  <!-- Rechazo Modal -->
+  <div *ngIf="rejectOpen" class="fixed inset-0 z-50 flex items-center justify-center">
+    <div class="absolute inset-0 bg-black/50" (click)="cancelarRechazo()"></div>
+    <div class="relative bg-white w-[92vw] max-w-md rounded-xl shadow-lg overflow-hidden">
+      <div class="flex items-center justify-between px-4 py-2 border-b">
+        <div class="font-medium text-gray-800">Rechazar documento</div>
+        <button (click)="cancelarRechazo()" class="p-2 rounded hover:bg-gray-100" aria-label="Cerrar">
+          <i class="fa fa-xmark"></i>
+        </button>
+      </div>
+      <div class="p-4 space-y-3">
+        <label class="block text-sm font-medium text-gray-700">Observación</label>
+        <textarea [(ngModel)]="rejectObs" rows="4" class="w-full border rounded-md px-3 py-2 text-sm" placeholder="Describe el motivo del rechazo"></textarea>
+        <div class="flex justify-end gap-2 pt-2">
+          <button (click)="cancelarRechazo()" class="px-3 py-1.5 text-xs rounded-md border hover:bg-gray-50">Cancelar</button>
+          <button (click)="confirmarRechazo()" class="px-3 py-1.5 text-xs rounded-md bg-red-600 text-white hover:bg-red-700">Confirmar rechazo</button>
+        </div>
+      </div>
+    </div>
+  </div>
   </div>
   <!-- Header -->
   <div class="bg-white rounded-xl border border-gray-200 shadow-sm px-4 py-3 flex items-center justify-between">
@@ -20,10 +41,6 @@
       <p class="text-gray-600">Revisión de documentos para matriculación</p>
     </div>
     <div class="flex items-center gap-2">
-      <select [(ngModel)]="carreraFiltro" class="px-3 py-2 border rounded-lg text-sm">
-        <option value="">Todas las carreras</option>
-        <option *ngFor="let c of carreras" [value]="c">{{ c }}</option>
-      </select>
       <input [(ngModel)]="search" type="text" placeholder="Buscar por estudiante" class="px-3 py-2 border rounded-lg text-sm w-72" />
     </div>
   </div>
@@ -34,55 +51,42 @@
       <thead class="bg-gray-50 text-gray-700 text-xs uppercase">
         <tr>
           <th class="px-3 py-2 text-left">Estudiante</th>
-          <th class="px-3 py-2 text-left">Carrera</th>
-          <th class="px-3 py-2 text-center">Solicitud</th>
-          <th class="px-3 py-2 text-center">Oficio</th>
-          <th class="px-3 py-2 text-center">Certificados</th>
-          <th class="px-3 py-2 text-center">Estado</th>
+          <th class="px-3 py-2 text-left">Tipo</th>
+          <th class="px-3 py-2 text-left">Nombre</th>
+          <th class="px-3 py-2 text-left">Fecha</th>
+          <th class="px-3 py-2 text-left">Estado</th>
           <th class="px-3 py-2 text-center">Acciones</th>
         </tr>
       </thead>
       <tbody class="divide-y divide-gray-100">
         <tr *ngFor="let it of filtered" class="odd:bg-white even:bg-gray-50 align-top">
           <td class="px-3 py-2 font-medium text-gray-800">{{ it.estudiante }}</td>
-          <td class="px-3 py-2 text-gray-700">{{ it.carrera }}</td>
-          <td class="px-3 py-2 text-center">
-            <button (click)="verSolicitud(it.solicitudUrl)" class="px-2 py-1 text-xs rounded-md border hover:bg-gray-50" [disabled]="!it.solicitudUrl">Ver</button>
-          </td>
-          <td class="px-3 py-2 text-center">
-            <button (click)="verOficio(it.oficioUrl)" class="px-2 py-1 text-xs rounded-md border hover:bg-gray-50" [disabled]="!it.oficioUrl">Ver</button>
+          <td class="px-3 py-2 text-gray-700">{{ it.tipo }}</td>
+          <td class="px-3 py-2 text-gray-700">{{ it.filename || '-' }}</td>
+          <td class="px-3 py-2 text-gray-700">{{ it.created_at | date:'dd/MM/yyyy' }}</td>
+          <td class="px-3 py-2">
+            <span [ngClass]="{
+              'text-yellow-700': statuses[it.id] === 'en_revision',
+              'text-green-700': statuses[it.id] === 'aprobado',
+              'text-red-700': statuses[it.id] === 'rechazado'
+            }">{{ statuses[it.id] | titlecase }}</span>
           </td>
           <td class="px-3 py-2">
             <div class="flex items-center justify-center gap-2">
-              <button (click)="verCertVinc(it.certificados.vinculacion)" class="px-2 py-1 text-xs rounded-md border hover:bg-gray-50" [disabled]="!it.certificados.vinculacion">Vinculación</button>
-              <button (click)="verCertPrac(it.certificados.practicas)" class="px-2 py-1 text-xs rounded-md border hover:bg-gray-50" [disabled]="!it.certificados.practicas">Prácticas</button>
-              <button (click)="verCertIngles(it.certificados.ingles)" class="px-2 py-1 text-xs rounded-md border hover:bg-gray-50" [disabled]="!it.certificados.ingles">Inglés</button>
-            </div>
-          </td>
-          <td class="px-3 py-2 text-center">
-            <span class="text-xs px-2 py-0.5 rounded-full"
-                  [ngClass]="{
-                    'bg-green-100 text-green-700': it.estado==='aprobado',
-                    'bg-yellow-100 text-yellow-700': it.estado==='pendiente',
-                    'bg-red-100 text-red-700': it.estado==='rechazado'
-                  }">{{ it.estado | uppercase }}</span>
-          </td>
-          <td class="px-3 py-2">
-            <div class="flex items-center justify-center gap-2">
-              <button (click)="aceptar(it.id)" class="px-3 py-1.5 text-xs rounded-md text-white"
-                      [ngClass]="it.estado==='pendiente' ? 'bg-green-600 hover:bg-green-700' : 'bg-gray-400 cursor-not-allowed'"
-                      [disabled]="it.estado!=='pendiente'">
-                <i class="fa fa-check mr-1"></i> Aceptar
+              <button (click)="verDocumento(it)" class="px-3 py-1.5 text-xs rounded-md bg-indigo-600 text-white hover:bg-indigo-700">
+                <i class="fa fa-eye mr-1"></i> Ver
               </button>
-              <button (click)="rechazar(it.id)" class="px-3 py-1.5 text-xs rounded-md bg-red-600 text-white hover:bg-red-700"
-                      [disabled]="it.estado!=='pendiente'">
-                <i class="fa fa-xmark mr-1"></i> Rechazar
+              <button (click)="aceptar(it.id)" [disabled]="processing.has(it.id) || statuses[it.id] !== 'en_revision'" class="px-3 py-1.5 text-xs rounded-md bg-green-600 text-white hover:bg-green-700 disabled:opacity-60">
+                <i class="fa" [ngClass]="processing.has(it.id) ? 'fa-spinner fa-spin mr-1' : 'fa-check mr-1'"></i> Aceptar
+              </button>
+              <button (click)="abrirRechazo(it.id)" [disabled]="processing.has(it.id) || statuses[it.id] !== 'en_revision'" class="px-3 py-1.5 text-xs rounded-md bg-red-600 text-white hover:bg-red-700 disabled:opacity-60">
+                <i class="fa" [ngClass]="processing.has(it.id) ? 'fa-spinner fa-spin mr-1' : 'fa-xmark mr-1'"></i> Rechazar
               </button>
             </div>
           </td>
         </tr>
         <tr *ngIf="filtered.length===0">
-          <td colspan="7" class="px-4 py-6 text-center text-gray-500">Sin resultados</td>
+          <td colspan="5" class="px-4 py-6 text-center text-gray-500">Sin resultados</td>
         </tr>
       </tbody>
     </table>
@@ -91,17 +95,22 @@
   <!-- Preview Modal -->
   <div *ngIf="isPreviewOpen" class="fixed inset-0 z-50 flex items-center justify-center">
     <div class="absolute inset-0 bg-black/50" (click)="cerrarPreview()"></div>
-    <div class="relative bg-white w-[92vw] max-w-4xl max-h-[88vh] rounded-xl shadow-lg overflow-hidden">
+    <div class="relative bg-white w-[96vw] max-w-5xl max-h-[90vh] rounded-xl shadow-lg overflow-hidden">
       <div class="flex items-center justify-between px-4 py-2 border-b">
         <div class="font-medium text-gray-800">{{ previewTitle }}</div>
-        <button (click)="cerrarPreview()" class="p-2 rounded hover:bg-gray-100" aria-label="Cerrar">
-          <i class="fa fa-xmark"></i>
-        </button>
+        <div class="flex items-center gap-2">
+          <a *ngIf="previewUrl" [href]="previewUrl" download class="px-3 py-1.5 text-xs rounded-md bg-slate-100 hover:bg-slate-200">
+            <i class="fa fa-download mr-1"></i> Descargar
+          </a>
+          <button (click)="cerrarPreview()" class="p-2 rounded hover:bg-gray-100" aria-label="Cerrar">
+            <i class="fa fa-xmark"></i>
+          </button>
+        </div>
       </div>
       <div class="p-3 overflow-auto" [ngClass]="previewType==='image' ? 'bg-gray-50' : ''">
         <ng-container [ngSwitch]="previewType">
           <img *ngSwitchCase="'image'" [src]="previewUrl!" alt="Documento" class="max-w-full h-auto mx-auto rounded" />
-          <iframe *ngSwitchCase="'pdf'" [src]="previewUrl!" class="w-full h-[70vh]" frameborder="0"></iframe>
+          <iframe *ngSwitchCase="'pdf'" [src]="previewSafeUrl!" class="w-full h-[78vh]" frameborder="0"></iframe>
           <div *ngSwitchDefault class="text-center text-sm text-gray-600">
             No se puede previsualizar este tipo de archivo.
             <a [href]="previewUrl!" target="_blank" class="text-indigo-600 hover:underline">Abrir en nueva pestaña</a>

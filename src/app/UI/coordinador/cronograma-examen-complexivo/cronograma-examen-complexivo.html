@@ -4,38 +4,43 @@
     <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
       <div>
         <label class="block text-sm text-gray-600 mb-1">Título</label>
-        <input type="text" class="w-full border border-gray-300 rounded-md px-3 py-2 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500" [(ngModel)]="model.titulo" (ngModelChange)="onChange()" placeholder="CRONOGRAMA DEL PROCESO DE TITULACIÓN" />
+        <input type="text" class="w-full border border-gray-300 rounded-md px-3 py-2 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500" [(ngModel)]="model.titulo" (ngModelChange)="onChange()" [disabled]="!hasSelectedPeriod || !isActivePeriodSelected" placeholder="CRONOGRAMA DEL PROCESO DE TITULACIÓN" />
       </div>
       <div>
         <label class="block text-sm text-gray-600 mb-1">Periodo</label>
         <select class="w-full border border-gray-300 rounded-md px-3 py-2 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                [(ngModel)]="model.periodo" (ngModelChange)="onPeriodoChange($event)">
+                [(ngModel)]="selectedPeriodId" (ngModelChange)="onPeriodoChange($event)">
           <option [ngValue]="undefined" disabled>Seleccione un período</option>
-          <option *ngFor="let p of periodOptions" [ngValue]="p">{{ p }}</option>
+          <option *ngFor="let p of periodOptions" [ngValue]="p.id_academic_periods">{{ p.name }}</option>
         </select>
       </div>
       <div>
         <label class="block text-sm text-gray-600 mb-1">Proyecto</label>
-        <input type="text" class="w-full border border-gray-300 rounded-md px-3 py-2 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500" [(ngModel)]="model.proyecto" (ngModelChange)="onChange()" placeholder="EXAMEN COMPLEXIVO" />
+        <input type="text" class="w-full border border-gray-300 rounded-md px-3 py-2 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500" [(ngModel)]="model.proyecto" (ngModelChange)="onChange()" [disabled]="!hasSelectedPeriod || !isActivePeriodSelected" placeholder="EXAMEN COMPLEXIVO" />
       </div>
     </div>
   </div>
 
+  <div *ngIf="!hasSelectedPeriod" class="bg-white rounded-xl border border-gray-200 shadow-sm p-4 text-sm text-gray-600">
+    Seleccione un período para crear el cronograma.
+  </div>
+
+  <div *ngIf="hasSelectedPeriod && !isActivePeriodSelected" class="bg-amber-50 border border-amber-200 rounded-xl p-4 text-sm text-amber-800">
+    El período seleccionado no es el período activo. El cronograma se muestra en modo solo lectura.
+  </div>
+
   <!-- Tabla editable -->
-  <div class="bg-white rounded-xl border border-gray-200 shadow-sm p-4">
+  <div *ngIf="hasSelectedPeriod" class="bg-white rounded-xl border border-gray-200 shadow-sm p-4">
     <div class="flex items-center justify-between mb-3">
       <h3 class="font-semibold text-gray-800">Cronograma</h3>
       <div class="flex gap-2">
-        <button type="button" (click)="addRow()" class="px-3 py-2 rounded-lg border text-sm hover:bg-gray-50">
+        <button type="button" (click)="addRow()" [disabled]="!isActivePeriodSelected" class="px-3 py-2 rounded-lg border text-sm hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed">
           <i class="fa fa-plus mr-1"></i> Agregar fila
         </button>
-        <button type="button" (click)="publish()" [disabled]="errors.length" class="px-3 py-2 rounded-lg bg-blue-600 text-white text-sm hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed">
+        <button type="button" (click)="publish()" [disabled]="errors.length || !isActivePeriodSelected" class="px-3 py-2 rounded-lg bg-blue-600 text-white text-sm hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed">
           <i class="fa fa-paper-plane mr-1"></i> Publicar
         </button>
-        <button type="button" (click)="exportCSV()" class="px-3 py-2 rounded-lg border text-sm hover:bg-gray-50">
-          <i class="fa fa-file-csv mr-1"></i> Exportar CSV
-        </button>
-        <button type="button" (click)="exportPDF()" class="px-3 py-2 rounded-lg border text-sm hover:bg-gray-50">
+        <button type="button" (click)="exportPDF()" [disabled]="!hasSelectedPeriod" class="px-3 py-2 rounded-lg border text-sm hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed">
           <i class="fa fa-file-pdf mr-1"></i> Exportar PDF
         </button>
       </div>
@@ -63,32 +68,33 @@
         <tbody class="divide-y divide-gray-100">
           <tr *ngFor="let fila of model.filas; let i = index" class="odd:bg-white even:bg-gray-50 hover:bg-gray-100 transition-colors">
             <td class="px-3 py-2 align-middle">
-              <input type="number" class="h-10 w-16 text-center border border-gray-300 rounded-lg px-2 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500" [(ngModel)]="fila.nro" (ngModelChange)="onChange()" />
+              <input type="number" class="h-10 w-16 text-center border border-gray-300 rounded-lg px-2 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500" [(ngModel)]="fila.nro" (ngModelChange)="onChange()" [disabled]="!isActivePeriodSelected" />
             </td>
             <td class="px-3 py-2 align-middle">
-              <textarea rows="1" class="w-full border border-gray-300 rounded-lg px-3 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-none overflow-hidden" [(ngModel)]="fila.actividad" (ngModelChange)="onChange()" (input)="autoResize($event)" placeholder="Descripción de la actividad..."></textarea>
+              <textarea rows="1" class="w-full border border-gray-300 rounded-lg px-3 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-none overflow-hidden" [(ngModel)]="fila.actividad" (ngModelChange)="onChange()" (input)="autoResize($event)" [disabled]="!isActivePeriodSelected" placeholder="Descripción de la actividad..."></textarea>
             </td>
             <td class="px-3 py-2 align-middle">
-              <textarea rows="1" class="w-full border border-gray-300 rounded-lg px-3 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-none overflow-hidden" [(ngModel)]="fila.responsable" (ngModelChange)="onChange()" (input)="autoResize($event)" placeholder="Estudiante - Tutor / Coordinación..."></textarea>
+              <textarea rows="1" class="w-full border border-gray-300 rounded-lg px-3 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-none overflow-hidden" [(ngModel)]="fila.responsable" (ngModelChange)="onChange()" (input)="autoResize($event)" [disabled]="!isActivePeriodSelected" placeholder="Estudiante - Tutor / Coordinación..."></textarea>
             </td>
             <td class="px-3 py-2 align-middle">
               <div class="grid grid-cols-2 gap-2 min-w-[360px]">
-                <input type="date" class="h-10 w-full min-w-[160px] text-center whitespace-nowrap border border-gray-300 rounded-lg px-3 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500" [(ngModel)]="fila.fechaInicio" (ngModelChange)="onChange()" [min]="globalMinDate || ''" title="No puede seleccionar fechas anteriores a {{ globalMinDate || 'hoy seleccionado' }}" />
-                <input type="date" class="h-10 w-full min-w-[160px] text-center whitespace-nowrap border border-gray-300 rounded-lg px-3 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500" [(ngModel)]="fila.fechaFin" (ngModelChange)="onChange()" [min]="minForFin(fila)" title="No puede seleccionar fechas anteriores a {{ minForFin(fila) || 'hoy seleccionado' }}" />
+                <input type="date" class="h-10 w-full min-w-[160px] text-center whitespace-nowrap border border-gray-300 rounded-lg px-3 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500" [(ngModel)]="fila.fechaInicio" (ngModelChange)="onChange()" [disabled]="!isActivePeriodSelected" [min]="globalMinDate || ''" title="No puede seleccionar fechas anteriores a {{ globalMinDate || 'hoy seleccionado' }}" />
+                <input type="date" class="h-10 w-full min-w-[160px] text-center whitespace-nowrap border border-gray-300 rounded-lg px-3 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500" [(ngModel)]="fila.fechaFin" (ngModelChange)="onChange()" [disabled]="!isActivePeriodSelected" [min]="minForFin(fila)" title="No puede seleccionar fechas anteriores a {{ minForFin(fila) || 'hoy seleccionado' }}" />
               </div>
             </td>
             <td class="px-3 py-2 align-middle">
               <div class="flex items-center gap-1">
                 <button type="button"
                         (click)="resetRowDates(i)"
-                        [disabled]="!fila?.fechaInicio && !fila?.fechaFin"
+                        [disabled]="(!fila?.fechaInicio && !fila?.fechaFin) || !isActivePeriodSelected"
                         title="Reinicia únicamente las fechas de esta fila"
                         class="inline-flex items-center justify-center h-9 w-9 rounded-full text-amber-600 hover:bg-amber-50 hover:ring-2 hover:ring-amber-200 disabled:opacity-50 disabled:cursor-not-allowed">
                   <i class="fa fa-rotate-left"></i>
                 </button>
                 <button type="button"
                         (click)="removeRow(i)"
-                        class="inline-flex items-center justify-center h-9 w-9 rounded-full text-red-600 hover:bg-red-50 hover:ring-2 hover:ring-red-200">
+                        [disabled]="!isActivePeriodSelected"
+                        class="inline-flex items-center justify-center h-9 w-9 rounded-full text-red-600 hover:bg-red-50 hover:ring-2 hover:ring-red-200 disabled:opacity-50 disabled:cursor-not-allowed">
                   <i class="fa fa-trash"></i>
                 </button>
               </div>

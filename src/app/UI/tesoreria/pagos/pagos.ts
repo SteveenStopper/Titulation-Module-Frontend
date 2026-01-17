@@ -1,6 +1,10 @@
 import { Component } from '@angular/core';
+import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { ToastrService } from 'ngx-toastr';
+import { VouchersService } from '../../../services/vouchers.service';
+import { NotificationsService } from '../../../services/notifications.service';
 
 @Component({
   selector: 'app-pagos',
@@ -13,32 +17,132 @@ export class Pagos {
   // Tabs
   tabs: Array<{ key: 'certificados'|'titulacion'|'acta'; label: string }> = [
     { key: 'certificados', label: 'Certificados' },
-    { key: 'titulacion', label: 'Titulacion' },
+    { key: 'titulacion', label: 'Titulación' },
     { key: 'acta', label: 'Acta de Grado' }
   ];
   activeTab: 'certificados'|'titulacion'|'acta' = 'certificados';
 
-  setTab(tab: 'certificados'|'titulacion'|'acta') { this.activeTab = tab; }
+  // Estado
+  loading = false;
+  items: any[] = [];
+  page = 1;
+  pageSize = 10;
+  totalPages = 1;
+  total = 0;
+  search = '';
+
+  setTab(tab: 'certificados'|'titulacion'|'acta') {
+    this.activeTab = tab;
+    this.load();
+  }
 
   // Preview modal
   isPreviewOpen = false;
   previewUrl: string | null = null;
+  previewSafeUrl: SafeResourceUrl | null = null;
   previewType: 'image' | 'pdf' | 'other' = 'other';
+  previewTitle = 'Comprobante';
+  // Image zoom
+  zoomScale = 1;
+  // Reject modal
+  isRejectOpen = false;
+  rejectObs: string = '';
+  rejectTarget: any = null;
+  actionLoading = false;
 
-  verComprobante(url: string) {
+  constructor(private toast: ToastrService, private vouchers: VouchersService, private notifications: NotificationsService, private sanitizer: DomSanitizer) {
+    this.load();
+  }
+
+  private tabToVType(): 'pago_certificado'|'pago_titulacion'|'pago_acta_grado' {
+    if (this.activeTab === 'titulacion') return 'pago_titulacion';
+    if (this.activeTab === 'acta') return 'pago_acta_grado';
+    return 'pago_certificado';
+  }
+
+  load() {
+    this.loading = true;
+    this.vouchers.list({ v_type: this.tabToVType(), status: 'en_revision', page: this.page, pageSize: this.pageSize }).subscribe({
+      next: (res: any) => {
+        const rows = Array.isArray(res?.data) ? res.data : (Array.isArray(res) ? res : []);
+        // Compat: asegurar que cada item tenga 'id' poblado para el botón Ver actual
+        this.items = rows.map((it: any) => ({
+          ...it,
+          id: Number(it?.id ?? it?.voucher_id ?? it?.id_voucher ?? it?.documento_id ?? 0) || undefined,
+        }));
+        const pag = res?.pagination || {};
+        this.total = Number(pag.total || this.items.length || 0);
+        this.totalPages = Number(pag.totalPages || 1);
+      },
+      error: () => this.toast.error('No se pudo cargar la bandeja de pagos'),
+      complete: () => { this.loading = false; }
+    });
+  }
+
+  private openPreviewFromBlob(blob: Blob, filename: string, title?: string) {
+    this.previewTitle = title || 'Comprobante';
+    const lower = (filename || '').toLowerCase();
+    let type: 'image'|'pdf'|'other' = 'other';
+    if (/(\.png|\.jpg|\.jpeg|\.webp|\.gif)$/.test(lower)) type = 'image';
+    else if (lower.endsWith('.pdf')) type = 'pdf';
+    this.previewType = type;
+
+    let blobForView = blob;
+    if (type === 'pdf' && blob.type !== 'application/pdf') {
+      blobForView = new Blob([blob], { type: 'application/pdf' });
+    } else if (type === 'image' && !/^image\//.test(blob.type)) {
+      const ext = lower.split('.').pop() || '';
+      const mime = ext === 'png' ? 'image/png'
+        : (ext === 'jpg' || ext === 'jpeg') ? 'image/jpeg'
+        : ext === 'webp' ? 'image/webp'
+        : ext === 'gif' ? 'image/gif'
+        : 'image/*';
+      blobForView = new Blob([blob], { type: mime });
+    }
+    // Reset zoom on each open
+    if (type === 'image') this.zoomScale = 1;
+    const url = window.URL.createObjectURL(blobForView);
     this.previewUrl = url;
-    const lower = url.toLowerCase();
-    if (/(\.png|\.jpg|\.jpeg|\.webp|\.gif)$/.test(lower)) this.previewType = 'image';
-    else if (lower.endsWith('.pdf')) this.previewType = 'pdf';
-    else this.previewType = 'other';
+    this.previewSafeUrl = this.sanitizer.bypassSecurityTrustResourceUrl(url);
     this.isPreviewOpen = true;
+  }
+
+  verVoucher(item: any) {
+    const id = Number(item?.id_voucher ?? item?.voucher_id ?? item?.id);
+    if (!id) return;
+    const filename = String(item?.filename || 'comprobante.pdf');
+    this.vouchers.download(id).subscribe({
+      next: (blob) => this.openPreviewFromBlob(blob, filename, 'Comprobante'),
+      error: () => this.toast.error('No se pudo previsualizar el comprobante')
+    });
+  }
+
+  // Compat: mientras actualizamos el HTML para usar verVoucher(it)
+  verComprobante(id: any, isId: boolean = true) {
+    const vid = Number(id);
+    if (!isId || !vid) return;
+    this.vouchers.download(vid).subscribe({
+      next: (blob) => this.openPreviewFromBlob(blob, 'comprobante.pdf', 'Comprobante'),
+      error: () => this.toast.error('No se pudo previsualizar el comprobante')
+    });
   }
 
   cerrarPreview() {
     this.isPreviewOpen = false;
+    if (this.previewUrl) {
+      try { window.URL.revokeObjectURL(this.previewUrl); } catch {}
+    }
     this.previewUrl = null;
+    this.previewSafeUrl = null;
     this.previewType = 'other';
+    this.previewTitle = 'Comprobante';
+    this.zoomScale = 1;
   }
+
+  // Zoom controls for images
+  zoomIn() { this.zoomScale = Math.min(5, this.zoomScale + 0.25); }
+  zoomOut() { this.zoomScale = Math.max(0.25, this.zoomScale - 0.25); }
+  zoomReset() { this.zoomScale = 1; }
 
   // Toasts
   toasts: Array<{ id: number; message: string; type: 'success'|'error' }>=[];
@@ -49,132 +153,93 @@ export class Pagos {
     setTimeout(() => this.toasts = this.toasts.filter(t => t.id !== id), 3000);
   }
 
-  // ---------------- Certificados ----------------
-  // Filtro para Certificados
-  searchCertificados = '';
-
-  // Datos estáticos (mock) para Certificados
-  certificados: Array<{
-    id: number;
-    estudiante: string;
-    carrera: string;
-    referencia: string;
-    monto: number;
-    comprobanteUrl: string;
-    estado: 'pendiente'|'aprobado'|'rechazado';
-  }> = [
-    { id: 1, estudiante: 'Ana Pérez', carrera: 'Ingeniería de Sistemas', referencia: 'CERT-990001', monto: 50.00, comprobanteUrl: 'assets/mock/cert_ana.jpg', estado: 'pendiente' },
-    { id: 2, estudiante: 'Luis Romero', carrera: 'Administración', referencia: 'CERT-990002', monto: 50.00, comprobanteUrl: 'assets/mock/cert_luis.pdf', estado: 'pendiente' },
-    { id: 3, estudiante: 'María Vásquez', carrera: 'Contabilidad', referencia: 'CERT-990003', monto: 50.00, comprobanteUrl: 'assets/mock/cert_maria.jpg', estado: 'aprobado' },
-  ];
-
-  get filteredCertificados() {
-    const q = this.searchCertificados.trim().toLowerCase();
-    if (!q) return this.certificados;
-    return this.certificados.filter(m =>
-      m.estudiante.toLowerCase().includes(q) ||
-      m.carrera.toLowerCase().includes(q) ||
-      m.referencia.toLowerCase().includes(q)
+  // Acciones
+  get filtered() {
+    const q = this.search.trim().toLowerCase();
+    if (!q) return this.items;
+    return this.items.filter(it =>
+      String(it.estudiante || it.nombre || '').toLowerCase().includes(q) ||
+      String(it.reference || it.referencia || '').toLowerCase().includes(q)
     );
   }
 
-  aceptarCertificado(id: number) {
-    const it = this.certificados.find(x => x.id === id);
-    if (!it) return;
-    it.estado = 'aprobado';
-    this.showToast(`Certificado aprobado para ${it.estudiante}`, 'success');
+  changePage(delta: number) {
+    const next = this.page + delta;
+    if (next < 1 || next > this.totalPages) return;
+    this.page = next;
+    this.load();
   }
 
-  rechazarCertificado(id: number) {
-    const it = this.certificados.find(x => x.id === id);
-    if (!it) return;
-    it.estado = 'rechazado';
-    this.showToast(`Certificado rechazado para ${it.estudiante}`, 'error');
+  changePageSize(size: number) {
+    this.pageSize = size;
+    this.page = 1;
+    this.load();
+  }
+  aprobar(item: any) {
+    const id = item?.id ?? item?.voucher_id;
+    const studentId = item?.id_user ?? item?.usuario_id;
+    if (!id) return;
+    this.actionLoading = true;
+    this.vouchers.approve(Number(id)).subscribe({
+      next: () => {
+        if (studentId) {
+          this.notifications.create({
+            id_user: Number(studentId),
+            type: 'tesoreria_aprobado',
+            title: 'Tesorería: Comprobante aprobado',
+            message: 'Tu comprobante fue aprobado',
+            entity_type: 'voucher',
+            entity_id: Number(id),
+          }).subscribe({ complete: () => {} });
+        }
+        this.toast.success('Aprobado');
+        this.items = this.items.filter(v => (v?.id ?? v?.voucher_id) !== id);
+      },
+      error: (err) => this.toast.error(err?.error?.message || 'No se pudo aprobar'),
+      complete: () => { this.actionLoading = false; }
+    });
   }
 
-  // ---------------- Titulación ----------------
-  // Filtro para Titulación
-  searchTitulacion = '';
-
-  // Datos estáticos (mock) para Titulación
-  titulacion: Array<{
-    id: number;
-    estudiante: string;
-    carrera: string;
-    referencia: string;
-    monto: number;
-    comprobanteUrl: string;
-    estado: 'pendiente'|'aprobado'|'rechazado';
-  }> = [
-    { id: 11, estudiante: 'Ana Pérez', carrera: 'Ingeniería de Sistemas', referencia: 'TIT-880001', monto: 180.00, comprobanteUrl: 'assets/mock/tit_ana.pdf', estado: 'pendiente' },
-    { id: 12, estudiante: 'Luis Romero', carrera: 'Administración', referencia: 'TIT-880002', monto: 180.00, comprobanteUrl: 'assets/mock/tit_luis.jpg', estado: 'pendiente' },
-    { id: 13, estudiante: 'María Vásquez', carrera: 'Contabilidad', referencia: 'TIT-880003', monto: 180.00, comprobanteUrl: 'assets/mock/tit_maria.jpg', estado: 'aprobado' },
-  ];
-
-  get filteredTitulacion() {
-    const q = this.searchTitulacion.trim().toLowerCase();
-    if (!q) return this.titulacion;
-    return this.titulacion.filter(m =>
-      m.estudiante.toLowerCase().includes(q) ||
-      m.carrera.toLowerCase().includes(q) ||
-      m.referencia.toLowerCase().includes(q)
-    );
+  rechazar(item: any) {
+    this.rejectTarget = item;
+    this.rejectObs = '';
+    this.isRejectOpen = true;
   }
 
-  aceptarTitulacion(id: number) {
-    const it = this.titulacion.find(x => x.id === id);
-    if (!it) return;
-    it.estado = 'aprobado';
-    this.showToast(`Titulación aprobada para ${it.estudiante}`, 'success');
+  cancelarRechazo() {
+    if (this.actionLoading) return;
+    this.isRejectOpen = false;
+    this.rejectObs = '';
+    this.rejectTarget = null;
   }
 
-  rechazarTitulacion(id: number) {
-    const it = this.titulacion.find(x => x.id === id);
-    if (!it) return;
-    it.estado = 'rechazado';
-    this.showToast(`Titulación rechazada para ${it.estudiante}`, 'error');
-  }
-
-  // ---------------- Acta de Grado ----------------
-  // Filtro para Acta
-  searchActa = '';
-
-  // Datos estáticos (mock) para Acta de Grado
-  acta: Array<{
-    id: number;
-    estudiante: string;
-    carrera: string;
-    referencia: string;
-    monto: number;
-    comprobanteUrl: string;
-    estado: 'pendiente'|'aprobado'|'rechazado';
-  }> = [
-    { id: 21, estudiante: 'Ana Pérez', carrera: 'Ingeniería de Sistemas', referencia: 'ACT-770001', monto: 60.00, comprobanteUrl: 'assets/mock/acta_ana.pdf', estado: 'pendiente' },
-    { id: 22, estudiante: 'Luis Romero', carrera: 'Administración', referencia: 'ACT-770002', monto: 60.00, comprobanteUrl: 'assets/mock/acta_luis.jpg', estado: 'aprobado' },
-    { id: 23, estudiante: 'María Vásquez', carrera: 'Contabilidad', referencia: 'ACT-770003', monto: 60.00, comprobanteUrl: 'assets/mock/acta_maria.jpg', estado: 'rechazado' },
-  ];
-
-  get filteredActa() {
-    const q = this.searchActa.trim().toLowerCase();
-    if (!q) return this.acta;
-    return this.acta.filter(m =>
-      m.estudiante.toLowerCase().includes(q) ||
-      m.carrera.toLowerCase().includes(q) ||
-      m.referencia.toLowerCase().includes(q)
-    );
-  }
-
-  aceptarActa(id: number) {
-    const it = this.acta.find(x => x.id === id);
-    if (!it) return;
-    it.estado = 'aprobado';
-    this.showToast(`Acta de grado aprobada para ${it.estudiante}`, 'success');
-  }
-
-  rechazarActa(id: number) {
-    const it = this.acta.find(x => x.id === id);
-    if (!it) return;
-    it.estado = 'rechazado';
-    this.showToast(`Acta de grado rechazada para ${it.estudiante}`, 'error');
+  confirmarRechazo() {
+    const item = this.rejectTarget;
+    const obs = (this.rejectObs || '').trim();
+    const id = item?.id ?? item?.voucher_id;
+    const studentId = item?.id_user ?? item?.usuario_id;
+    if (!id || !obs) return;
+    this.actionLoading = true;
+    this.vouchers.reject(Number(id), obs).subscribe({
+      next: () => {
+        if (studentId) {
+          this.notifications.create({
+            id_user: Number(studentId),
+            type: 'tesoreria_rechazo',
+            title: 'Tesorería: Comprobante rechazado',
+            message: obs,
+            entity_type: 'voucher',
+            entity_id: Number(id),
+          }).subscribe({ complete: () => {} });
+        }
+        this.toast.info('Rechazado');
+        this.items = this.items.filter(v => (v?.id ?? v?.voucher_id) !== id);
+        this.isRejectOpen = false;
+        this.rejectObs = '';
+        this.rejectTarget = null;
+      },
+      error: (err) => this.toast.error(err?.error?.message || 'No se pudo rechazar'),
+      complete: () => { this.actionLoading = false; }
+    });
   }
 }

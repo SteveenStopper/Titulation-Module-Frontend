@@ -1,6 +1,7 @@
 import { Component } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { HttpClient } from '@angular/common/http';
 
 @Component({
   selector: 'app-tribunal-evaluador',
@@ -10,42 +11,56 @@ import { FormsModule } from '@angular/forms';
   styleUrl: './tribunal-evaluador.scss'
 })
 export class TribunalEvaluador {
-  // Opciones
-  periodOptions: string[] = [
-    'PERIODO SEPTIEMBRE 2025 – DICIEMBRE 2025',
-    'PERIODO ENERO 2026 – ABRIL 2026',
-    'PERIODO MAYO 2026 – AGOSTO 2026'
-  ];
-  carreraOptions: string[] = [
-    'Desarrollo de Software', 'Electromecánica', 'Contabilidad', 'Marketing'
-  ];
+  // Opciones (desde backend)
+  periodOptions: Array<{ id_academic_periods: number; name: string }> = [];
+  carreraOptions: Array<{ id: number; nombre: string }> = [];
+  docentes: Array<{ id_user: number; fullname: string }> = [];
+  estudiantesUIC: Array<{ id: number; nombre: string; tutor_id?: number | null; tutor?: string | null }> = [];
+  tribunalAsignado: Array<{ id_user: number; fullname: string; career_id?: number | null; career_name?: string | null; presidente?: string | null; secretario?: string | null; vocal?: string | null }> = [];
+
+  // Roles fijos (según requerimiento)
   roles: string[] = ['Integrante del Tribunal 1', 'Integrante del Tribunal 2', 'Integrante del Tribunal 3'];
-  docentes: string[] = [
-    'Ing. Ana Pérez', 'Ing. Luis Romero', 'Msc. María Vásquez', 'PhD. José Vera', 'Ing. Valeria Soto', 'Msc. Carlos Ruiz'
-  ];
 
-  // Estudiantes UIC con su tutor asignado (mock)
-  estudiantesUIC: Array<{ id: number; nombre: string; tutor: string }> = [
-    { id: 1, nombre: 'Juan Martínez', tutor: 'Ing. Ana Pérez' },
-    { id: 2, nombre: 'Lucía Gómez', tutor: 'Msc. María Vásquez' },
-    { id: 3, nombre: 'Carlos Ortiz', tutor: 'Ing. Luis Romero' },
-  ];
-
-  // Mock: IDs de estudiantes ya asignados a tribunal
-  private asignados = new Set<number>();
-
-  get estudiantesSinTribunal() {
-    return this.estudiantesUIC.filter(e => !this.asignados.has(e.id));
-  }
-
-  model = {
-    periodo: undefined as string | undefined,
-    carrera: undefined as string | undefined,
-    estudianteId: undefined as number | undefined,
-    miembros: [] as Array<{ rol?: string; docente?: string }>
+  model: {
+    periodo?: number;
+    carrera?: number;
+    estudianteId?: number;
+    miembros: Array<{ rol?: string; docente?: number }>;
+  } = {
+    miembros: [],
   };
 
   errors: string[] = [];
+
+  constructor(private http: HttpClient) { }
+
+  ngOnInit() {
+    // Períodos
+    this.http.get<Array<{ id_academic_periods: number; name: string }>>('/api/settings/periods').subscribe(rows => {
+      this.periodOptions = Array.isArray(rows) ? rows : [];
+    });
+    // Carreras
+    this.http.get<Array<{ id: number; nombre: string }>>('/api/uic/admin/carreras').subscribe(rows => {
+      this.carreraOptions = Array.isArray(rows) ? rows : [];
+    });
+    // Docentes
+    this.http.get<Array<{ id_user: number; fullname: string }>>('/api/uic/admin/docentes').subscribe(rows => {
+      this.docentes = Array.isArray(rows) ? rows : [];
+    });
+    this.refreshEstudiantes();
+    this.refreshTribunalAsignado();
+  }
+
+  onChange() {
+    this.errors = [];
+    if (this.model.miembros.length > 3) {
+      this.errors.push('Máximo 3 integrantes.');
+    }
+
+    // Refrescar listados cuando haya filtros
+    this.refreshEstudiantes();
+    this.refreshTribunalAsignado();
+  }
 
   addMiembro() {
     if (this.model.miembros.length >= 3) return;
@@ -58,35 +73,62 @@ export class TribunalEvaluador {
     this.onChange();
   }
 
-  onChange() {
-    this.validate();
+  private refreshEstudiantes() {
+    if (!Number.isFinite(Number(this.model.periodo)) || !Number.isFinite(Number(this.model.carrera))) {
+      this.estudiantesUIC = [];
+      return;
+    }
+    const params: any = { careerId: this.model.carrera, academicPeriodId: this.model.periodo };
+    this.http.get<any[]>('/api/uic/admin/estudiantes-uic-sin-tribunal', { params }).subscribe(rows => {
+      const list = Array.isArray(rows) ? rows : [];
+      this.estudiantesUIC = list.map((r: any) => ({
+        id: Number(r.id_user),
+        nombre: String(r.fullname),
+        tutor_id: r.tutor_id != null ? Number(r.tutor_id) : null,
+        tutor: r.tutor_name != null ? String(r.tutor_name) : null,
+      }));
+    });
   }
 
-  get selectedEstudiante() {
-    return this.estudiantesUIC.find(e => e.id === this.model.estudianteId);
+  private refreshTribunalAsignado() {
+    if (!Number.isFinite(Number(this.model.periodo)) || !Number.isFinite(Number(this.model.carrera))) {
+      this.tribunalAsignado = [];
+      return;
+    }
+    const params: any = { careerId: this.model.carrera, academicPeriodId: this.model.periodo };
+    this.http.get<any[]>('/api/uic/admin/asignaciones/tribunal', { params }).subscribe(rows => {
+      this.tribunalAsignado = Array.isArray(rows) ? rows : [];
+    });
   }
 
-  get selectedTutor(): string | undefined {
-    return this.selectedEstudiante?.tutor;
+  get selectedTutor(): string | null {
+    const e = this.estudiantesUIC.find(x => x.id === this.model.estudianteId);
+    return (e?.tutor || null) as any;
+  }
+
+  private getSelectedTutorId(): number | null {
+    const e = this.estudiantesUIC.find(x => x.id === this.model.estudianteId);
+    return e?.tutor_id != null ? Number(e.tutor_id) : null;
   }
 
   private validate(): boolean {
     const errs: string[] = [];
-    if (!this.model.periodo) errs.push('El período es requerido.');
-    if (!this.model.carrera) errs.push('La carrera es requerida.');
-    if (!this.model.estudianteId) errs.push('Debe seleccionar el estudiante (UIC).');
-    if (this.model.miembros.length !== 3) errs.push('El tribunal debe tener exactamente 3 miembros.');
+    if (!this.model.estudianteId) errs.push('Seleccione un estudiante.');
+    if (!Number.isFinite(Number(this.model.periodo))) errs.push('Seleccione un período.');
+    if (!Number.isFinite(Number(this.model.carrera))) errs.push('Seleccione una carrera.');
+    if (this.model.miembros.length !== 3) errs.push('Debe registrar 3 integrantes.');
     const roles = new Set<string>();
     this.model.miembros.forEach((m, idx) => {
-      if (!m.rol) errs.push(`Fila ${idx + 1}: El rol es requerido.`);
-      if (!m.docente) errs.push(`Fila ${idx + 1}: El docente es requerido.`);
-      if (m.rol) {
-        const r = m.rol.trim().toLowerCase();
-        if (roles.has(r)) errs.push(`El rol "${m.rol}" está duplicado.`);
+      const r = m.rol?.trim();
+      if (!r) errs.push(`Fila ${idx + 1}: Seleccione un rol.`);
+      else {
+        if (roles.has(r)) errs.push(`Rol duplicado: ${r}.`);
         roles.add(r);
       }
-      if (m.docente && this.selectedTutor && m.docente === this.selectedTutor) {
-        errs.push(`Fila ${idx + 1}: El tutor (${this.selectedTutor}) no puede ser miembro del tribunal.`);
+      if (!m.docente) errs.push(`Fila ${idx + 1}: Seleccione un docente.`);
+      const tutorId = this.getSelectedTutorId();
+      if (m.docente && tutorId && Number(m.docente) === Number(tutorId)) {
+        errs.push(`Fila ${idx + 1}: El tutor no puede ser miembro del tribunal.`);
       }
     });
     this.errors = errs;
@@ -95,15 +137,34 @@ export class TribunalEvaluador {
 
   guardar() {
     if (!this.validate()) return;
-    // Mock persistencia: por ahora sólo mostramos en consola
-    console.log('Tribunal evaluador guardado:', JSON.parse(JSON.stringify(this.model)));
-    alert('Tribunal evaluador guardado (mock).');
-    if (this.model.estudianteId) {
-      this.asignados.add(this.model.estudianteId);
-    }
-    // Reset parcial del formulario para siguiente asignación
-    this.model.estudianteId = undefined;
-    this.model.miembros = [];
-    this.errors = [];
+    // Mapear a presidente/secretario/vocal desde los roles visibles
+    const roleMap: Record<string, 'Presidente'|'Secretario'|'Vocal'> = {
+      'Integrante del Tribunal 1': 'Presidente',
+      'Integrante del Tribunal 2': 'Secretario',
+      'Integrante del Tribunal 3': 'Vocal',
+    };
+    const getIdByMapped = (target: 'Presidente'|'Secretario'|'Vocal') => {
+      const m = this.model.miembros.find(x => roleMap[x.rol || ''] === target);
+      return m?.docente ? Number(m.docente) : undefined;
+    };
+    const body: any = {
+      id_user_student: Number(this.model.estudianteId),
+      id_president: getIdByMapped('Presidente'),
+      id_secretary: getIdByMapped('Secretario'),
+      id_vocal: getIdByMapped('Vocal'),
+    };
+    if (Number.isFinite(Number(this.model.periodo))) body.academicPeriodId = this.model.periodo;
+    this.http.post('/api/tribunal/assignments', body).subscribe({
+      next: () => {
+        this.model.estudianteId = undefined;
+        this.model.miembros = [];
+        this.errors = [];
+        this.refreshEstudiantes();
+        this.refreshTribunalAsignado();
+      },
+      error: (err) => {
+        this.errors = [err?.error?.message || 'No se pudo guardar la asignación'];
+      }
+    });
   }
 }

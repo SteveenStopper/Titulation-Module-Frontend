@@ -18,7 +18,7 @@
               <span>Calificación</span>
             </a>
           </li>
-          <li>
+          <li *ngIf="isAdmin">
             <a routerLink="/administrador/inicio" class="flex items-center p-2 text-gray-700 rounded-lg hover:bg-gray-100">
               <i class="fa-solid fa-user-gear w-5 h-5 me-3"></i>
               <span>Administrador</span>
@@ -57,11 +57,16 @@
             <span class="text-sm text-gray-500">Panel</span>
             <span class="text-gray-800 font-semibold">Inglés</span>
           </div>
-          <div class="flex items-center gap-2">
+          <div class="flex items-center gap-3">
             <span class="text-xs text-gray-500">Período activo</span>
-            <span class="text-xs px-2 py-1 rounded-full bg-blue-100 text-blue-700">
-              {{ activePeriod || 'Sin período' }}
-            </span>
+            <ng-container *ngIf="(periodLoading$ | async); else ingPeriodVal">
+              <span class="text-xs px-2 py-1 rounded-full bg-blue-50 text-blue-600">Cargando...</span>
+            </ng-container>
+            <ng-template #ingPeriodVal>
+              <span class="text-xs px-2 py-1 rounded-full bg-blue-100 text-blue-700">
+                {{ activePeriod || 'Sin período' }}
+              </span>
+            </ng-template>
           </div>
         </div>
       </div>
@@ -72,3 +77,5 @@
     </div>
   </div>
 </div>
+
+<!-- Panel de notificaciones eliminado del layout -->

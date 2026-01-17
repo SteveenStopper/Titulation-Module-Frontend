@@ -1,6 +1,8 @@
 import { Component } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { HttpClient } from '@angular/common/http';
+import { forkJoin } from 'rxjs';
 
 @Component({
   selector: 'app-lector-docente',
@@ -10,32 +12,30 @@ import { FormsModule } from '@angular/forms';
   styleUrl: './lector.scss'
 })
 export class LectorDocente {
-  estudiantes: Array<{ id: string; nombre: string; carrera: string; documentoUrl?: string | null; calificacion: number | null; observacion: string }>
-    = [
-      { id: 's1', nombre: 'Ana Torres', carrera: 'Ingeniería en Sistemas', documentoUrl: 'https://example.com/documents/ana-torres.pdf', calificacion: null, observacion: '' },
-      { id: 's2', nombre: 'Luis García', carrera: 'Ingeniería Civil', documentoUrl: null, calificacion: null, observacion: '' },
-      { id: 's3', nombre: 'Sofía Ramírez', carrera: 'Administración', documentoUrl: 'https://example.com/documents/sofia-ramirez.pdf', calificacion: null, observacion: '' },
-    ];
+  estudiantes: Array<{ id: string; nombre: string; carrera: string | null; documentoUrl?: string | null; calificacion: number | null; observacion: string }>
+    = [];
 
-  private storageKey = 'lector_calificaciones';
-
-  constructor() {
-    this.cargar();
+  constructor(private http: HttpClient) {
+    this.cargarLista();
   }
 
   guardar() {
-    // Normalizar calificación a 0-10 con 1 decimal
-    this.estudiantes = this.estudiantes.map(e => {
+    // normalizar y enviar a backend por cada estudiante
+    const peticiones = this.estudiantes.map(e => {
       let cal = e.calificacion;
-      if (cal === null || cal === undefined || isNaN(Number(cal))) cal = null;
+      if (cal === null || cal === undefined || isNaN(Number(cal as any))) cal = null;
       else {
         cal = Math.max(0, Math.min(10, Number(cal)));
         cal = Math.round(cal * 10) / 10;
       }
-      return { ...e, calificacion: cal };
+      const body = { calificacion: cal, observacion: e.observacion ?? '' } as any;
+      return this.http.put(`/api/docente/lector/estudiantes/${e.id}/review`, body);
     });
-    localStorage.setItem(this.storageKey, JSON.stringify(this.estudiantes));
-    alert('Calificaciones y observaciones guardadas (mock).');
+
+    forkJoin(peticiones).subscribe({
+      next: () => alert('Calificaciones y observaciones guardadas.'),
+      error: () => alert('Error al guardar. Intenta nuevamente.')
+    });
   }
 
   verDocumento(e: { documentoUrl?: string | null; nombre: string }) {
@@ -46,13 +46,17 @@ export class LectorDocente {
     }
   }
 
-  private cargar() {
-    try {
-      const raw = localStorage.getItem(this.storageKey);
-      if (raw) {
-        const parsed = JSON.parse(raw);
-        if (Array.isArray(parsed)) this.estudiantes = parsed;
-      }
-    } catch { /* noop */ }
+  private cargarLista() {
+    this.http.get<Array<{ id: string; nombre: string; carrera: string | null; documentoUrl?: string | null; calificacion?: number | null; observacion?: string }>>('/api/docente/lector/estudiantes')
+      .subscribe(list => {
+        this.estudiantes = (Array.isArray(list) ? list : []).map(e => ({
+          id: e.id,
+          nombre: e.nombre,
+          carrera: e.carrera ?? null,
+          documentoUrl: e.documentoUrl ?? null,
+          calificacion: e.calificacion == null ? null : Number(e.calificacion),
+          observacion: e.observacion ?? ''
+        }));
+      });
   }
 }

@@ -5,9 +5,9 @@
       <div>
         <label class="block text-sm text-gray-600 mb-1">Período</label>
         <select class="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                [(ngModel)]="model.periodo" (ngModelChange)="onChange()">
+                [(ngModel)]="model.periodoId" (ngModelChange)="onChangePeriodo()" [disabled]="true">
           <option [ngValue]="undefined" disabled>Seleccione un período</option>
-          <option *ngFor="let p of periodOptions" [ngValue]="p">{{ p }}</option>
+          <option *ngFor="let p of periodOptions" [ngValue]="p.id_academic_periods">{{ p.name }}</option>
         </select>
       </div>
       <div class="flex items-end">
@@ -23,7 +23,7 @@
       <table class="min-w-full text-sm border border-gray-200 rounded-lg table-auto">
         <thead class="bg-gray-50">
           <tr class="text-gray-700 text-xs uppercase tracking-wider">
-            <th class="px-3 py-2 text-left">Carrera</th>
+            <th class="px-3 py-2 text-left">Carrera Evaluada</th>
             <th class="px-3 py-2 text-left">Veedores</th>
             <th class="px-3 py-2 text-left">Acciones</th>
           </tr>
@@ -31,16 +31,16 @@
         <tbody class="divide-y divide-gray-100">
           <tr *ngFor="let m of model.materias; let i = index" class="odd:bg-white even:bg-gray-50 align-top">
             <td class="px-3 py-2 w-64">
-              <select class="border border-gray-300 rounded-md px-2 py-1 w-full" [(ngModel)]="m.nombre" (ngModelChange)="onChange()">
+              <select class="border border-gray-300 rounded-md px-2 py-1 w-full" [(ngModel)]="m.carreraId" (ngModelChange)="onChange()">
                 <option [ngValue]="undefined" disabled>Seleccione</option>
-                <option *ngFor="let c of carrerasDisponibles" [ngValue]="c">{{ c }}</option>
+                <option *ngFor="let c of carrerasDisponibles" [ngValue]="c.id">{{ c.nombre }}</option>
               </select>
             </td>
             <td class="px-3 py-2">
               <div class="grid grid-cols-2 md:grid-cols-3 gap-2">
-                <label *ngFor="let v of veedores" class="inline-flex items-center gap-2 text-sm">
-                  <input type="checkbox" [checked]="m.veedores.includes(v)" (change)="toggleVeedor(i, v, $event.target.checked)" />
-                  <span>{{ v }}</span>
+                <label *ngFor="let v of getAvailableVeedores(i)" class="inline-flex items-center gap-2 text-sm">
+                  <input type="checkbox" [checked]="m.veedores.includes(v.id_user)" (change)="toggleVeedor(i, v.id_user, $event.target.checked)" />
+                  <span>{{ v.fullname }}</span>
                 </label>
               </div>
             </td>

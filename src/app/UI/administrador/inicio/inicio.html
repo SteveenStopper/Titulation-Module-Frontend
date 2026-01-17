@@ -1,1 +1,226 @@
-<p>inicio works!</p>
+<div class="space-y-6">
+  <!-- Bienvenida -->
+  <div class="bg-white border border-gray-200 rounded-xl shadow-sm p-6">
+    <div class="flex items-start justify-between gap-4">
+      <div>
+        <div class="text-sm text-gray-500">Bienvenido(a)</div>
+        <div class="text-xl font-semibold text-gray-800">Panel del Administrador</div>
+        <div class="mt-1 text-sm text-gray-500">Gestione períodos, usuarios y visualice métricas generales del sistema.</div>
+      </div>
+      <div class="hidden md:block text-emerald-600">
+        <i class="fa-solid fa-gauge-high text-3xl"></i>
+      </div>
+    </div>
+  </div>
+
+  <!-- KPIs -->
+  <div class="grid grid-cols-1 gap-4">
+    <div class="bg-white border border-gray-200 rounded-xl p-4">
+      <div class="flex items-center gap-3">
+        <span class="inline-flex h-10 w-10 items-center justify-center rounded-lg bg-emerald-100 text-emerald-700">
+          <i class="fa-solid fa-calendar-days"></i>
+        </span>
+        <div>
+          <div class="text-xs text-gray-500">Período activo</div>
+          <ng-container *ngIf="(loading$ | async); else periodValue">
+            <div class="h-6 w-28 bg-gray-200 rounded animate-pulse"></div>
+          </ng-container>
+          <ng-template #periodValue>
+            <div class="text-lg font-semibold text-gray-800">{{ (activo$ | async) || 'Sin período' }}</div>
+          </ng-template>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Acciones rápidas y estado del sistema -->
+  <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
+    <!-- Estudiantes en proceso por modalidad -->
+    <div class="lg:col-span-2 bg-white border border-gray-200 rounded-xl shadow-sm">
+      <div class="px-5 py-4 border-b text-sm font-semibold text-gray-700">Estudiantes en proceso por modalidad</div>
+      <div class="p-5">
+        <ng-container *ngIf="(dashLoading$ | async); else dashData">
+          <div class="space-y-3">
+            <div class="h-5 w-48 bg-gray-200 rounded animate-pulse"></div>
+            <div class="h-3 w-full bg-gray-200 rounded animate-pulse"></div>
+            <div class="h-3 w-full bg-gray-200 rounded animate-pulse"></div>
+          </div>
+        </ng-container>
+        <ng-template #dashData>
+          <div class="text-sm text-gray-700 mb-3">Total en proceso: <span class="font-semibold">{{ (dash$ | async)?.totalEnProceso }}</span></div>
+          <div class="mb-3">
+            <div class="flex items-center justify-between text-xs text-gray-500">
+              <span>UIC</span>
+              <span>{{ (dash$ | async)?.uicPercent }}%</span>
+            </div>
+            <div class="w-full h-2 bg-gray-200 rounded-full overflow-hidden">
+              <div class="h-2 bg-emerald-500" [style.width]="((dash$ | async)?.uicPercent || 0) + '%'"> </div>
+            </div>
+          </div>
+          <div>
+            <div class="flex items-center justify-between text-xs text-gray-500">
+              <span>Examen Complexivo</span>
+              <span>{{ (dash$ | async)?.complexivoPercent }}%</span>
+            </div>
+            <div class="w-full h-2 bg-gray-200 rounded-full overflow-hidden">
+              <div class="h-2 bg-sky-500" [style.width]="((dash$ | async)?.complexivoPercent || 0) + '%'"> </div>
+            </div>
+          </div>
+        </ng-template>
+      </div>
+    </div>
+    <!-- Estado del sistema (a la derecha en pantallas grandes) -->
+    <div class="bg-white border border-gray-200 rounded-xl shadow-sm">
+      <div class="px-5 py-4 border-b text-sm font-semibold text-gray-700">Estado del sistema</div>
+      <div class="p-5 space-y-3">
+        <div class="flex items-center gap-3">
+          <span class="inline-flex h-8 w-8 items-center justify-center rounded-full bg-emerald-100 text-emerald-700">
+            <i class="fa-solid fa-circle-check"></i>
+          </span>
+          <div class="text-sm text-gray-700">API operativa</div>
+        </div>
+        <div class="flex items-center gap-3">
+          <span class="inline-flex h-8 w-8 items-center justify-center rounded-full bg-sky-100 text-sky-700">
+            <i class="fa-solid fa-database"></i>
+          </span>
+          <div class="text-sm text-gray-700">Base de datos conectada</div>
+        </div>
+        <div class="flex items-center gap-3">
+          <span class="inline-flex h-8 w-8 items-center justify-center rounded-full bg-amber-100 text-amber-700">
+            <i class="fa-solid fa-bell"></i>
+          </span>
+          <div class="text-sm text-gray-700">Notificaciones activas</div>
+        </div>
+      </div>
+    </div>
+    <!-- Acciones rápidas -->
+    <div class="lg:col-span-3 bg-white border border-gray-200 rounded-xl shadow-sm">
+      <div class="px-5 py-4 border-b text-sm font-semibold text-gray-700">Acciones rápidas</div>
+      <div class="p-5 grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3">
+        <a routerLink="/administrador/gestion-periodos" class="flex items-center gap-3 p-3 border rounded-lg hover:bg-gray-50">
+          <span class="inline-flex h-9 w-9 items-center justify-center rounded-lg bg-emerald-100 text-emerald-700">
+            <i class="fa-solid fa-calendar-plus"></i>
+          </span>
+          <div>
+            <div class="text-sm font-medium text-gray-800">Gestionar períodos</div>
+            <div class="text-xs text-gray-500">Crear, editar o cerrar períodos académicos</div>
+          </div>
+        </a>
+
+        <a routerLink="/administrador/reportes" class="flex items-center gap-3 p-3 border rounded-lg hover:bg-gray-50">
+          <span class="inline-flex h-9 w-9 items-center justify-center rounded-lg bg-sky-100 text-sky-700">
+            <i class="fa-solid fa-chart-column"></i>
+          </span>
+          <div>
+            <div class="text-sm font-medium text-gray-800">Ver reportes</div>
+            <div class="text-xs text-gray-500">Indicadores y reportes del sistema</div>
+          </div>
+        </a>
+
+        <a routerLink="/coordinador/inicio" class="flex items-center gap-3 p-3 border rounded-lg hover:bg-gray-50">
+          <span class="inline-flex h-9 w-9 items-center justify-center rounded-lg bg-purple-100 text-purple-700">
+            <i class="fa-solid fa-user-tie"></i>
+          </span>
+          <div>
+            <div class="text-sm font-medium text-gray-800">Coordinador</div>
+            <div class="text-xs text-gray-500">Acceder a la administración del coordinador</div>
+          </div>
+        </a>
+
+        <a routerLink="/docente/inicio" class="flex items-center gap-3 p-3 border rounded-lg hover:bg-gray-50">
+          <span class="inline-flex h-9 w-9 items-center justify-center rounded-lg bg-fuchsia-100 text-fuchsia-700">
+            <i class="fa-solid fa-chalkboard-user"></i>
+          </span>
+          <div>
+            <div class="text-sm font-medium text-gray-800">Docente</div>
+            <div class="text-xs text-gray-500">Gestión y registros docentes</div>
+          </div>
+        </a>
+
+        <a routerLink="/ingles/inicio" class="flex items-center gap-3 p-3 border rounded-lg hover:bg-gray-50">
+          <span class="inline-flex h-9 w-9 items-center justify-center rounded-lg bg-indigo-100 text-indigo-700">
+            <i class="fa-solid fa-language"></i>
+          </span>
+          <div>
+            <div class="text-sm font-medium text-gray-800">Inglés</div>
+            <div class="text-xs text-gray-500">Gestión de área de Inglés</div>
+          </div>
+        </a>
+
+        <a routerLink="/vinculacion-practicas/inicio" class="flex items-center gap-3 p-3 border rounded-lg hover:bg-gray-50">
+          <span class="inline-flex h-9 w-9 items-center justify-center rounded-lg bg-amber-100 text-amber-700">
+            <i class="fa-solid fa-people-arrows"></i>
+          </span>
+          <div>
+            <div class="text-sm font-medium text-gray-800">Vinculación/Prácticas</div>
+            <div class="text-xs text-gray-500">Gestión de vinculación y prácticas</div>
+          </div>
+        </a>
+
+        <a routerLink="/secretaria/inicio" class="flex items-center gap-3 p-3 border rounded-lg hover:bg-gray-50">
+          <span class="inline-flex h-9 w-9 items-center justify-center rounded-lg bg-teal-100 text-teal-700">
+            <i class="fa-solid fa-file-pen"></i>
+          </span>
+          <div>
+            <div class="text-sm font-medium text-gray-800">Secretaría</div>
+            <div class="text-xs text-gray-500">Gestión de trámites y documentos</div>
+          </div>
+        </a>
+
+        <a routerLink="/tesoreria/inicio" class="flex items-center gap-3 p-3 border rounded-lg hover:bg-gray-50">
+          <span class="inline-flex h-9 w-9 items-center justify-center rounded-lg bg-yellow-100 text-yellow-700">
+            <i class="fa-solid fa-sack-dollar"></i>
+          </span>
+          <div>
+            <div class="text-sm font-medium text-gray-800">Tesorería</div>
+            <div class="text-xs text-gray-500">Pagos, comprobantes y estados</div>
+          </div>
+        </a>
+
+        <a routerLink="/vicerrector/inicio" class="flex items-center gap-3 p-3 border rounded-lg hover:bg-gray-50">
+          <span class="inline-flex h-9 w-9 items-center justify-center rounded-lg bg-slate-100 text-slate-700">
+            <i class="fa-solid fa-user-shield"></i>
+          </span>
+          <div>
+            <div class="text-sm font-medium text-gray-800">Vicerrector</div>
+            <div class="text-xs text-gray-500">Aprobaciones y reportes</div>
+          </div>
+        </a>
+      </div>
+    </div>
+  </div>
+
+  <!-- Actividad reciente -->
+  <div class="bg-white border border-gray-200 rounded-xl shadow-sm">
+    <div class="px-5 py-4 border-b text-sm font-semibold text-gray-700">Actividad reciente</div>
+    <div class="divide-y">
+      <ng-container *ngIf="(recentLoading$ | async); else recentList">
+        <div class="p-4">
+          <div class="h-4 w-48 bg-gray-200 rounded animate-pulse mb-2"></div>
+          <div class="h-3 w-full bg-gray-200 rounded animate-pulse"></div>
+        </div>
+        <div class="p-4">
+          <div class="h-4 w-40 bg-gray-200 rounded animate-pulse mb-2"></div>
+          <div class="h-3 w-full bg-gray-200 rounded animate-pulse"></div>
+        </div>
+      </ng-container>
+      <ng-template #recentList>
+        <ng-container *ngIf="(recent$ | async) as items; else noRecent">
+          <ng-container *ngFor="let n of items">
+            <div class="p-4 text-sm text-gray-700 flex items-start gap-3">
+              <i class="fa-solid fa-bell text-gray-400 mt-0.5"></i>
+              <div>
+                <div class="font-medium text-gray-800">{{ n.title }}</div>
+                <div class="text-gray-600" *ngIf="n.message">{{ n.message }}</div>
+                <div class="text-xs text-gray-500" *ngIf="n.created_at">{{ n.created_at | date:'short' }}</div>
+              </div>
+            </div>
+          </ng-container>
+        </ng-container>
+        <ng-template #noRecent>
+          <div class="p-4 text-sm text-gray-500">No hay actividad reciente.</div>
+        </ng-template>
+      </ng-template>
+    </div>
+  </div>
+</div>

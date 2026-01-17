@@ -2,7 +2,7 @@
   <!-- Header -->
   <div class="bg-white rounded-xl border border-gray-200 shadow-sm px-4 py-3">
     <h1 class="text-xl font-bold text-gray-800">Veedor</h1>
-    <p class="text-gray-600 text-sm">Estudiantes asignados para veeduría.</p>
+    <p class="text-gray-600 text-sm">Carreras asignadas para veeduría.</p>
   </div>
 
   <!-- Dashboard -->
@@ -11,17 +11,15 @@
       <table class="w-full text-sm text-left text-gray-500">
         <thead class="text-xs text-gray-700 uppercase bg-gray-50">
           <tr>
-            <th scope="col" class="px-6 py-3">Estudiante</th>
             <th scope="col" class="px-6 py-3">Carrera</th>
           </tr>
         </thead>
         <tbody>
-          <tr *ngFor="let e of estudiantesAsignados" class="bg-white border-b hover:bg-gray-50">
-            <th scope="row" class="px-6 py-4 font-medium text-gray-900 whitespace-nowrap">{{ e.nombre }}</th>
-            <td class="px-6 py-4">{{ e.carrera }}</td>
+          <tr *ngFor="let c of carrerasAsignadas" class="bg-white border-b hover:bg-gray-50">
+            <td class="px-6 py-4 font-medium text-gray-900 whitespace-nowrap">{{ c }}</td>
           </tr>
-          <tr *ngIf="estudiantesAsignados.length===0" class="bg-white">
-            <td colspan="2" class="px-6 py-6 text-center text-gray-500">No hay estudiantes asignados.</td>
+          <tr *ngIf="carrerasAsignadas.length===0" class="bg-white">
+            <td colspan="1" class="px-6 py-6 text-center text-gray-500">No hay carreras asignadas.</td>
           </tr>
         </tbody>
       </table>

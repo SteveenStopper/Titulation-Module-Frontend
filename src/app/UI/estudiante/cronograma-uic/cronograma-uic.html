@@ -1,43 +1,48 @@
 <section class="space-y-6">
-  <ng-container *ngIf="data; else noData">
+  <ng-container *ngIf="isLoading">
+    <div class="bg-white rounded-xl border border-gray-200 shadow-sm p-6 text-center text-blue-700">
+      Cargando cronograma...
+    </div>
+  </ng-container>
+  <ng-container *ngIf="!isLoading && data; else noData">
     <!-- Encabezado -->
     <div class="bg-white rounded-xl border border-gray-200 shadow-sm p-4 text-center">
-      <div class="text-sm text-gray-600 font-semibold tracking-wide">{{ data.titulo }}</div>
+      <div class="text-sm text-gray-700 font-semibold tracking-wide uppercase">{{ data.titulo }}</div>
       <div class="text-xs text-gray-500">{{ data.periodo }}</div>
-      <div class="mt-2 text-sm text-gray-700">{{ data.proyecto }}</div>
+      <div class="mt-1 text-sm text-gray-700 font-medium">{{ data.proyecto }}</div>
     </div>
 
     <!-- Tabla solo lectura -->
     <div class="bg-white rounded-xl border border-gray-200 shadow-sm p-4 overflow-x-auto">
-      <table class="min-w-full text-sm">
+      <table class="min-w-full text-sm border-collapse border border-black">
         <thead>
-          <tr class="bg-gray-50 text-gray-700">
-            <th class="p-2 text-left w-16">Nº</th>
-            <th class="p-2 text-left">Actividad / Descripción</th>
-            <th class="p-2 text-left">Responsable</th>
-            <th class="p-2 text-left w-72">Tiempo</th>
+          <tr class="bg-gray-800 text-white">
+            <th class="p-2 text-left w-16 font-medium border border-black">Nº</th>
+            <th class="p-2 text-left font-medium border border-black">ACTIVIDADES/DESCRIPCIÓN</th>
+            <th class="p-2 text-left font-medium border border-black">Responsable</th>
+            <th class="p-2 text-left w-64 font-medium border border-black">Tiempo</th>
           </tr>
         </thead>
         <tbody>
-          <tr *ngFor="let fila of data?.filas" class="border-t align-top">
-            <td class="p-2">{{ fila.nro }}</td>
-            <td class="p-2 whitespace-pre-line">{{ fila.actividad }}</td>
-            <td class="p-2">{{ fila.responsable }}</td>
-            <td class="p-2">
-              <ng-container *ngIf="fila.fechaInicio && fila.fechaFin; else singleDate">
+          <tr *ngFor="let fila of data?.filas; let i = index" class="align-top">
+            <td class="p-2 border border-black">{{ fila.nro }}</td>
+            <td class="p-2 whitespace-pre-line border border-black">{{ fila.actividad }}</td>
+            <td class="p-2 whitespace-pre-line border border-black">{{ fila.responsable }}</td>
+            <td class="p-2 border border-black">
+              <ng-container *ngIf="(fila.fechaInicio && fila.fechaFin) && !isSoloDel(fila.nro || (i + 1)); else singleDate">
                 <div>
-                  <div class="text-xs text-gray-500">Del</div>
-                  <div>{{ fila.fechaInicio | date:'dd/MM/yyyy' }}</div>
+                  <div class="text-xs text-gray-300">Del</div>
+                  <div class="text-gray-800">{{ fila.fechaInicio | date:'dd/MM/yyyy' }}</div>
                 </div>
                 <div class="mt-1">
-                  <div class="text-xs text-gray-500">Al</div>
-                  <div>{{ fila.fechaFin | date:'dd/MM/yyyy' }}</div>
+                  <div class="text-xs text-gray-300">Al</div>
+                  <div class="text-gray-800">{{ fila.fechaFin | date:'dd/MM/yyyy' }}</div>
                 </div>
               </ng-container>
               <ng-template #singleDate>
                 <div *ngIf="fila.fechaInicio || fila.fechaFin">
-                  <div class="text-xs text-gray-500">Fecha</div>
-                  <div>{{ (fila.fechaInicio || fila.fechaFin) | date:'dd/MM/yyyy' }}</div>
+                  <div class="text-xs text-gray-300">{{ isSoloDel(fila.nro || (i + 1)) ? 'Del' : 'Fecha' }}</div>
+                  <div class="text-gray-800">{{ (fila.fechaInicio || fila.fechaFin) | date:'dd/MM/yyyy' }}</div>
                 </div>
               </ng-template>
             </td>

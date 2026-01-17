@@ -2,6 +2,7 @@ import { Component, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router, ActivatedRoute, NavigationEnd, RouterModule } from '@angular/router';
 import { FormsModule } from '@angular/forms';
+import { HttpClient } from '@angular/common/http';
 
 @Component({
   selector: 'app-docente-complexivo',
@@ -21,13 +22,12 @@ export class DocenteComplexivo {
     estudiantesAsignados: number;
     publicado: boolean;
     asignadoADocente: boolean;
-  }> = [
-    { id: 'm1', nombre: 'Matemática Aplicada', codigo: 'MAT-201', periodo: '2025-1', estudiantesAsignados: 32, publicado: true, asignadoADocente: true },
-    { id: 'm2', nombre: 'Programación Avanzada', codigo: 'INF-305', periodo: '2025-1', estudiantesAsignados: 28, publicado: true, asignadoADocente: true },
-    { id: 'm3', nombre: 'Metodología de la Investigación', codigo: 'INV-210', periodo: '2025-1', estudiantesAsignados: 0, publicado: false, asignadoADocente: true },
-  ];
+  }> = [];
 
-  constructor(private router: Router, private route: ActivatedRoute, private cdr: ChangeDetectorRef) {
+  constructor(private router: Router, private route: ActivatedRoute, private cdr: ChangeDetectorRef, private http: HttpClient) {
+    // cargar mis materias desde backend
+    this.http.get<Array<{ id: string; nombre: string; codigo: string; periodo: string; estudiantesAsignados: number; publicado: boolean; asignadoADocente: boolean }>>('/api/docente/complexivo/mis-materias')
+      .subscribe(list => { this.materias = Array.isArray(list) ? list : []; });
     const initialId = this.route.snapshot.queryParamMap.get('materiaId');
     if (initialId) {
       this.seleccionMateriaId = initialId;
@@ -81,35 +81,53 @@ export class DocenteComplexivo {
   }
 
   private cargarEstudiantesDeMateria(materiaId: string) {
-    // MOCK: lista según materia
-    const base: Record<string, Array<{ id: string; nombre: string }>> = {
-      m1: [
-        { id: 'e1', nombre: 'Ana Torres' },
-        { id: 'e2', nombre: 'Luis García' },
-        { id: 'e3', nombre: 'Sofía Ramírez' },
-      ],
-      m2: [
-        { id: 'e4', nombre: 'Pedro López' },
-        { id: 'e5', nombre: 'María León' },
-      ],
-      m3: [],
-    };
-    const lista = base[materiaId] ?? [];
-    this.estudiantesMateria = lista.map(x => ({ ...x, presente: false }));
-    this.attendanceHistory = this.loadHistory(materiaId);
+    // Estudiantes asignados (aprox. por historial) desde backend
+    this.http.get<Array<{ id: string; nombre: string }>>(`/api/docente/complexivo/materias/${materiaId}/estudiantes`)
+      .subscribe(list => {
+        const alumnos = Array.isArray(list) ? list : [];
+        // Cargar asistencia del día de hoy
+        this.http.get<Array<{ id: string; nombre: string; presente: boolean }>>(`/api/docente/complexivo/materias/${materiaId}/asistencia`, { params: { fecha: this.fechaHoy } })
+          .subscribe(hoy => {
+            const mapHoy = new Map((hoy || []).map(x => [x.id, x.presente]));
+            this.estudiantesMateria = alumnos.map(a => ({ id: a.id, nombre: a.nombre, presente: !!mapHoy.get(a.id) }));
+          }, _ => {
+            this.estudiantesMateria = alumnos.map(a => ({ id: a.id, nombre: a.nombre, presente: false }));
+          });
+        // Cargar historial de fechas y por cada una su asistencia
+        this.http.get<string[]>(`/api/docente/complexivo/materias/${materiaId}/asistencia/fechas`).subscribe(fechas => {
+          const dates = (fechas || []).filter(f => f !== this.fechaHoy);
+          const history: Array<{ date: string; items: Array<{ id: string; nombre: string; presente: boolean }> }> = [];
+          let pending = dates.length;
+          if (pending === 0) { this.attendanceHistory = []; return; }
+          for (const d of dates) {
+            this.http.get<Array<{ id: string; nombre: string; presente: boolean }>>(`/api/docente/complexivo/materias/${materiaId}/asistencia`, { params: { fecha: d } })
+              .subscribe(items => {
+                history.push({ date: d, items: Array.isArray(items) ? items : [] });
+              }, _ => {
+                history.push({ date: d, items: [] });
+              }).add(() => {
+                pending -= 1;
+                if (pending === 0) {
+                  history.sort((a,b)=> b.date.localeCompare(a.date));
+                  this.attendanceHistory = history;
+                }
+              });
+          }
+        });
+      });
   }
 
   guardarAsistencia() {
-    const presentes = this.estudiantesMateria.filter(x => x.presente).map(x => x.nombre);
     if (!this.seleccionMateriaId) return;
-    const record = { date: this.fechaHoy, items: this.estudiantesMateria.map(x => ({ id: x.id, nombre: x.nombre, presente: x.presente })) };
-    const history = this.loadHistory(this.seleccionMateriaId);
-    const idx = history.findIndex(h => h.date === this.fechaHoy);
-    if (idx >= 0) history[idx] = record; else history.push(record);
-    history.sort((a, b) => b.date.localeCompare(a.date));
-    this.saveHistory(this.seleccionMateriaId, history);
-    this.attendanceHistory = history;
-    alert(`Asistencia guardada para ${this.materiaSeleccionada?.nombre || ''} - ${this.fechaHoy}\nPresentes: ${presentes.join(', ') || 'Ninguno'}`);
+    const payload = { fecha: this.fechaHoy, items: this.estudiantesMateria.map(x => ({ id: x.id, presente: x.presente })) };
+    this.http.put(`/api/docente/complexivo/materias/${this.seleccionMateriaId}/asistencia`, payload)
+      .subscribe(() => {
+        // refrescar historial (añadir/actualizar fecha de hoy en la parte superior)
+        const record = { date: this.fechaHoy, items: this.estudiantesMateria.map(x => ({ id: x.id, nombre: x.nombre, presente: x.presente })) };
+        const history = this.attendanceHistory.filter(h => h.date !== this.fechaHoy);
+        this.attendanceHistory = [record, ...history];
+        alert('Asistencia guardada.');
+      }, () => alert('No se pudo guardar asistencia.'));
   }
 
   exportarAsistenciaPdf() {
@@ -127,19 +145,5 @@ export class DocenteComplexivo {
     win.print();
   }
 
-  private keyFor(materiaId: string) { return `asistencia_${materiaId}`; }
-  private loadHistory(materiaId: string) {
-    try {
-      const raw = localStorage.getItem(this.keyFor(materiaId));
-      if (!raw) return [] as Array<{ date: string; items: Array<{ id: string; nombre: string; presente: boolean }> }>;
-      const parsed = JSON.parse(raw);
-      if (Array.isArray(parsed)) return parsed;
-      return [];
-    } catch {
-      return [];
-    }
-  }
-  private saveHistory(materiaId: string, history: Array<{ date: string; items: Array<{ id: string; nombre: string; presente: boolean }> }>) {
-    localStorage.setItem(this.keyFor(materiaId), JSON.stringify(history));
-  }
+  // Persistencia de historial ahora desde backend (métodos locales eliminados)
 }

@@ -45,6 +45,18 @@
             </button>
             <ul *ngIf="comisionOpen" class="mt-1 ms-8 space-y-1">
               <li>
+                <a routerLink="/coordinador/comision/asignar-tutor" routerLinkActive="text-blue-700" class="flex items-center p-2 text-gray-600 rounded hover:bg-gray-50">
+                  <i class="fa-solid fa-user-tie me-2"></i>
+                  <span>Asignar tutor UIC</span>
+                </a>
+              </li>
+              <li>
+                <a routerLink="/coordinador/comision/asignar-lector" routerLinkActive="text-blue-700" class="flex items-center p-2 text-gray-600 rounded hover:bg-gray-50">
+                  <i class="fa-solid fa-book-open-reader me-2"></i>
+                  <span>Asignar lector UIC</span>
+                </a>
+              </li>
+              <li>
                 <a routerLink="/coordinador/comision/tribunal-evaluador" routerLinkActive="text-blue-700" class="flex items-center p-2 text-gray-600 rounded hover:bg-gray-50">
                   <i class="fa-solid fa-scale-balanced me-2"></i>
                   <span>Asignar tribunal evaluador UIC</span>

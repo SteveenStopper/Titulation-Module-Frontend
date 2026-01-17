@@ -19,19 +19,14 @@ export class SecretariaLayout implements OnInit {
   isAdmin = false;
   // Período activo global
   activePeriod: string | null = null;
-  periodOptions: string[] = [
-    'PERIODO SEPTIEMBRE 2025 – DICIEMBRE 2025',
-    'PERIODO ENERO 2026 – ABRIL 2026',
-    'PERIODO MAYO 2026 – AGOSTO 2026'
-  ];
+  periodOptions: string[] = [];
+  // Loading flags
+  get periodLoading$() { return this.periodSvc.loadingActive$; }
+  get periodListLoading$() { return this.periodSvc.loadingList$; }
 
   get userInitials(): string {
-    return this.userName
-      .split(' ')
-      .map(name => name[0])
-      .join('')
-      .toUpperCase()
-      .substring(0, 2);
+    const parts = this.userName.split(' ').filter(Boolean);
+    return (parts[0]?.[0] || '').concat(parts[1]?.[0] || '').toUpperCase() || 'S';
   }
 
   constructor(
@@ -41,7 +36,9 @@ export class SecretariaLayout implements OnInit {
   ) {
     const u = this.authService.currentUserValue;
     if (u) {
-      this.isAdmin = this.authService.hasRole('admin');
+      this.userName = `${u.firstname} ${u.lastname}`;
+      this.userRole = this.mapRole(u.roles[0]);
+      this.isAdmin = this.authService.hasRole('Administrador');
     }
   }
 
@@ -49,13 +46,21 @@ export class SecretariaLayout implements OnInit {
     // Inicializar datos del usuario
     this.authService.currentUser$.subscribe(user => {
       if (user) {
-        this.userName = user.name || 'Secretaría';
-        this.userRole = 'Secretaría';
+        this.userName = `${user.firstname} ${user.lastname}`;
+        this.userRole = this.mapRole(user.roles[0]);
+      } else {
+        this.userName = 'Secretaría';
+        this.userRole = 'Invitado';
       }
     });
     // Sincronizar período activo global
     this.activePeriod = this.periodSvc.getActivePeriod();
     this.periodSvc.activePeriod$.subscribe(p => this.activePeriod = p);
+    this.periodSvc.fetchAndSetFromBackend().subscribe();
+    // Cargar periodos desde backend
+    this.periodSvc.listAll().subscribe(list => {
+      this.periodOptions = (list || []).map(p => p.name);
+    });
   }
 
   toggleProfile() {
@@ -63,10 +68,25 @@ export class SecretariaLayout implements OnInit {
   }
 
   logout() {
+    this.isProfileOpen = false;
     this.authService.logout();
   }
 
   onChangePeriod(p: string) {
     this.periodSvc.setActivePeriod(p);
+  }
+
+  private mapRole(role: string): string {
+    if (!role) return 'Secretaría';
+    const roleMap: {[k:string]: string} = {
+      'Administrador': 'Administrador',
+      'Estudiante': 'Estudiante',
+      'Secretaria': 'Secretaría',
+      'Tesoreria': 'Tesorería',
+      'Coordinador': 'Coordinador',
+      'Docente': 'Docente',
+      'Vicerrector': 'Vicerrector'
+    };
+    return roleMap[role] || 'Secretaría';
   }
 }
