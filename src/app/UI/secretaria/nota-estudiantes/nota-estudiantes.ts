@@ -56,6 +56,10 @@ export class NotaEstudiantes {
     );
   }
 
+  get mostrarS5(): boolean {
+    return this.filtered.some(e => typeof (e as any).s5 === 'number');
+  }
+
   private semestresDe(e: any): number {
     return this.semestresPorCarrera[e.carrera] || 4;
   }
@@ -141,6 +145,19 @@ export class NotaEstudiantes {
         this.toast.success('Aprobado correctamente');
       },
       error: (err) => this.toast.error(err?.error?.message || 'No se pudo aprobar')
+    });
+  }
+
+  reconsiderar(estudiante_id: number) {
+    const e = this.items.find(x => x.estudiante_id === estudiante_id);
+    if (!e) return;
+    if ((e as any).estado !== 'rechazado') return;
+    this.secretaria.reconsiderar(estudiante_id).subscribe({
+      next: () => {
+        (e as any).estado = 'pendiente';
+        this.toast.success('Refrescado');
+      },
+      error: (err) => this.toast.error(err?.error?.message || 'No se pudo refrescar')
     });
   }
 

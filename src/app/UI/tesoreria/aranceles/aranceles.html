@@ -53,8 +53,8 @@
                 <button (click)="rechazar(it)" [disabled]="!canApproveOrReject(it)" class="px-3 py-1.5 text-xs rounded-md bg-red-600 text-white hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed">
                   <i class="fa fa-xmark mr-1"></i> Rechazar
                 </button>
-                <button (click)="reconsiderar(it)" [disabled]="!canReconsider(it)" class="px-3 py-1.5 text-xs rounded-md bg-amber-500 text-white hover:bg-amber-600 disabled:opacity-50 disabled:cursor-not-allowed">
-                  <i class="fa fa-rotate-left mr-1"></i> Reconsiderar
+                <button (click)="reconsiderar(it)" [disabled]="!canReconsider(it)" class="w-8 h-8 inline-flex items-center justify-center rounded-md bg-amber-500 text-white hover:bg-amber-600 disabled:opacity-50 disabled:cursor-not-allowed" title="Refrescar">
+                  <i class="fa fa-rotate-right"></i>
                 </button>
                 <button (click)="generarCertificado(it)" [disabled]="!canGenerate(it)" class="px-3 py-1.5 text-xs rounded-md bg-indigo-600 text-white hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed">
                   <i class="fa fa-file-pdf mr-1"></i> Generar

@@ -6,7 +6,6 @@ import { TesoreriaService, TesoreriaResumenItem } from '../../../services/tesore
 import { saveBlobToFile } from '../../../core/download.util';
 import { NotificationsService } from '../../../services/notifications.service';
 import { DialogModule } from 'primeng/dialog';
-import { HttpClient } from '@angular/common/http';
 
 @Component({
   selector: 'app-aranceles',
@@ -18,7 +17,6 @@ import { HttpClient } from '@angular/common/http';
 export class Aranceles {
   // Filtros y estado
   search = '';
-  periodoId: number | null = null; // se carga automáticamente (período activo)
   loading = false;
   page = 1;
   pageSize = 20;
@@ -35,22 +33,8 @@ export class Aranceles {
     private tesoreria: TesoreriaService,
     private toast: ToastrService,
     private notifications: NotificationsService,
-    private http: HttpClient,
   ) {
-    this.loadPeriodoActivo();
     this.loadResumen();
-  }
-
-  private loadPeriodoActivo() {
-    this.http.get<any>('/api/settings/active-period').subscribe({
-      next: (p) => {
-        const id = Number(p?.id_academic_periods);
-        this.periodoId = Number.isFinite(id) ? id : null;
-      },
-      error: () => {
-        this.periodoId = null;
-      }
-    });
   }
 
   // Lista filtrada por texto
@@ -104,16 +88,17 @@ export class Aranceles {
       });
   }
 
-  private requirePeriodo(): number | null {
-    if (!this.periodoId || !Number.isFinite(this.periodoId)) {
-      this.toast.warning('Selecciona el período académico');
+  private requirePeriodoFromItem(it: TesoreriaResumenItem): number | null {
+    const periodo = Number((it as any).periodo_id);
+    if (!Number.isFinite(periodo)) {
+      this.toast.warning('No se pudo determinar el período');
       return null;
     }
-    return Number(this.periodoId);
+    return periodo;
   }
 
   aprobar(it: TesoreriaResumenItem) {
-    const periodo = this.requirePeriodo();
+    const periodo = this.requirePeriodoFromItem(it);
     if (periodo === null) return;
     if (!this.canApproveOrReject(it)) return;
     this.loading = true;
@@ -131,13 +116,15 @@ export class Aranceles {
   }
 
   confirmReject() {
-    const periodo = this.requirePeriodo();
-    if (periodo === null) return;
     if (!this.rejectTargetId) return;
     const obs = (this.rejectObs || '').trim();
     if (!obs) { this.toast.warning('La observación es obligatoria'); return; }
     this.loading = true;
     const estudiante_id = this.rejectTargetId;
+    const it = this.items.find(x => Number(x.estudiante_id) === Number(estudiante_id));
+    if (!it) { this.loading = false; this.toast.error('No se encontró el estudiante en la lista'); return; }
+    const periodo = this.requirePeriodoFromItem(it);
+    if (periodo === null) { this.loading = false; return; }
     this.tesoreria.rechazar(periodo, estudiante_id, obs)
       .subscribe({
         next: () => {
@@ -161,7 +148,7 @@ export class Aranceles {
   }
 
   reconsiderar(it: TesoreriaResumenItem) {
-    const periodo = this.requirePeriodo();
+    const periodo = this.requirePeriodoFromItem(it);
     if (periodo === null) return;
     if (!this.canReconsider(it)) return;
     this.loading = true;
@@ -179,7 +166,7 @@ export class Aranceles {
   }
 
   generarCertificado(it: TesoreriaResumenItem) {
-    const periodo = this.requirePeriodo();
+    const periodo = this.requirePeriodoFromItem(it);
     if (periodo === null) return;
     if (!this.canGenerate(it)) return;
     this.loading = true;
@@ -191,7 +178,7 @@ export class Aranceles {
   }
 
   descargarCertificado(it: TesoreriaResumenItem) {
-    const periodo = this.requirePeriodo();
+    const periodo = this.requirePeriodoFromItem(it);
     if (periodo === null) return;
     if (!this.canView(it)) return;
     this.loading = true;

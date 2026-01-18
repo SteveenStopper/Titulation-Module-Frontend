@@ -50,4 +50,10 @@ export class SecretariaService {
     if (periodo_id) body.periodo_id = periodo_id;
     return this.http.put<any>(`${this.base}/validaciones/reject`, body);
   }
+
+  reconsiderar(estudiante_id: number, periodo_id?: number) {
+    const body: any = { estudiante_id };
+    if (periodo_id) body.periodo_id = periodo_id;
+    return this.http.put<any>(`${this.base}/validaciones/reconsider`, body);
+  }
 }

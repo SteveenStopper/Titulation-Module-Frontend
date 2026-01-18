@@ -4,6 +4,8 @@ import { FormsModule } from '@angular/forms';
 import { ToastrService } from 'ngx-toastr';
 import { DocumentsService } from '../../../services/documents.service';
 import { MeService } from '../../../services/me.service';
+import { AuthService } from '../../../services/auth.service';
+import { VouchersService } from '../../../services/vouchers.service';
 
 @Component({
   selector: 'app-matricula',
@@ -59,7 +61,13 @@ export class Matricula {
       && !this.loading
     );
   }
-  constructor(private toast: ToastrService, private documents: DocumentsService, private me: MeService) {}
+  constructor(
+    private toast: ToastrService,
+    private documents: DocumentsService,
+    private me: MeService,
+    private auth: AuthService,
+    private vouchers: VouchersService,
+  ) {}
 
   ngOnInit() {
     this.validationsLoading = true;
@@ -67,12 +75,35 @@ export class Matricula {
       next: (profile: any) => {
         const tes = String(profile?.validations?.tesoreria_aranceles?.estado || '').toLowerCase();
         const sec = String(profile?.validations?.secretaria_promedios?.estado || '').toLowerCase();
-        const ok = tes === 'approved' && sec === 'approved';
-        this.canProceed = ok;
-        this.requisitosHabilitados = ok;
-        this.validationsMsg = ok
-          ? ''
-          : 'Debes tener aprobados Arancel (Tesorería) y Notas (Secretaría) para continuar.';
+        const okBase = tes === 'approved' && sec === 'approved';
+
+        const user = this.auth.currentUserValue;
+        const id_user = user?.id_user;
+        if (!okBase || !id_user) {
+          this.canProceed = false;
+          this.requisitosHabilitados = false;
+          this.validationsMsg = okBase
+            ? 'No se pudo verificar tu usuario. Intenta nuevamente.'
+            : 'Debes tener aprobados Arancel (Tesorería) y Notas (Secretaría) para continuar.';
+          return;
+        }
+
+        this.vouchers.list({ id_user: Number(id_user), status: 'aprobado', page: 1, pageSize: 1 }).subscribe({
+          next: (res: any) => {
+            const data = Array.isArray(res?.data) ? res.data : (Array.isArray(res) ? res : []);
+            const pagosAprobados = data.length > 0;
+            this.canProceed = pagosAprobados;
+            this.requisitosHabilitados = pagosAprobados;
+            this.validationsMsg = pagosAprobados
+              ? ''
+              : 'Debes tener aprobados tus pagos para continuar a Matrícula.';
+          },
+          error: () => {
+            this.canProceed = false;
+            this.requisitosHabilitados = false;
+            this.validationsMsg = 'No se pudo verificar el estado de tus pagos. Intenta nuevamente.';
+          }
+        });
       },
       complete: () => { this.validationsLoading = false; },
       error: () => {

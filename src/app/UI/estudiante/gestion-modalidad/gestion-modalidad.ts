@@ -7,6 +7,7 @@ import { MeService } from '../../../services/me.service';
 import { ModalityService } from '../../../services/modality.service';
 import { ActivatedRoute } from '@angular/router';
 import { HttpClient, HttpClientModule } from '@angular/common/http';
+import { DocumentsService } from '../../../services/documents.service';
 
 @Component({
   selector: 'app-gestion-modalidad',
@@ -75,38 +76,41 @@ export class GestionModalidad {
     private modalitySvc: ModalityService,
     private route: ActivatedRoute,
     private http: HttpClient,
+    private documents: DocumentsService,
   ) {}
 
   ngOnInit() {
     const bypass = String(this.route.snapshot.queryParamMap.get('bypassValidations') || '').toLowerCase();
     this.bypassValidations = bypass === '1' || bypass === 'true' || bypass === 'yes';
 
-    // 1) Validaciones (Arancel + Notas) => gating
+    // 1) Validaciones (Requisitos aprobados) => gating
     if (this.bypassValidations) {
       this.validationsLoading = false;
       this.canChooseModality = true;
       this.validationsMsg = '';
     } else {
       this.validationsLoading = true;
-      this.me.getProfile().subscribe({
-        next: (profile: any) => {
-          const tes = String(profile?.validations?.tesoreria_aranceles?.estado || '').toLowerCase();
-          const sec = String(profile?.validations?.secretaria_promedios?.estado || '').toLowerCase();
-          const ok = tes === 'approved' && sec === 'approved';
-          this.canChooseModality = ok;
-          if (!ok) {
-            this.validationsMsg = 'Debes tener aprobados Arancel (Tesorería) y Notas (Secretaría) para elegir tu modalidad.';
-          } else {
-            this.validationsMsg = '';
-          }
+      this.documents.list({ category: 'matricula', page: 1, pageSize: 200 }).subscribe({
+        next: (res: any) => {
+          const raw = Array.isArray(res?.data) ? res.data : (Array.isArray(res) ? res : []);
+          const docs = raw.map((d: any) => ({
+            ...d,
+            estado: d?.status ?? d?.estado ?? 'en_revision',
+          }));
+
+          const hasAny = docs.length > 0;
+          const allApproved = hasAny && docs.every((d: any) => String(d.estado || '').toLowerCase() === 'aprobado');
+
+          this.canChooseModality = allApproved;
+          this.validationsMsg = allApproved
+            ? ''
+            : 'Debes tener aprobados los requisitos de Matrícula para elegir tu modalidad.';
+        },
+        error: () => {
+          this.canChooseModality = false;
+          this.validationsMsg = 'No se pudo verificar tus requisitos. Intenta nuevamente.';
         },
         complete: () => { this.validationsLoading = false; },
-        error: () => {
-          this.validationsLoading = false;
-          // En caso de error de perfil, por seguridad no permitir continuar
-          this.canChooseModality = false;
-          this.validationsMsg = 'No se pudo verificar tus validaciones. Intenta nuevamente.';
-        }
       });
     }
 
