@@ -17,6 +17,7 @@ export interface Avance {
   p2: Parcial;
   p3: Parcial;
   publicado: boolean;
+  documentoId?: number | null;
 }
 
 export interface Alumno {
@@ -31,6 +32,7 @@ export interface FilaAvance {
   p2: Parcial;
   p3: Parcial;
   publicado: boolean;
+  documentoId?: number | null;
 }
 
 @Injectable({ providedIn: 'root' })
@@ -82,6 +84,7 @@ export class TutorAvanceService {
           p2: { ...a.p2 },
           p3: { ...a.p3 },
           publicado: a.publicado,
+          documentoId: a.documentoId ?? null,
         };
       });
       combined$.next(lista);
@@ -125,6 +128,18 @@ export class TutorAvanceService {
           const publicado = !!(p1.nota != null && p2.nota != null && p3.nota != null);
           const updated = store.avances$.value.map(a => a.alumnoId === al.id ? { ...a, p1, p2, p3, publicado } : a);
           store.avances$.next(updated);
+        });
+
+        this.http.get<any>(`/api/docente/uic/informe/${al.id}`).subscribe({
+          next: (resp) => {
+            const documentoId = Number.isFinite(Number(resp?.documento_id)) ? Number(resp.documento_id) : null;
+            const updated = store.avances$.value.map(a => a.alumnoId === al.id ? { ...a, documentoId } : a);
+            store.avances$.next(updated);
+          },
+          error: () => {
+            const updated = store.avances$.value.map(a => a.alumnoId === al.id ? { ...a, documentoId: null } : a);
+            store.avances$.next(updated);
+          }
         });
       }
     });

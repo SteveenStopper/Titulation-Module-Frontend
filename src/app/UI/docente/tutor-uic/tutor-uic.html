@@ -20,6 +20,7 @@
             <th class="px-3 py-2 text-left">P2</th>
             <th class="px-3 py-2 text-left">P3</th>
             <th class="px-3 py-2 text-left">Promedio Final</th>
+            <th class="px-3 py-2 text-left">Documento</th>
           </tr>
         </thead>
         <tbody class="divide-y divide-gray-100">
@@ -76,6 +77,14 @@
                     }">
                 {{ promedio(e) === null ? '-' : promedio(e) }} / 10
               </span>
+            </td>
+
+            <td class="px-3 py-2">
+              <button type="button" (click)="verDocumento(e)"
+                      [disabled]="!e.documentoId"
+                      class="px-3 py-1 rounded bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-60 text-xs">
+                Ver documento
+              </button>
             </td>
             
           </tr>

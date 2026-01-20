@@ -100,4 +100,10 @@ export class TutorUicDocente {
       doPublish();
     }
   }
+
+  verDocumento(e: FilaAvance) {
+    if (!e?.alumnoId) return;
+    if (!Number.isFinite(Number(e?.documentoId))) return;
+    window.open(`/api/docente/uic/informe/${e.alumnoId}/download`, '_blank');
+  }
 }
