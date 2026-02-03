@@ -30,7 +30,12 @@ export class ComisionAsignarLectorComponent implements OnInit {
   message: string | null = null;
   error: string | null = null;
 
-  constructor(private http: HttpClient) {}
+  constructor(private http: HttpClient) { }
+
+  private toValidId(v: unknown): number | null {
+    const n = Number(v);
+    return Number.isFinite(n) && n > 0 ? n : null;
+  }
 
   ngOnInit(): void {
     this.cargarPeriodos();
@@ -99,26 +104,30 @@ export class ComisionAsignarLectorComponent implements OnInit {
   }
 
   cargarEstudiantes() {
-    if (!Number.isFinite(Number(this.periodoId))) {
+    const periodoId = this.toValidId(this.periodoId);
+    if (!periodoId) {
       this.estudiantes = [];
       return;
     }
     const params: any = {};
-    if (Number.isFinite(Number(this.carreraId))) params.careerId = this.carreraId;
-    if (Number.isFinite(Number(this.periodoId))) params.academicPeriodId = this.periodoId;
+    const carreraId = this.toValidId(this.carreraId);
+    if (carreraId) params.careerId = carreraId;
+    params.academicPeriodId = periodoId;
     this.http.get<any[]>('/api/uic/admin/estudiantes-sin-lector', { params }).subscribe(rows => {
       this.estudiantes = Array.isArray(rows) ? rows : [];
     });
   }
 
   cargarAsignados() {
-    if (!Number.isFinite(Number(this.periodoId))) {
+    const periodoId = this.toValidId(this.periodoId);
+    if (!periodoId) {
       this.asignados = [];
       return;
     }
     const params: any = {};
-    if (Number.isFinite(Number(this.carreraId))) params.careerId = this.carreraId;
-    if (Number.isFinite(Number(this.periodoId))) params.academicPeriodId = this.periodoId;
+    const carreraId = this.toValidId(this.carreraId);
+    if (carreraId) params.careerId = carreraId;
+    params.academicPeriodId = periodoId;
     this.http.get<any[]>('/api/uic/admin/asignaciones/lector', { params }).subscribe(rows => {
       this.asignados = Array.isArray(rows) ? rows : [];
     });
@@ -140,7 +149,8 @@ export class ComisionAsignarLectorComponent implements OnInit {
 
   asignar() {
     this.message = null; this.error = null;
-    if (!Number.isFinite(Number(this.periodoId))) {
+    const periodoId = this.toValidId(this.periodoId);
+    if (!periodoId) {
       this.error = 'Seleccione un período.';
       return;
     }
@@ -149,7 +159,7 @@ export class ComisionAsignarLectorComponent implements OnInit {
     if (!Number.isFinite(id_user_student) || !Number.isFinite(lector_usuario_id)) { this.error = 'Ingrese IDs válidos.'; return; }
     this.loading = true;
     const body: any = { id_user_student, lector_usuario_id };
-    if (Number.isFinite(Number(this.periodoId))) body.academicPeriodId = this.periodoId;
+    body.academicPeriodId = periodoId;
     this.http.put('/api/uic/admin/asignaciones/lector', body).subscribe({
       next: () => { this.message = 'Lector asignado correctamente'; this.cargarEstudiantes(); this.cargarAsignados(); },
       error: (err) => { this.error = err?.error?.message || 'No se pudo asignar el lector'; },

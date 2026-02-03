@@ -1,6 +1,7 @@
 import { Component } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { RouterModule } from '@angular/router';
+import { Router, RouterModule } from '@angular/router';
+import { AuthService } from '../../services/auth.service';
 
 @Component({
   selector: 'app-unauthorized',
@@ -8,4 +9,15 @@ import { RouterModule } from '@angular/router';
   imports: [CommonModule, RouterModule],
   templateUrl: './unauthorized.html',
 })
-export class UnauthorizedComponent {}
+export class UnauthorizedComponent {
+  constructor(
+    private authService: AuthService,
+    private router: Router
+  ) {}
+
+  goToLogin(): void {
+    this.authService.logout(false);
+    this.router.navigateByUrl('/login', { replaceUrl: true });
+  }
+}
+

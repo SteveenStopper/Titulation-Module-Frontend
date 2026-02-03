@@ -19,6 +19,7 @@ export class DocenteComplexivo {
     nombre: string;
     codigo: string;
     periodo: string;
+    carrera: string | null;
     estudiantesAsignados: number;
     publicado: boolean;
     asignadoADocente: boolean;
@@ -26,7 +27,7 @@ export class DocenteComplexivo {
 
   constructor(private router: Router, private route: ActivatedRoute, private cdr: ChangeDetectorRef, private http: HttpClient) {
     // cargar mis materias desde backend
-    this.http.get<Array<{ id: string; nombre: string; codigo: string; periodo: string; estudiantesAsignados: number; publicado: boolean; asignadoADocente: boolean }>>('/api/docente/complexivo/mis-materias')
+    this.http.get<Array<{ id: string; nombre: string; codigo: string; periodo: string; carrera: string | null; estudiantesAsignados: number; publicado: boolean; asignadoADocente: boolean }>>('/api/docente/complexivo/mis-materias')
       .subscribe(list => { this.materias = Array.isArray(list) ? list : []; });
     const initialId = this.route.snapshot.queryParamMap.get('materiaId');
     if (initialId) {
@@ -108,7 +109,7 @@ export class DocenteComplexivo {
               }).add(() => {
                 pending -= 1;
                 if (pending === 0) {
-                  history.sort((a,b)=> b.date.localeCompare(a.date));
+                  history.sort((a, b) => b.date.localeCompare(a.date));
                   this.attendanceHistory = history;
                 }
               });

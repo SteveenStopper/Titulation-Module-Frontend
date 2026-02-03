@@ -15,12 +15,12 @@ import { NotificationsService } from '../../../services/notifications.service';
 })
 export class Pagos {
   // Tabs
-  tabs: Array<{ key: 'certificados'|'titulacion'|'acta'; label: string }> = [
+  tabs: Array<{ key: 'certificados' | 'titulacion' | 'acta'; label: string }> = [
     { key: 'certificados', label: 'Certificados' },
     { key: 'titulacion', label: 'Titulación' },
     { key: 'acta', label: 'Acta de Grado' }
   ];
-  activeTab: 'certificados'|'titulacion'|'acta' = 'certificados';
+  activeTab: 'certificados' | 'titulacion' | 'acta' = 'certificados';
 
   // Estado
   loading = false;
@@ -31,7 +31,7 @@ export class Pagos {
   total = 0;
   search = '';
 
-  setTab(tab: 'certificados'|'titulacion'|'acta') {
+  setTab(tab: 'certificados' | 'titulacion' | 'acta') {
     this.activeTab = tab;
     this.load();
   }
@@ -54,7 +54,7 @@ export class Pagos {
     this.load();
   }
 
-  private tabToVType(): 'pago_certificado'|'pago_titulacion'|'pago_acta_grado' {
+  private tabToVType(): 'pago_certificado' | 'pago_titulacion' | 'pago_acta_grado' {
     if (this.activeTab === 'titulacion') return 'pago_titulacion';
     if (this.activeTab === 'acta') return 'pago_acta_grado';
     return 'pago_certificado';
@@ -62,13 +62,17 @@ export class Pagos {
 
   load() {
     this.loading = true;
-    this.vouchers.list({ v_type: this.tabToVType(), status: 'en_revision', page: this.page, pageSize: this.pageSize }).subscribe({
+    this.vouchers.list({ v_type: this.tabToVType(), page: this.page, pageSize: this.pageSize }).subscribe({
       next: (res: any) => {
         const rows = Array.isArray(res?.data) ? res.data : (Array.isArray(res) ? res : []);
         // Compat: asegurar que cada item tenga 'id' poblado para el botón Ver actual
         this.items = rows.map((it: any) => ({
           ...it,
-          id: Number(it?.id ?? it?.voucher_id ?? it?.id_voucher ?? it?.documento_id ?? 0) || undefined,
+          estudiante: it?.estudiante || (it?.users ? `${String(it.users.firstname || '').trim()} ${String(it.users.lastname || '').trim()}`.trim() : undefined),
+          carrera: it?.carrera || it?.career || undefined,
+          referencia: it?.referencia || it?.reference || undefined,
+          monto: it?.monto ?? it?.amount,
+          id: Number(it?.id ?? it?.voucher_id ?? it?.id_voucher ?? it?.id_voucher ?? it?.documento_id ?? 0) || undefined,
         }));
         const pag = res?.pagination || {};
         this.total = Number(pag.total || this.items.length || 0);
@@ -82,7 +86,7 @@ export class Pagos {
   private openPreviewFromBlob(blob: Blob, filename: string, title?: string) {
     this.previewTitle = title || 'Comprobante';
     const lower = (filename || '').toLowerCase();
-    let type: 'image'|'pdf'|'other' = 'other';
+    let type: 'image' | 'pdf' | 'other' = 'other';
     if (/(\.png|\.jpg|\.jpeg|\.webp|\.gif)$/.test(lower)) type = 'image';
     else if (lower.endsWith('.pdf')) type = 'pdf';
     this.previewType = type;
@@ -94,9 +98,9 @@ export class Pagos {
       const ext = lower.split('.').pop() || '';
       const mime = ext === 'png' ? 'image/png'
         : (ext === 'jpg' || ext === 'jpeg') ? 'image/jpeg'
-        : ext === 'webp' ? 'image/webp'
-        : ext === 'gif' ? 'image/gif'
-        : 'image/*';
+          : ext === 'webp' ? 'image/webp'
+            : ext === 'gif' ? 'image/gif'
+              : 'image/*';
       blobForView = new Blob([blob], { type: mime });
     }
     // Reset zoom on each open
@@ -130,7 +134,7 @@ export class Pagos {
   cerrarPreview() {
     this.isPreviewOpen = false;
     if (this.previewUrl) {
-      try { window.URL.revokeObjectURL(this.previewUrl); } catch {}
+      try { window.URL.revokeObjectURL(this.previewUrl); } catch { }
     }
     this.previewUrl = null;
     this.previewSafeUrl = null;
@@ -145,9 +149,9 @@ export class Pagos {
   zoomReset() { this.zoomScale = 1; }
 
   // Toasts
-  toasts: Array<{ id: number; message: string; type: 'success'|'error' }>=[];
+  toasts: Array<{ id: number; message: string; type: 'success' | 'error' }> = [];
   private toastSeq = 1;
-  showToast(message: string, type: 'success'|'error' = 'success') {
+  showToast(message: string, type: 'success' | 'error' = 'success') {
     const id = this.toastSeq++;
     this.toasts.push({ id, message, type });
     setTimeout(() => this.toasts = this.toasts.filter(t => t.id !== id), 3000);
@@ -190,10 +194,11 @@ export class Pagos {
             message: 'Tu comprobante fue aprobado',
             entity_type: 'voucher',
             entity_id: Number(id),
-          }).subscribe({ complete: () => {} });
+          }).subscribe({ complete: () => { } });
         }
         this.toast.success('Aprobado');
-        this.items = this.items.filter(v => (v?.id ?? v?.voucher_id) !== id);
+        // Mantener la fila y actualizar estado
+        this.items = this.items.map(v => ((v?.id ?? v?.voucher_id) === id ? { ...v, status: 'aprobado', estado: 'aprobado' } : v));
       },
       error: (err) => this.toast.error(err?.error?.message || 'No se pudo aprobar'),
       complete: () => { this.actionLoading = false; }
@@ -230,10 +235,13 @@ export class Pagos {
             message: obs,
             entity_type: 'voucher',
             entity_id: Number(id),
-          }).subscribe({ complete: () => {} });
+          }).subscribe({ complete: () => { } });
         }
         this.toast.info('Rechazado');
-        this.items = this.items.filter(v => (v?.id ?? v?.voucher_id) !== id);
+        // Mantener la fila y actualizar estado/observación
+        this.items = this.items.map(v => ((v?.id ?? v?.voucher_id) === id
+          ? { ...v, status: 'rechazado', estado: 'rechazado', observation: obs, observacion: obs }
+          : v));
         this.isRejectOpen = false;
         this.rejectObs = '';
         this.rejectTarget = null;

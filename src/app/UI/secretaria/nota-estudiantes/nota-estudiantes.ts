@@ -60,8 +60,14 @@ export class NotaEstudiantes {
     return this.filtered.some(e => typeof (e as any).s5 === 'number');
   }
 
+  get mostrarS4(): boolean {
+    return this.filtered.some(e => typeof (e as any).s4 === 'number');
+  }
+
   private semestresDe(e: any): number {
-    return this.semestresPorCarrera[e.carrera] || 4;
+    const carrera = String(e?.carrera || '').trim();
+    if (carrera === 'TECNOLOGÍA EN EDUCACIÓN BÁSICA') return 4;
+    return 3;
   }
 
   private valoresDe(e: any): Array<number | null> {
@@ -71,6 +77,9 @@ export class NotaEstudiantes {
   }
 
   promedio(e: any) {
+    if (typeof e?.promedio_general === 'number') {
+      return Math.round(e.promedio_general * 100) / 100;
+    }
     const vals = this.valoresDe(e).filter((v: number | null) => typeof v === 'number') as number[];
     if (!vals.length) return 0;
     return Math.round((vals.reduce((a, b) => a + b, 0) / vals.length) * 100) / 100;
@@ -86,6 +95,20 @@ export class NotaEstudiantes {
 
   elegible(e: any) {
     return !this.sinNotas(e) && !this.tieneBajas(e);
+  }
+
+  canReconsider(e: any): boolean {
+    return (e as any)?.estado === 'rechazado';
+  }
+
+  canGenerate(e: any): boolean {
+    const docId = Number((e as any)?.certificado_doc_id);
+    return (e as any)?.estado === 'aprobado' && !(Number.isFinite(docId) && docId > 0);
+  }
+
+  canView(e: any): boolean {
+    const docId = Number((e as any)?.certificado_doc_id);
+    return (e as any)?.estado === 'aprobado' && Number.isFinite(docId) && docId > 0;
   }
 
   constructor(
@@ -116,22 +139,55 @@ export class NotaEstudiantes {
     const e = this.items.find(x => x.estudiante_id === estudiante_id);
     if (!e) return;
     if (!this.elegible(e)) { this.toast.warning('El estudiante no cumple los requisitos'); return; }
+    if (!this.canGenerate(e)) { this.toast.info('El certificado ya fue generado'); return; }
     this.secretaria.generarCertNotas(estudiante_id).subscribe({
       next: (res: any) => {
         const docId = res?.documento_id || res?.documentId || res?.id || res?.document?.id || res?.certificado_doc_id;
         if (!docId) { this.toast.info('Certificado generado, pero no se obtuvo el documento'); return; }
+        (e as any).certificado_doc_id = Number(docId);
         this.documents.download(docId).subscribe(blob => {
           const url = URL.createObjectURL(blob);
           const a = document.createElement('a');
           a.href = url;
-          a.download = `certificado_notas_${(e.nombre||'estudiante').replace(/\s+/g,'_')}.pdf`;
+          a.download = `certificado_notas_${(e.nombre || 'estudiante').replace(/\s+/g, '_')}.pdf`;
+          a.style.display = 'none';
+          document.body.appendChild(a);
           a.click();
-          URL.revokeObjectURL(url);
+          setTimeout(() => {
+            try { URL.revokeObjectURL(url); } catch (_) { }
+            try { document.body.removeChild(a); } catch (_) { }
+          }, 1500);
         });
       },
       error: (err) => {
         this.toast.error(err?.error?.message || 'No se pudo generar el certificado');
       }
+    });
+  }
+
+  verCertificado(estudiante_id: number) {
+    const e = this.items.find(x => x.estudiante_id === estudiante_id);
+    if (!e) return;
+    const docId = Number((e as any).certificado_doc_id);
+    if (!Number.isFinite(docId) || docId <= 0) return;
+    this.documents.download(docId).subscribe({
+      next: (blob) => {
+        const url = URL.createObjectURL(blob);
+        // Abrir en nueva pestaña (ver) + permitir guardar manualmente
+        try { window.open(url, '_blank'); } catch (_) { /* ignore */ }
+        // Fallback: también disparar descarga
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `certificado_notas_${(e.nombre || 'estudiante').replace(/\s+/g, '_')}.pdf`;
+        a.style.display = 'none';
+        document.body.appendChild(a);
+        a.click();
+        setTimeout(() => {
+          try { URL.revokeObjectURL(url); } catch (_) { }
+          try { document.body.removeChild(a); } catch (_) { }
+        }, 1500);
+      },
+      error: (err) => this.toast.error(err?.error?.message || 'No se pudo descargar el certificado'),
     });
   }
 
@@ -151,13 +207,18 @@ export class NotaEstudiantes {
   reconsiderar(estudiante_id: number) {
     const e = this.items.find(x => x.estudiante_id === estudiante_id);
     if (!e) return;
-    if ((e as any).estado !== 'rechazado') return;
+    if (!this.canReconsider(e)) return;
+    this.loading = true;
     this.secretaria.reconsiderar(estudiante_id).subscribe({
       next: () => {
-        (e as any).estado = 'pendiente';
-        this.toast.success('Refrescado');
+        this.toast.success('Reactivado');
+        this.loading = false;
+        this.loadPromedios();
       },
-      error: (err) => this.toast.error(err?.error?.message || 'No se pudo refrescar')
+      error: (err) => {
+        this.loading = false;
+        this.toast.error(err?.error?.message || 'No se pudo reactivar');
+      }
     });
   }
 

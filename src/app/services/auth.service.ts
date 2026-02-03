@@ -62,7 +62,10 @@ export class AuthService {
   }
 
   isAuthenticated(): boolean {
-    return !!localStorage.getItem(this.TOKEN_KEY);
+    const token = localStorage.getItem(this.TOKEN_KEY);
+    if (!token) return false;
+    const user = this.getStoredUser();
+    return !!user;
   }
 
   hasRole(role: string): boolean {

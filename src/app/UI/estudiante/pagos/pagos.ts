@@ -163,23 +163,6 @@ export class Pagos {
     });
   }
 
-  eliminar(item: any) {
-    if (!this.canProceed) {
-      this.toastr.warning(this.validationsMsg || 'No puedes continuar aún.');
-      return;
-    }
-    const id = item?.id_voucher ?? item?.id ?? item?.voucher_id;
-    if (!id) return;
-    if (!confirm('¿Eliminar este comprobante?')) return;
-    this.vouchers.remove(Number(id)).subscribe({
-      next: () => {
-        this.toastr.success('Comprobante eliminado');
-        this.items = this.items.filter(v => (v?.id_voucher ?? v?.id ?? v?.voucher_id) !== id);
-      },
-      error: () => this.toastr.error('No se pudo eliminar el comprobante')
-    });
-  }
-
   labelTipo(t: string) {
     switch (t) {
       case 'pago_titulacion': return 'Titulación';

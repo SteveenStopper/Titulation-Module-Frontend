@@ -132,7 +132,7 @@ export class LoginComponent implements OnInit, OnDestroy {
           else if (roles.includes('Secretaria')) target = '/secretaria/inicio';
           else if (roles.includes('Vicerrector')) target = '/vicerrector/inicio';
           else if (roles.includes('Ingles')) target = '/ingles/inicio';
-          else if (roles.includes('Vinculacion_Practicas')) target = '/vinculacion_practicas/inicio';
+          else if (roles.includes('Vinculacion_Practicas')) target = '/vinculacion-practicas/inicio';
           else target = '/login';
         }
         this.router.navigateByUrl(target, { replaceUrl: true });

@@ -27,8 +27,8 @@ export class PeriodService {
   }
 
   // Persist active period to backend (also updates DB estado fields)
-  setActivePeriodBackend(id_academic_periods: number, name: string) {
-    return this.http.put('/api/settings/active-period', { id_academic_periods, name });
+  setActivePeriodBackend(id_academic_periods: number, name: string, external_period_id?: number) {
+    return this.http.put('/api/settings/active-period', { id_academic_periods, name, external_period_id });
   }
 
   // Update a period in backend
@@ -111,6 +111,11 @@ export class PeriodService {
         catchError((_err) => of([] as Array<{ id_academic_periods: number; name: string; date_start?: string|null; date_end?: string|null; status?: string }>)),
         finalize(() => this.loadingListSubject.next(false))
       );
+  }
+
+  // List academic periods from institute DB (for selection)
+  listInstitutePeriods() {
+    return this.http.get<Array<{ id: number; name: string; status?: string }>>('/api/settings/institute-periods');
   }
 
   // Limpiar manualmente el estado en memoria

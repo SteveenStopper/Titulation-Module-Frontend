@@ -35,15 +35,19 @@ export class Inicio {
   get isNotifOpen() { return this.panelNotificacionesAbierto; }
   toggleNotif() { this.panelNotificacionesAbierto = !this.panelNotificacionesAbierto; }
   marcarLeida(n: { id: number }) {
-    this.notificationsSvc.markRead(n.id).subscribe({ complete: () => {
-      const i = this.notifications.findIndex(x => x.id === n.id);
-      if (i >= 0) this.notifications[i].leida = true;
-    }});
+    this.notificationsSvc.markRead(n.id).subscribe({
+      complete: () => {
+        const i = this.notifications.findIndex(x => x.id === n.id);
+        if (i >= 0) this.notifications[i].leida = true;
+      }
+    });
   }
   marcarTodasLeidas() {
-    this.notificationsSvc.markAllRead().subscribe({ complete: () => {
-      this.notifications = this.notifications.map(n => ({ ...n, leida: true }));
-    }});
+    this.notificationsSvc.markAllRead().subscribe({
+      complete: () => {
+        this.notifications = this.notifications.map(n => ({ ...n, leida: true }));
+      }
+    });
   }
 
   constructor(private notificationsSvc: NotificationsService, private http: HttpClient) {
@@ -65,19 +69,28 @@ export class Inicio {
         arancelesActivos: Number(d?.arancelesActivos || 0),
       };
     });
-    // Pagos recientes reales (usar resumen página 1)
-    this.http.get<any>('/api/tesoreria/resumen?page=1&pageSize=5').subscribe((resp) => {
-      const data = Array.isArray(resp?.data) ? resp.data : [];
-      this.recentPayments = data.map((r: any) => ({
-        estudiante: String(r?.nombre || `ID ${r?.estudiante_id || ''}`),
-        concepto: 'Comprobante',
-        monto: 0,
-        fecha: new Date(r?.creado_en || Date.now()).toLocaleDateString(),
-        estado: 'pendiente',
-      }));
+    // Pagos recientes: últimos comprobantes (vouchers) subidos
+    this.http.get<any>('/api/vouchers?v_type=pago_certificado&page=1&pageSize=5').subscribe((resp) => {
+      const data = Array.isArray(resp?.data) ? resp.data : (Array.isArray(resp) ? resp : []);
+      this.recentPayments = data.map((r: any) => {
+        const estudiante = r?.users ? `${String(r.users.firstname || '').trim()} ${String(r.users.lastname || '').trim()}`.trim() : (String(r?.estudiante || '').trim() || `ID ${r?.id_user || ''}`);
+        const monto = Number(r?.amount ?? r?.monto ?? 0);
+        const fecha = new Date(r?.created_at || r?.creado_en || Date.now()).toLocaleDateString();
+        const estadoRaw = String(r?.status || r?.estado || '').toLowerCase();
+        const estado = (estadoRaw === 'aprobado' || estadoRaw === 'rechazado' || estadoRaw === 'en_revision')
+          ? (estadoRaw as 'aprobado' | 'rechazado' | 'en_revision')
+          : 'en_revision';
+        return {
+          estudiante,
+          concepto: 'Pago',
+          monto,
+          fecha,
+          estado,
+        };
+      });
     });
   }
 
   // Pagos recientes
-  recentPayments: Array<{ estudiante: string; concepto: string; monto: number; fecha: string; estado: 'aprobado' | 'pendiente' }> = [];
+  recentPayments: Array<{ estudiante: string; concepto: string; monto: number; fecha: string; estado: 'aprobado' | 'rechazado' | 'en_revision' }> = [];
 }

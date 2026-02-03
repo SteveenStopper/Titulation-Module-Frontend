@@ -13,12 +13,13 @@ export interface SecretariaPromedioItem {
   s5?: number | null;
   promedio_general: number | null;
   estado?: 'pendiente' | 'aprobado' | 'rechazado';
+  certificado_doc_id?: number | null;
 }
 
 @Injectable({ providedIn: 'root' })
 export class SecretariaService {
   private base = '/api/secretaria';
-  constructor(private http: HttpClient) {}
+  constructor(private http: HttpClient) { }
 
   listPromedios(page = 1, pageSize = 20): Observable<{ data: SecretariaPromedioItem[]; pagination?: any }> {
     const params = new HttpParams().set('page', String(page)).set('pageSize', String(pageSize));
@@ -27,7 +28,7 @@ export class SecretariaService {
 
   getPromediosById(id: number): Observable<SecretariaPromedioItem> {
     return this.http.get<SecretariaPromedioItem>(`${this.base}/promedios/${id}`);
-    }
+  }
 
   getNotasDetalle(id: number): Observable<SecretariaPromedioItem> {
     return this.http.get<SecretariaPromedioItem>(`${this.base}/notas/${id}`);

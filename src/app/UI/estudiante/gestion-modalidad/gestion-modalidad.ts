@@ -6,13 +6,13 @@ import { StudentApiService } from '../../../services/student-api.service';
 import { MeService } from '../../../services/me.service';
 import { ModalityService } from '../../../services/modality.service';
 import { ActivatedRoute } from '@angular/router';
-import { HttpClient, HttpClientModule } from '@angular/common/http';
+import { HttpClient } from '@angular/common/http';
 import { DocumentsService } from '../../../services/documents.service';
 
 @Component({
   selector: 'app-gestion-modalidad',
   standalone: true,
-  imports: [CommonModule, FormsModule, HttpClientModule],
+  imports: [CommonModule, FormsModule],
   templateUrl: './gestion-modalidad.html',
   styleUrl: './gestion-modalidad.scss'
 })

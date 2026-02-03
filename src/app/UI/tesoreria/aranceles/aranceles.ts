@@ -17,12 +17,17 @@ import { DialogModule } from 'primeng/dialog';
 export class Aranceles {
   // Filtros y estado
   search = '';
+  carreraFiltro = '';
   loading = false;
   page = 1;
   pageSize = 20;
 
   // Datos desde el backend
   items: TesoreriaResumenItem[] = [];
+
+  get carreras(): string[] {
+    return Array.from(new Set(this.items.map(it => String(it.carrera_nombre || '').trim()).filter(Boolean)));
+  }
 
   // Modal rechazo
   showRejectDialog = false;
@@ -40,11 +45,14 @@ export class Aranceles {
   // Lista filtrada por texto
   get filtered() {
     const q = this.search.trim().toLowerCase();
-    if (!q) return this.items;
-    return this.items.filter(it =>
-      (it.nombre || '').toLowerCase().includes(q) ||
-      (it.carrera_nombre || '').toLowerCase().includes(q)
-    );
+    return this.items.filter(it => {
+      if (this.carreraFiltro && String(it.carrera_nombre || '').trim() !== this.carreraFiltro) return false;
+      if (!q) return true;
+      return (
+        (it.nombre || '').toLowerCase().includes(q) ||
+        (it.carrera_nombre || '').toLowerCase().includes(q)
+      );
+    });
   }
 
   estadoLabel(it: TesoreriaResumenItem): 'Activo' | 'Inactivo' {

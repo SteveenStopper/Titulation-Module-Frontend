@@ -8,10 +8,14 @@
       </div>
 
       <div class="flex flex-col sm:flex-row sm:items-center gap-2">
+        <select [(ngModel)]="carreraFiltro" class="px-3 py-2 border rounded-lg text-sm w-full sm:w-72">
+          <option value="">Todas las carreras</option>
+          <option *ngFor="let c of carreras" [value]="c">{{ c }}</option>
+        </select>
         <div class="relative">
           <i class="fa fa-search text-gray-400 text-sm absolute left-3 top-1/2 -translate-y-1/2"></i>
           <input [(ngModel)]="search" type="text" placeholder="Buscar por estudiante o carrera"
-                 class="pl-9 pr-3 py-2 border rounded-lg text-sm w-full sm:w-72 focus:outline-none focus:ring-2 focus:ring-gray-300" />
+            class="pl-9 pr-3 py-2 border rounded-lg text-sm w-full sm:w-72 focus:outline-none focus:ring-2 focus:ring-gray-300" />
         </div>
       </div>
     </div>
@@ -38,28 +42,36 @@
               <div class="text-gray-700">{{ it.carrera_nombre }}</div>
             </td>
             <td class="px-4 py-3">
-              <span *ngIf="validacionLabel(it) === 'Activo'" class="inline-flex items-center gap-2 text-xs px-2 py-1 rounded-full bg-green-100 text-green-700">
+              <span *ngIf="validacionLabel(it) === 'Activo'"
+                class="inline-flex items-center gap-2 text-xs px-2 py-1 rounded-full bg-green-100 text-green-700">
                 <i class="fa fa-check-circle"></i> Activo
               </span>
-              <span *ngIf="validacionLabel(it) === 'Inactivo'" class="inline-flex items-center gap-2 text-xs px-2 py-1 rounded-full bg-red-100 text-red-700">
+              <span *ngIf="validacionLabel(it) === 'Inactivo'"
+                class="inline-flex items-center gap-2 text-xs px-2 py-1 rounded-full bg-red-100 text-red-700">
                 <i class="fa fa-exclamation-circle"></i> Inactivo
               </span>
             </td>
             <td class="px-4 py-3">
               <div class="flex items-center justify-center gap-2">
-                <button (click)="aprobar(it)" [disabled]="!canApproveOrReject(it)" class="px-3 py-1.5 text-xs rounded-md bg-green-600 text-white hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed">
+                <button (click)="aprobar(it)" [disabled]="!canApproveOrReject(it)"
+                  class="px-3 py-1.5 text-xs rounded-md bg-green-600 text-white hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed">
                   <i class="fa fa-check mr-1"></i> Aceptar
                 </button>
-                <button (click)="rechazar(it)" [disabled]="!canApproveOrReject(it)" class="px-3 py-1.5 text-xs rounded-md bg-red-600 text-white hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed">
+                <button (click)="rechazar(it)" [disabled]="!canApproveOrReject(it)"
+                  class="px-3 py-1.5 text-xs rounded-md bg-red-600 text-white hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed">
                   <i class="fa fa-xmark mr-1"></i> Rechazar
                 </button>
-                <button (click)="reconsiderar(it)" [disabled]="!canReconsider(it)" class="w-8 h-8 inline-flex items-center justify-center rounded-md bg-amber-500 text-white hover:bg-amber-600 disabled:opacity-50 disabled:cursor-not-allowed" title="Refrescar">
+                <button *ngIf="canReconsider(it)" (click)="reconsiderar(it)"
+                  class="w-8 h-8 inline-flex items-center justify-center rounded-md bg-amber-500 text-white hover:bg-amber-600"
+                  title="Refrescar">
                   <i class="fa fa-rotate-right"></i>
                 </button>
-                <button (click)="generarCertificado(it)" [disabled]="!canGenerate(it)" class="px-3 py-1.5 text-xs rounded-md bg-indigo-600 text-white hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed">
+                <button *ngIf="canGenerate(it)" (click)="generarCertificado(it)"
+                  class="px-3 py-1.5 text-xs rounded-md bg-indigo-600 text-white hover:bg-indigo-700">
                   <i class="fa fa-file-pdf mr-1"></i> Generar
                 </button>
-                <button (click)="descargarCertificado(it)" [disabled]="!canView(it)" class="px-3 py-1.5 text-xs rounded-md bg-sky-600 text-white hover:bg-sky-700 disabled:opacity-50 disabled:cursor-not-allowed">
+                <button *ngIf="canView(it)" (click)="descargarCertificado(it)"
+                  class="px-3 py-1.5 text-xs rounded-md bg-sky-600 text-white hover:bg-sky-700">
                   <i class="fa fa-eye mr-1"></i> Ver
                 </button>
               </div>
@@ -76,13 +88,17 @@
   <div *ngIf="loading" class="text-sm text-gray-500">Cargando...</div>
 
   <!-- Dialogo Rechazo -->
-  <p-dialog [(visible)]="showRejectDialog" [modal]="true" [style]="{width: '32rem'}" [draggable]="false" [resizable]="false" header="Rechazar validación de aranceles">
+  <p-dialog [(visible)]="showRejectDialog" [modal]="true" [style]="{width: '32rem'}" [draggable]="false"
+    [resizable]="false" header="Rechazar validación de aranceles">
     <div class="space-y-3">
       <p class="text-sm text-gray-600">Escribe la observación del rechazo. Este texto será enviado al estudiante.</p>
-      <textarea [(ngModel)]="rejectObs" rows="5" class="w-full p-2 border rounded-md" placeholder="Observación obligatoria"></textarea>
+      <textarea [(ngModel)]="rejectObs" rows="5" class="w-full p-2 border rounded-md"
+        placeholder="Observación obligatoria"></textarea>
       <div class="flex justify-end gap-2 pt-2">
-        <button type="button" (click)="cancelReject()" class="px-3 py-1.5 text-xs rounded-md bg-gray-200 hover:bg-gray-300">Cancelar</button>
-        <button type="button" (click)="confirmReject()" class="px-3 py-1.5 text-xs rounded-md bg-red-600 text-white hover:bg-red-700">Confirmar rechazo</button>
+        <button type="button" (click)="cancelReject()"
+          class="px-3 py-1.5 text-xs rounded-md bg-gray-200 hover:bg-gray-300">Cancelar</button>
+        <button type="button" (click)="confirmReject()"
+          class="px-3 py-1.5 text-xs rounded-md bg-red-600 text-white hover:bg-red-700">Confirmar rechazo</button>
       </div>
     </div>
   </p-dialog>

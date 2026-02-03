@@ -43,3 +43,35 @@ html, body {
 .animate-fadeIn {
   animation: fadeIn 0.3s ease-out forwards;
 }
+
+.swal-btn-confirm {
+  background-color: #3085d6 !important;
+  color: white !important;
+  border: none !important;
+  padding: 0.75em 1.5em !important;
+  font-size: 1rem !important;
+  border-radius: 0.375rem !important;
+  opacity: 1 !important;
+  transition: all 0.3s ease !important;
+}
+
+.swal-btn-confirm:hover {
+  background-color: #2b70b0 !important;
+  transform: scale(1.03) !important;
+}
+
+.swal-btn-cancel {
+  background-color: #ef4444 !important;
+  color: white !important;
+  border: none !important;
+  padding: 0.75em 1.5em !important;
+  font-size: 1rem !important;
+  border-radius: 0.375rem !important;
+  opacity: 1 !important;
+  transition: all 0.3s ease !important;
+}
+
+.swal-btn-cancel:hover {
+  background-color: #dc2626 !important;
+  transform: scale(1.03) !important;
+}

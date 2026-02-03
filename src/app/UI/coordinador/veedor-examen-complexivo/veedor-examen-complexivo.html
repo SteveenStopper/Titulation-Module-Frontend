@@ -4,8 +4,9 @@
     <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
       <div>
         <label class="block text-sm text-gray-600 mb-1">Período</label>
-        <select class="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                [(ngModel)]="model.periodoId" (ngModelChange)="onChangePeriodo()" [disabled]="true">
+        <select
+          class="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+          [(ngModel)]="model.periodoId" (ngModelChange)="onChangePeriodo()" [disabled]="true">
           <option [ngValue]="undefined" disabled>Seleccione un período</option>
           <option *ngFor="let p of periodOptions" [ngValue]="p.id_academic_periods">{{ p.name }}</option>
         </select>
@@ -19,6 +20,10 @@
   </div>
 
   <div class="bg-white rounded-xl border border-gray-200 shadow-sm p-4 space-y-4">
+    <div *ngIf="veedoresLoadError" class="text-sm text-red-600">
+      {{ veedoresLoadError }}
+    </div>
+
     <div class="overflow-x-auto">
       <table class="min-w-full text-sm border border-gray-200 rounded-lg table-auto">
         <thead class="bg-gray-50">
@@ -31,21 +36,36 @@
         <tbody class="divide-y divide-gray-100">
           <tr *ngFor="let m of model.materias; let i = index" class="odd:bg-white even:bg-gray-50 align-top">
             <td class="px-3 py-2 w-64">
-              <select class="border border-gray-300 rounded-md px-2 py-1 w-full" [(ngModel)]="m.carreraId" (ngModelChange)="onChange()">
+              <select class="border border-gray-300 rounded-md px-2 py-1 w-full" [(ngModel)]="m.carreraId"
+                (ngModelChange)="onChange()" [disabled]="!!m.locked">
                 <option [ngValue]="undefined" disabled>Seleccione</option>
                 <option *ngFor="let c of carrerasDisponibles" [ngValue]="c.id">{{ c.nombre }}</option>
               </select>
             </td>
             <td class="px-3 py-2">
-              <div class="grid grid-cols-2 md:grid-cols-3 gap-2">
-                <label *ngFor="let v of getAvailableVeedores(i)" class="inline-flex items-center gap-2 text-sm">
-                  <input type="checkbox" [checked]="m.veedores.includes(v.id_user)" (change)="toggleVeedor(i, v.id_user, $event.target.checked)" />
-                  <span>{{ v.fullname }}</span>
-                </label>
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-2">
+                <div>
+                  <label class="block text-xs text-gray-600 mb-1">Veedor 1</label>
+                  <select class="border border-gray-300 rounded-md px-2 py-1 w-full" [(ngModel)]="m.veedor1Id"
+                    (ngModelChange)="onChangeVeedores(i)" [disabled]="!!m.locked">
+                    <option [ngValue]="undefined">Seleccione</option>
+                    <option *ngFor="let v of getAvailableVeedores(i, 1)" [ngValue]="v.id_user">{{ v.fullname }}</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label class="block text-xs text-gray-600 mb-1">Veedor 2</label>
+                  <select class="border border-gray-300 rounded-md px-2 py-1 w-full" [(ngModel)]="m.veedor2Id"
+                    (ngModelChange)="onChangeVeedores(i)" [disabled]="!!m.locked">
+                    <option [ngValue]="undefined">Seleccione</option>
+                    <option *ngFor="let v of getAvailableVeedores(i, 2)" [ngValue]="v.id_user">{{ v.fullname }}</option>
+                  </select>
+                </div>
               </div>
             </td>
             <td class="px-3 py-2 w-40">
-              <button type="button" (click)="removeCarrera(i)" class="px-2 py-1 rounded border text-xs hover:bg-gray-50">
+              <button type="button" (click)="removeCarrera(i)" [disabled]="!!m.locked"
+                class="px-2 py-1 rounded border text-xs hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed">
                 <i class="fa fa-trash mr-1"></i> Quitar
               </button>
             </td>
@@ -59,7 +79,8 @@
     </div>
 
     <div class="flex gap-2">
-      <button type="button" (click)="guardar()" [disabled]="errors.length" class="px-3 py-2 rounded-lg bg-blue-600 text-white text-sm hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed">
+      <button type="button" (click)="guardar()" [disabled]="errors.length || loading || !hasEditableRows()"
+        class="px-3 py-2 rounded-lg bg-blue-600 text-white text-sm hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed">
         <i class="fa fa-save mr-1"></i> Guardar
       </button>
     </div>

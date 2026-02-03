@@ -5,15 +5,30 @@
       <h1 class="text-2xl font-bold text-gray-800">Inicio Docente</h1>
       <p class="text-gray-600">Bienvenido al panel de Docente.</p>
     </div>
-    <button (click)="abrirNotificaciones()" aria-label="Notificaciones" class="relative inline-flex items-center justify-center h-8 w-8 rounded-full bg-rose-600 text-white hover:bg-rose-700">
+    <button (click)="abrirNotificaciones()" aria-label="Notificaciones"
+      class="relative inline-flex items-center justify-center h-8 w-8 rounded-full bg-rose-600 text-white hover:bg-rose-700">
       <i class="fa fa-bell text-sm"></i>
-      <span *ngIf="noLeidas>0" class="absolute -top-1 -right-1 h-4 min-w-[16px] px-1 rounded-full bg-white text-rose-600 border border-rose-600 text-[10px] leading-4 text-center">{{ noLeidas }}</span>
+      <span *ngIf="noLeidas>0"
+        class="absolute -top-1 -right-1 h-4 min-w-[16px] px-1 rounded-full bg-white text-rose-600 border border-rose-600 text-[10px] leading-4 text-center">{{
+        noLeidas }}</span>
     </button>
+  </div>
+
+  <div *ngIf="isAdmin" class="bg-white rounded-xl border border-gray-200 shadow-sm px-4 py-3">
+    <div class="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4">
+      <div class="text-sm font-medium text-gray-800">Ver como Docente:</div>
+      <select class="border rounded-md px-3 py-2 text-sm w-full sm:w-96" [(ngModel)]="selectedDocenteId"
+        (ngModelChange)="onChangeDocente()">
+        <option [ngValue]="null">Seleccione un Docente</option>
+        <option *ngFor="let d of docentesDisponibles" [ngValue]="d.id_user">{{ d.fullname }}</option>
+      </select>
+    </div>
   </div>
 
   <!-- Resumen -->
   <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-    <div *ngFor="let item of resumen" class="bg-white rounded-xl border border-gray-200 shadow-sm p-4 flex items-center gap-3">
+    <div *ngFor="let item of resumen"
+      class="bg-white rounded-xl border border-gray-200 shadow-sm p-4 flex items-center gap-3">
       <div class="text-2xl" [ngClass]="item.color"><i class="fa" [ngClass]="item.icono"></i></div>
       <div>
         <div class="text-2xl font-bold text-gray-800">{{ item.valor }}</div>
@@ -26,7 +41,8 @@
   <div class="bg-white rounded-xl border border-gray-200 shadow-sm p-4">
     <h2 class="text-lg font-semibold text-gray-800 mb-3">Accesos rápidos</h2>
     <div class="flex flex-wrap gap-3">
-      <a *ngFor="let a of accesos" [routerLink]="a.ruta" class="inline-flex items-center gap-2 text-white px-4 py-2 rounded-lg" [ngClass]="a.color">
+      <a *ngFor="let a of accesos" [routerLink]="a.ruta"
+        class="inline-flex items-center gap-2 text-white px-4 py-2 rounded-lg" [ngClass]="a.color">
         <i class="fa" [ngClass]="a.icono"></i>
         <span>{{ a.titulo }}</span>
       </a>
@@ -43,7 +59,8 @@
           <button (click)="onlyUnread = !onlyUnread" class="text-xs text-gray-700 hover:underline">
             {{ onlyUnread ? 'Ver todas' : 'Solo no leídas' }}
           </button>
-          <button (click)="marcarTodasLeidas()" class="text-xs text-rose-600 hover:underline">Marcar todas como leídas</button>
+          <button (click)="marcarTodasLeidas()" class="text-xs text-rose-600 hover:underline">Marcar todas como
+            leídas</button>
         </div>
       </div>
       <div class="flex-1 overflow-y-auto divide-y">
@@ -54,11 +71,13 @@
             <div class="text-xs text-gray-600">{{ n.detalle }}</div>
             <div class="text-[10px] text-gray-400 mt-1">{{ n.fecha }}</div>
           </div>
-          <button *ngIf="!n.leida" (click)="marcarLeida(n)" class="text-xs text-emerald-700 hover:underline">Leída</button>
+          <button *ngIf="!n.leida" (click)="marcarLeida(n)"
+            class="text-xs text-emerald-700 hover:underline">Leída</button>
         </div>
       </div>
       <div class="p-3 border-t text-right">
-        <button (click)="abrirNotificaciones()" class="px-3 py-1.5 text-sm rounded-md bg-gray-800 text-white hover:bg-gray-900">Cerrar</button>
+        <button (click)="abrirNotificaciones()"
+          class="px-3 py-1.5 text-sm rounded-md bg-gray-800 text-white hover:bg-gray-900">Cerrar</button>
       </div>
     </aside>
   </div>

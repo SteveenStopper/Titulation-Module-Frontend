@@ -15,32 +15,13 @@
           <div class="text-sm font-semibold text-gray-800">{{ m.codigo }}</div>
         </div>
         <span class="text-xs px-2 py-1 rounded-full"
-              [ngClass]="m.estado==='En curso' ? 'bg-green-100 text-green-700 border border-green-200' : 'bg-gray-100 text-gray-700 border border-gray-200'">
+          [ngClass]="m.estado==='En curso' ? 'bg-green-100 text-green-700 border border-green-200' : 'bg-gray-100 text-gray-700 border border-gray-200'">
           {{ m.estado }}
         </span>
       </div>
       <div class="mt-2 text-base font-medium text-gray-900">{{ m.nombre }}</div>
       <div class="mt-1 text-sm text-gray-700">
         <i class="fa-solid fa-user-tie mr-1"></i> {{ m.docente }}
-      </div>
-      <div class="mt-1 text-sm text-gray-700">
-        <i class="fa-regular fa-clock mr-1"></i> {{ m.horario }}
-      </div>
-      <div class="mt-1 text-sm text-gray-700">
-        <i class="fa-solid fa-location-dot mr-1"></i> {{ m.aula }}
-      </div>
-
-      <div class="mt-3 pt-3 border-t flex items-center justify-between">
-        <div class="text-sm text-gray-600" *ngIf="m.proximaSesion; else sinSesion">
-          Próxima sesión:
-          <span class="font-medium text-gray-800">{{ m.proximaSesion | date:'EEE dd/MM, HH:mm' }}</span>
-        </div>
-        <ng-template #sinSesion>
-          <div class="text-sm text-gray-500">Próxima sesión por definir</div>
-        </ng-template>
-        <button type="button" class="text-sm px-3 py-1.5 rounded-md border border-gray-200 hover:bg-gray-50">
-          Ver detalles
-        </button>
       </div>
     </div>
   </div>

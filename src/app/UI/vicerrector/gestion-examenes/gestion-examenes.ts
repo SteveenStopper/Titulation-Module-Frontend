@@ -12,10 +12,13 @@ import { HttpClient } from '@angular/common/http';
 })
 export class GestionExamenes {
   // Filtro por carrera
-  carreraFiltro = '';
+  carreraFiltroId: number | null = null;
   // Flujo de registro (selección dependiente)
-  carreraAsignacion = '';
+  carreraAsignacionId: number | null = null;
+  // Materia (en UI) ahora representa Semestre/Curso
   materiaAsignacionId: number | null = null;
+  // Nuevo: Asignatura real por carrera+semestre
+  asignaturaAsignacionId: number | null = null;
   tutorAsignacionId: number | null = null;
 
   // Límite de materias por carrera
@@ -26,17 +29,23 @@ export class GestionExamenes {
 
   // Catálogo desde Instituto
   carrerasCat: Array<{ id: number; nombre: string }> = [];
-  private carreraNameToId = new Map<string, number>();
+  private carreraIdToName = new Map<number, string>();
+  // Semestres por carrera
   materiasCat: Array<{ id: number; nombre: string }> = [];
+  // Asignaturas por carrera (y opcionalmente por semestre)
+  asignaturasCat: Array<{ id: number; nombre: string }> = [];
 
-  // Catálogo de materias por carrera (dinámico desde Instituto)
+  // Catálogo de semestres por carrera (dinámico desde Instituto)
   catalogoMaterias: Record<string, Array<{ id: number; nombre: string }>> = {};
+  // Catálogo de asignaturas por llave carrera|semestre
+  catalogoAsignaturas: Record<string, Array<{ id: number; nombre: string }>> = {};
 
   // Registros creados por carrera (materia + tutor asignado)
   registros: Array<{
     id: number;           // id materia
     nombre: string;       // nombre materia
     carrera: string | null;
+    carreraId: number | null;
     tutorId: number | null;
     seleccionarTutorId?: number | null;
     editing?: boolean;
@@ -57,35 +66,32 @@ export class GestionExamenes {
     // Carreras (Instituto)
     this.http.get<Array<{ id: number; nombre: string }>>('/api/vicerrector/carreras').subscribe(list => {
       this.carrerasCat = Array.isArray(list) ? list : [];
-      this.carreraNameToId = new Map(this.carrerasCat.map(c => [c.nombre, c.id]));
+      this.carreraIdToName = new Map(this.carrerasCat.map(c => [Number(c.id), String(c.nombre)]));
     });
   }
 
   // Carreras del catálogo
-  get carreras(): string[] {
-    // Mostrar nombres desde Instituto excluyendo las carreras con 4 materias ya registradas
-    const countByCarrera = new Map<string, number>();
-    for (const r of this.registros) {
-      if (!r.carrera) continue;
-      countByCarrera.set(r.carrera, (countByCarrera.get(r.carrera) || 0) + 1);
-    }
+  get carreras(): Array<{ id: number; nombre: string }> {
     return this.carrerasCat
-      .map(c => c.nombre)
-      .filter(nombre => (countByCarrera.get(nombre) || 0) < this.MAX_MATERIAS)
-      .sort();
+      .map(c => ({ id: Number(c.id), nombre: String(c.nombre) }))
+      .filter(c => Number.isFinite(c.id))
+      .sort((a, b) => a.nombre.localeCompare(b.nombre));
   }
 
   // Lista filtrada por carrera para la tabla
   get filteredMaterias() {
-    return this.carreraFiltro
-      ? this.registros.filter(r => r.carrera === this.carreraFiltro)
+    if (this.carreraFiltroId === null || this.carreraFiltroId === undefined) return this.registros;
+    const cid = Number(this.carreraFiltroId);
+    return Number.isFinite(cid)
+      ? this.registros.filter(r => Number(r.carreraId) === cid)
       : this.registros;
   }
 
   // Contadores por carrera
   get totalRegistradasCarreraSeleccionada(): number {
-    if (!this.carreraAsignacion) return 0;
-    return this.registros.filter(r => r.carrera === this.carreraAsignacion).length;
+    const cid = Number(this.carreraAsignacionId);
+    if (!Number.isFinite(cid) || cid === 0) return 0;
+    return this.registros.filter(r => Number(r.carreraId) === cid).length;
   }
 
   get limiteAlcanzado(): boolean {
@@ -94,39 +100,91 @@ export class GestionExamenes {
 
   // Publicación
   get totalPublicables(): number {
-    if (!this.carreraAsignacion) return 0;
-    return this.registros.filter(r => r.carrera === this.carreraAsignacion && r.tutorId !== null).length;
+    const cid = Number(this.carreraAsignacionId);
+    if (!Number.isFinite(cid) || cid === 0) return 0;
+    return this.registros.filter(r => Number(r.carreraId) === cid && r.tutorId !== null).length;
   }
 
   // Materias disponibles para la carrera (excluye ya registradas)
   get materiasDeCarrera(): Array<{ id: number; nombre: string }> {
-    if (!this.carreraAsignacion) return [];
-    const todas = this.catalogoMaterias[this.carreraAsignacion] || [];
-    const ya = new Set(this.registros.filter(r => r.carrera === this.carreraAsignacion).map(r => r.id));
+    const cid = Number(this.carreraAsignacionId);
+    if (!Number.isFinite(cid)) return [];
+    const todas = this.catalogoMaterias[String(cid)] || [];
+    const ya = new Set(this.registros.filter(r => Number(r.carreraId) === cid).map(r => r.id));
     return todas.filter(m => !ya.has(m.id));
+  }
+
+  get asignaturasDeCarreraSemestre(): Array<{ id: number; nombre: string }> {
+    const cid = Number(this.carreraAsignacionId);
+    const sid = Number(this.materiaAsignacionId);
+    if (!Number.isFinite(cid)) return [];
+    const key = `${cid}|${Number.isFinite(sid) ? sid : 0}`;
+    return this.catalogoAsignaturas[key] || [];
   }
 
   // Materia actualmente seleccionada (de catálogo)
   get selectedMateria() {
-    if (!this.carreraAsignacion || this.materiaAsignacionId === null) return null;
-    return (this.catalogoMaterias[this.carreraAsignacion] || []).find(x => x.id === this.materiaAsignacionId) || null;
+    const cid = Number(this.carreraAsignacionId);
+    if (!Number.isFinite(cid) || this.materiaAsignacionId === null) return null;
+    return (this.catalogoMaterias[String(cid)] || []).find(x => x.id === this.materiaAsignacionId) || null;
+  }
+
+  get selectedAsignatura() {
+    const cid = Number(this.carreraAsignacionId);
+    const sid = Number(this.materiaAsignacionId);
+    if (!Number.isFinite(cid) || this.asignaturaAsignacionId === null) return null;
+    const key = `${cid}|${Number.isFinite(sid) ? sid : 0}`;
+    return (this.catalogoAsignaturas[key] || []).find(x => x.id === this.asignaturaAsignacionId) || null;
   }
 
   onChangeCarreraAsignacion() {
     this.tutorAsignacionId = null;
-    this.carreraFiltro = this.carreraAsignacion;
-    // cargar materias desde Instituto para esta carrera y ponerlas en el catálogo dinámico
-    const careerId = this.carreraNameToId.get(this.carreraAsignacion || '') || null;
-    if (!careerId) { this.catalogoMaterias[this.carreraAsignacion] = []; this.materiasCat = []; this.materiaAsignacionId = null; return; }
-    this.http.get<Array<{ id: number; nombre: string }>>(`/api/vicerrector/materias-catalogo?careerId=${careerId}`).subscribe(list => {
+    this.asignaturaAsignacionId = null;
+    // 0 => ver todas las carreras
+    if (Number(this.carreraAsignacionId) === 0) {
+      this.carreraFiltroId = null;
+      this.materiaAsignacionId = null;
+      this.materiasCat = [];
+      this.asignaturasCat = [];
+      return;
+    }
+    this.carreraFiltroId = this.carreraAsignacionId;
+    // cargar semestres desde Instituto para esta carrera y ponerlos en el catálogo dinámico
+    const careerId = Number(this.carreraAsignacionId);
+    if (!Number.isFinite(careerId)) { this.catalogoMaterias[String(careerId)] = []; this.materiasCat = []; this.materiaAsignacionId = null; this.asignaturasCat = []; return; }
+    this.http.get<Array<{ id: number; nombre: string }>>(`/api/vicerrector/semestres-catalogo?careerId=${careerId}`).subscribe(list => {
       this.materiasCat = Array.isArray(list) ? list : [];
-      this.catalogoMaterias[this.carreraAsignacion] = this.materiasCat;
+      this.catalogoMaterias[String(careerId)] = this.materiasCat;
       const lista = this.materiasDeCarrera;
       this.materiaAsignacionId = lista.length ? lista[0].id : null;
+      this.onChangeMateriaAsignacion();
     });
   }
 
   onChangeMateriaAsignacion() {
+    this.tutorAsignacionId = null;
+    this.asignaturaAsignacionId = null;
+    const careerId = Number(this.carreraAsignacionId);
+    const semesterId = Number(this.materiaAsignacionId);
+    if (!Number.isFinite(careerId)) { this.asignaturasCat = []; return; }
+    const key = `${careerId}|${Number.isFinite(semesterId) ? semesterId : 0}`;
+    // si ya está en cache no recalcular
+    if (Array.isArray(this.catalogoAsignaturas[key]) && this.catalogoAsignaturas[key].length) {
+      this.asignaturasCat = this.catalogoAsignaturas[key];
+      this.asignaturaAsignacionId = this.asignaturasCat.length ? this.asignaturasCat[0].id : null;
+      return;
+    }
+    const qs = Number.isFinite(semesterId)
+      ? `/api/vicerrector/asignaturas-catalogo?careerId=${careerId}&semesterId=${semesterId}`
+      : `/api/vicerrector/asignaturas-catalogo?careerId=${careerId}`;
+    this.http.get<Array<{ id: number; nombre: string }>>(qs).subscribe(list => {
+      this.asignaturasCat = Array.isArray(list) ? list : [];
+      this.catalogoAsignaturas[key] = this.asignaturasCat;
+      this.asignaturaAsignacionId = this.asignaturasCat.length ? this.asignaturasCat[0].id : null;
+    });
+  }
+
+  onChangeAsignaturaAsignacion() {
     this.tutorAsignacionId = null;
   }
 
@@ -146,21 +204,21 @@ export class GestionExamenes {
       next: () => {
         m.tutorId = tutorId;
         m.editing = false;
-        this.toastOk = true; this.toastMsg = 'Tutor actualizado'; this.showToast = true; setTimeout(()=> this.showToast=false, 2500);
+        this.toastOk = true; this.toastMsg = 'Tutor actualizado'; this.showToast = true; setTimeout(() => this.showToast = false, 2500);
       },
-      error: () => { this.toastOk = false; this.toastMsg = 'No se pudo actualizar el tutor'; this.showToast = true; setTimeout(()=> this.showToast=false, 3500); }
+      error: () => { this.toastOk = false; this.toastMsg = 'No se pudo actualizar el tutor'; this.showToast = true; setTimeout(() => this.showToast = false, 3500); }
     });
   }
 
   // Acciones del bloque superior (asignación directa por selects)
   // Registro superior: agregar nueva materia con tutor
   agregarRegistro() {
-    if (!this.carreraAsignacion || this.materiaAsignacionId === null || this.tutorAsignacionId === null) return;
+    if (!Number.isFinite(Number(this.carreraAsignacionId)) || this.materiaAsignacionId === null || this.asignaturaAsignacionId === null || this.tutorAsignacionId === null) return;
     if (this.limiteAlcanzado) return;
-    const cat = this.selectedMateria;
+    const cat = this.selectedAsignatura;
     if (!cat) return;
-    const careerId = this.carreraNameToId.get(this.carreraAsignacion);
-    if (!careerId) return;
+    const careerId = Number(this.carreraAsignacionId);
+    if (!Number.isFinite(careerId)) return;
     // Crear en nuestro módulo
     this.http.post('/api/vicerrector/complexivo/materias', {
       careerId: careerId,
@@ -171,9 +229,9 @@ export class GestionExamenes {
       next: () => {
         // refrescar lista desde backend
         this.cargar();
-        this.toastOk = true; this.toastMsg = 'Materia registrada'; this.showToast = true; setTimeout(()=> this.showToast=false, 2500);
+        this.toastOk = true; this.toastMsg = 'Materia registrada'; this.showToast = true; setTimeout(() => this.showToast = false, 2500);
       },
-      error: () => { this.toastOk = false; this.toastMsg = 'No se pudo registrar la materia'; this.showToast = true; setTimeout(()=> this.showToast=false, 3500); }
+      error: () => { this.toastOk = false; this.toastMsg = 'No se pudo registrar la materia'; this.showToast = true; setTimeout(() => this.showToast = false, 3500); }
     });
   }
 
@@ -192,7 +250,8 @@ export class GestionExamenes {
       this.registros = arr.map(r => ({
         id: r.id,
         nombre: r.nombre,
-        carrera: r.carrera ?? null,
+        carrera: (r as any).carrera ?? null,
+        carreraId: Number((r as any).carrera_id) || null,
         tutorId: r.tutorId,
         publicado: false,
       }));
@@ -200,13 +259,13 @@ export class GestionExamenes {
   }
 
   publicarTodo() {
-    const careerId = this.carreraNameToId.get(this.carreraAsignacion) || null;
-    if (!careerId) return;
+    const careerId = Number(this.carreraAsignacionId);
+    if (!Number.isFinite(careerId)) return;
     this.http.post('/api/vicerrector/complexivo/materias/publicar', { careerId }).subscribe({
       next: (res: any) => {
-        this.toastOk = true; this.toastMsg = `Publicación realizada. Total publicadas: ${res?.published ?? 0}`; this.showToast = true; setTimeout(()=> this.showToast=false, 3000);
+        this.toastOk = true; this.toastMsg = `Publicación realizada. Total publicadas: ${res?.published ?? 0}`; this.showToast = true; setTimeout(() => this.showToast = false, 3000);
       },
-      error: () => { this.toastOk = false; this.toastMsg = 'No se pudo publicar'; this.showToast = true; setTimeout(()=> this.showToast=false, 3500); }
+      error: () => { this.toastOk = false; this.toastMsg = 'No se pudo publicar'; this.showToast = true; setTimeout(() => this.showToast = false, 3500); }
     });
   }
 }

@@ -46,7 +46,11 @@ export class Matricula {
     // Solo documentos de matrícula (excluir comprobantes de pagos)
     this.documents.list({ category: 'matricula', page: this.page, pageSize: this.pageSize }).subscribe({
       next: (res: any) => {
-        const data = Array.isArray(res?.data) ? res.data : (Array.isArray(res) ? res : []);
+        const data = (Array.isArray(res?.data) ? res.data : (Array.isArray(res) ? res : []))
+          .filter((d: any) => {
+            const t = String(d?.tipo || '').toLowerCase();
+            return t !== 'cert_secretaria' && t !== 'cert_tesoreria';
+          });
         const pag = res?.pagination || {};
         this.total = Number(pag.total || 0);
         this.totalPages = Number(pag.totalPages || 1);
@@ -55,7 +59,8 @@ export class Matricula {
         for (const d of data) {
           const uid = Number(d.usuario_id || d.id_user);
           if (!Number.isFinite(uid)) continue;
-          const g = byUser.get(uid) || { id: uid, estudiante: `Usuario ${uid}`, carrera: '-', documentos: [] as any[] };
+          const nombre = d?.users ? `${String(d.users.firstname || '').trim()} ${String(d.users.lastname || '').trim()}`.trim() : '';
+          const g = byUser.get(uid) || { id: uid, estudiante: (nombre || `Usuario ${uid}`), carrera: '-', documentos: [] as any[] };
           g.documentos.push(d);
           byUser.set(uid, g);
         }

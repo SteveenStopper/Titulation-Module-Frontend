@@ -1,14 +1,16 @@
 import { Component } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterModule } from '@angular/router';
+import { FormsModule } from '@angular/forms';
 import { NotificationsService } from '../../../services/notifications.service';
 import { HttpClient } from '@angular/common/http';
 import { catchError, of } from 'rxjs';
+import { AuthService } from '../../../services/auth.service';
 
 @Component({
   selector: 'app-docente-inicio',
   standalone: true,
-  imports: [CommonModule, RouterModule],
+  imports: [CommonModule, RouterModule, FormsModule],
   templateUrl: './inicio.html',
   styleUrl: './inicio.scss'
 })
@@ -42,21 +44,12 @@ export class Inicio {
   onlyUnread = true;
   get visibleNotificaciones() { return this.onlyUnread ? this.notificaciones.filter(n => !n.leida) : this.notificaciones; }
 
-  marcarLeida(n: { id: number }) {
-    this.notificationsSvc.markRead(n.id).subscribe({ complete: () => {
-      const i = this.notificaciones.findIndex(x => x.id === n.id);
-      if (i >= 0) this.notificaciones[i].leida = true;
-    }});
-  }
+  // Impersonación (solo Administrador)
+  isAdmin = false;
+  docentesDisponibles: Array<{ id_user: number; fullname: string }> = [];
+  selectedDocenteId: number | null = null;
 
-  marcarTodasLeidas() {
-    this.notificationsSvc.markAllRead().subscribe({ complete: () => {
-      this.notificaciones = this.notificaciones.map(n => ({ ...n, leida: true }));
-    }});
-  }
-
-  constructor(private notificationsSvc: NotificationsService, private http: HttpClient) {
-    // Cargar KPIs reales del backend
+  private cargarDashboard() {
     this.http.get<any>('/api/docente/dashboard')
       .pipe(catchError(() => of({ tutoriasProximas: 0, revisionesPendientes: 0, materiasACargo: 0 })))
       .subscribe((d) => {
@@ -69,6 +62,69 @@ export class Inicio {
           { titulo: 'Materias a cargo', valor: materiasACargo, icono: 'fa-book', color: 'text-emerald-600' },
         ];
       });
+  }
+
+  onChangeDocente() {
+    try {
+      if (Number.isFinite(Number(this.selectedDocenteId))) {
+        localStorage.setItem('impersonate_docente_id', String(Number(this.selectedDocenteId)));
+      } else {
+        localStorage.removeItem('impersonate_docente_id');
+      }
+    } catch { /* noop */ }
+    this.cargarDashboard();
+  }
+
+  marcarLeida(n: { id: number }) {
+    this.notificationsSvc.markRead(n.id).subscribe({
+      complete: () => {
+        const i = this.notificaciones.findIndex(x => x.id === n.id);
+        if (i >= 0) this.notificaciones[i].leida = true;
+      }
+    });
+  }
+
+  marcarTodasLeidas() {
+    this.notificationsSvc.markAllRead().subscribe({
+      complete: () => {
+        this.notificaciones = this.notificaciones.map(n => ({ ...n, leida: true }));
+      }
+    });
+  }
+
+  constructor(private notificationsSvc: NotificationsService, private http: HttpClient, private auth: AuthService) {
+    this.isAdmin = this.auth.hasRole('Administrador');
+
+    // Inicializar selección (si existe)
+    try {
+      const v = localStorage.getItem('impersonate_docente_id');
+      const id = v != null ? Number(v) : NaN;
+      this.selectedDocenteId = Number.isFinite(id) ? id : null;
+    } catch { this.selectedDocenteId = null; }
+
+    // Cargar KPIs reales del backend
+    this.cargarDashboard();
+
+    // Si es admin, cargar docentes para selector
+    if (this.isAdmin) {
+      this.http
+        .get<Array<{ id_user: number; fullname: string }>>('/api/docente/admin/docentes')
+        .subscribe({
+          next: (list) => {
+            const arr = Array.isArray(list) ? list : [];
+            this.docentesDisponibles = arr;
+          },
+          error: () => {
+            // Fallback (si existe sincronización desde esquema externo)
+            this.http
+              .get<Array<{ id_user: number; fullname: string }>>('/api/uic/admin/docentes')
+              .subscribe({
+                next: (list2) => { this.docentesDisponibles = Array.isArray(list2) ? list2 : []; },
+                error: () => { this.docentesDisponibles = []; }
+              });
+          }
+        });
+    }
     // cargar notificaciones
     this.notificationsSvc.listMy().subscribe(list => {
       this.notificaciones = (list || []).map(n => ({

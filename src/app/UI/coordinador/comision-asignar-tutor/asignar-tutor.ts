@@ -29,7 +29,7 @@ export class ComisionAsignarTutorComponent implements OnInit {
   message: string | null = null;
   error: string | null = null;
 
-  constructor(private http: HttpClient) {}
+  constructor(private http: HttpClient) { }
 
   ngOnInit(): void {
     this.cargarCarreras();
@@ -38,6 +38,11 @@ export class ComisionAsignarTutorComponent implements OnInit {
     this.cargarDocentes();
     this.cargarEstudiantes();
     this.cargarAsignados();
+  }
+
+  private toValidId(v: any): number | null {
+    const n = Number(v);
+    return Number.isFinite(n) && n > 0 ? n : null;
   }
 
   private upsertPeriodo(p: { id_academic_periods: number; name: string }) {
@@ -99,26 +104,30 @@ export class ComisionAsignarTutorComponent implements OnInit {
   }
 
   cargarEstudiantes() {
-    if (!Number.isFinite(Number(this.periodoId))) {
+    const pid = this.toValidId(this.periodoId);
+    const cid = this.toValidId(this.carreraId);
+    if (!Number.isFinite(Number(pid))) {
       this.estudiantes = [];
       return;
     }
     const params: any = {};
-    if (Number.isFinite(Number(this.carreraId))) params.careerId = this.carreraId;
-    if (Number.isFinite(Number(this.periodoId))) params.academicPeriodId = this.periodoId;
+    if (Number.isFinite(Number(cid))) params.careerId = Number(cid);
+    params.academicPeriodId = Number(pid);
     this.http.get<any[]>('/api/uic/admin/estudiantes-sin-tutor', { params }).subscribe(rows => {
       this.estudiantes = Array.isArray(rows) ? rows : [];
     });
   }
 
   cargarAsignados() {
-    if (!Number.isFinite(Number(this.periodoId))) {
+    const pid = this.toValidId(this.periodoId);
+    const cid = this.toValidId(this.carreraId);
+    if (!Number.isFinite(Number(pid))) {
       this.asignados = [];
       return;
     }
     const params: any = {};
-    if (Number.isFinite(Number(this.carreraId))) params.careerId = this.carreraId;
-    if (Number.isFinite(Number(this.periodoId))) params.academicPeriodId = this.periodoId;
+    if (Number.isFinite(Number(cid))) params.careerId = Number(cid);
+    params.academicPeriodId = Number(pid);
     this.http.get<any[]>('/api/uic/admin/asignaciones/tutor', { params }).subscribe(rows => {
       this.asignados = Array.isArray(rows) ? rows : [];
     });

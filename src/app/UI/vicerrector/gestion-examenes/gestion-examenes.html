@@ -18,44 +18,65 @@
       <div class="flex flex-wrap items-center gap-3 w-full">
         <div>
           <label class="block text-xs text-gray-500 mb-1">Carrera</label>
-          <select [(ngModel)]="carreraAsignacion" (ngModelChange)="onChangeCarreraAsignacion()" class="px-3 py-2 border border-gray-300 rounded-md text-sm w-60 focus:outline-none focus:ring-2 focus:ring-indigo-500 disabled:bg-gray-100 disabled:text-gray-500">
-            <option [ngValue]="''">Seleccione carrera</option>
-            <option *ngFor="let c of carreras" [ngValue]="c">{{ c }}</option>
+          <select [(ngModel)]="carreraAsignacionId" (ngModelChange)="onChangeCarreraAsignacion()"
+            class="px-3 py-2 border border-gray-300 rounded-md text-sm w-60 focus:outline-none focus:ring-2 focus:ring-indigo-500 disabled:bg-gray-100 disabled:text-gray-500">
+            <option [ngValue]="null">Seleccione carrera</option>
+            <option [ngValue]="0">Ver todas las carreras</option>
+            <option *ngFor="let c of carreras" [ngValue]="c.id">{{ c.nombre }}</option>
           </select>
         </div>
 
         <div>
-          <label class="block text-xs text-gray-500 mb-1">Materia</label>
-          <select [(ngModel)]="materiaAsignacionId" (ngModelChange)="onChangeMateriaAsignacion()" class="px-3 py-2 border border-gray-300 rounded-md text-sm w-60 focus:outline-none focus:ring-2 focus:ring-indigo-500 disabled:bg-gray-100 disabled:text-gray-500" [disabled]="!carreraAsignacion || limiteAlcanzado">
-            <option [ngValue]="null">Seleccione materia</option>
+          <label class="block text-xs text-gray-500 mb-1">Semestres</label>
+          <select [(ngModel)]="materiaAsignacionId" (ngModelChange)="onChangeMateriaAsignacion()"
+            class="px-3 py-2 border border-gray-300 rounded-md text-sm w-60 focus:outline-none focus:ring-2 focus:ring-indigo-500 disabled:bg-gray-100 disabled:text-gray-500"
+            [disabled]="!carreraAsignacionId || carreraAsignacionId === 0 || limiteAlcanzado">
+            <option [ngValue]="null">Seleccione semestre</option>
             <option *ngFor="let m of materiasDeCarrera" [ngValue]="m.id">{{ m.nombre }}</option>
           </select>
         </div>
 
         <div>
+          <label class="block text-xs text-gray-500 mb-1">Asignatura</label>
+          <select [(ngModel)]="asignaturaAsignacionId" (ngModelChange)="onChangeAsignaturaAsignacion()"
+            class="px-3 py-2 border border-gray-300 rounded-md text-sm w-64 focus:outline-none focus:ring-2 focus:ring-indigo-500 disabled:bg-gray-100 disabled:text-gray-500"
+            [disabled]="materiaAsignacionId === null || limiteAlcanzado">
+            <option [ngValue]="null">Seleccione asignatura</option>
+            <option *ngFor="let a of asignaturasDeCarreraSemestre" [ngValue]="a.id">{{ a.nombre }}</option>
+          </select>
+        </div>
+
+        <div>
           <label class="block text-xs text-gray-500 mb-1">Tutor</label>
-          <select [(ngModel)]="tutorAsignacionId" class="px-3 py-2 border border-gray-300 rounded-md text-sm w-64 focus:outline-none focus:ring-2 focus:ring-indigo-500 disabled:bg-gray-100 disabled:text-gray-500" [disabled]="materiaAsignacionId === null || limiteAlcanzado">
+          <select [(ngModel)]="tutorAsignacionId"
+            class="px-3 py-2 border border-gray-300 rounded-md text-sm w-64 focus:outline-none focus:ring-2 focus:ring-indigo-500 disabled:bg-gray-100 disabled:text-gray-500"
+            [disabled]="asignaturaAsignacionId === null || limiteAlcanzado">
             <option [ngValue]="null">Seleccione tutor</option>
             <option *ngFor="let d of opcionesDocentesTop()" [ngValue]="d.id">{{ d.nombre }}</option>
           </select>
         </div>
 
-        <div class="ml-auto" *ngIf="carreraAsignacion">
+        <div class="ml-auto" *ngIf="carreraAsignacionId">
           <span class="text-xs text-gray-600">Registradas: {{ totalRegistradasCarreraSeleccionada }}/4</span>
         </div>
       </div>
 
-      <div class="flex items-center gap-2" *ngIf="materiaAsignacionId !== null">
-        <button (click)="agregarRegistro()" class="px-3 py-1.5 text-xs rounded-md bg-emerald-600 text-white hover:bg-emerald-700 disabled:opacity-60 disabled:cursor-not-allowed" [disabled]="materiaAsignacionId === null || tutorAsignacionId === null || limiteAlcanzado">
+      <div class="flex items-center gap-2" *ngIf="asignaturaAsignacionId !== null">
+        <button (click)="agregarRegistro()"
+          class="px-3 py-1.5 text-xs rounded-md bg-emerald-600 text-white hover:bg-emerald-700 disabled:opacity-60 disabled:cursor-not-allowed"
+          [disabled]="asignaturaAsignacionId === null || tutorAsignacionId === null || limiteAlcanzado">
           <i class="fa fa-plus mr-1"></i> Agregar
         </button>
       </div>
-      <div *ngIf="limiteAlcanzado && carreraAsignacion" class="mt-3 text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-md px-3 py-2">
-        Se alcanzó el máximo de 4 materias registradas para <b>{{ carreraAsignacion }}</b>.
+      <div *ngIf="limiteAlcanzado && carreraAsignacionId"
+        class="mt-3 text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-md px-3 py-2">
+        Se alcanzó el máximo de 4 materias registradas para la carrera seleccionada.
       </div>
 
-      <div class="flex flex-col items-end gap-1" *ngIf="carreraAsignacion">
-        <button (click)="publicarTodo()" class="px-3 py-1.5 text-xs rounded-md bg-emerald-600 text-white hover:bg-emerald-700 disabled:opacity-60 disabled:cursor-not-allowed" [disabled]="totalPublicables === 0">
+      <div class="flex flex-col items-end gap-1" *ngIf="carreraAsignacionId">
+        <button (click)="publicarTodo()"
+          class="px-3 py-1.5 text-xs rounded-md bg-emerald-600 text-white hover:bg-emerald-700 disabled:opacity-60 disabled:cursor-not-allowed"
+          [disabled]="totalPublicables === 0">
           <i class="fa fa-bullhorn mr-1"></i> Publicar todo
         </button>
         <span class="text-[10px] text-gray-500">Listas publicables: {{ totalPublicables }}</span>
@@ -78,14 +99,18 @@
           <td class="px-4 py-3">
             <div class="flex items-center gap-2">
               <span>{{ nombreDocente(m.tutorId) }}</span>
-              <span *ngIf="m.tutorId !== null; else sinTutor" class="text-[10px] px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700 border border-emerald-200">Asignado</span>
+              <span *ngIf="m.tutorId !== null; else sinTutor"
+                class="text-[10px] px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700 border border-emerald-200">Asignado</span>
               <ng-template #sinTutor>
-                <span class="text-[10px] px-2 py-0.5 rounded-full bg-gray-100 text-gray-600 border border-gray-200">Sin tutor</span>
+                <span class="text-[10px] px-2 py-0.5 rounded-full bg-gray-100 text-gray-600 border border-gray-200">Sin
+                  tutor</span>
               </ng-template>
             </div>
           </td>
           <td class="px-4 py-3">
-            <select [(ngModel)]="m.seleccionarTutorId" class="px-3 py-2 border border-gray-300 rounded-md text-sm w-64 focus:outline-none focus:ring-2 focus:ring-indigo-500 disabled:bg-gray-100 disabled:text-gray-500" [disabled]="m.tutorId ? !m.editing : false">
+            <select [(ngModel)]="m.seleccionarTutorId"
+              class="px-3 py-2 border border-gray-300 rounded-md text-sm w-64 focus:outline-none focus:ring-2 focus:ring-indigo-500 disabled:bg-gray-100 disabled:text-gray-500"
+              [disabled]="m.tutorId ? !m.editing : false">
               <option [ngValue]="null">Seleccione tutor</option>
               <option *ngFor="let d of opcionesDocentesPara(m)" [ngValue]="d.id">{{ d.nombre }}</option>
             </select>
@@ -93,12 +118,15 @@
           <td class="px-4 py-3">
             <div class="flex items-center justify-center gap-2">
               <!-- Estado no edición: Editar y Publicar -->
-              <button *ngIf="!m.editing && m.tutorId" (click)="editar(m)" class="px-3 py-1.5 text-xs rounded-md bg-indigo-600 text-white hover:bg-indigo-700">
+              <button *ngIf="!m.editing && m.tutorId" (click)="editar(m)"
+                class="px-3 py-1.5 text-xs rounded-md bg-indigo-600 text-white hover:bg-indigo-700">
                 <i class="fa fa-pen-to-square mr-1"></i> Editar
               </button>
 
               <!-- Estado edición o sin tutor: Guardar -->
-              <button *ngIf="m.editing || !m.tutorId" (click)="guardar(m)" class="px-3 py-1.5 text-xs rounded-md bg-emerald-600 text-white hover:bg-emerald-700 disabled:opacity-60 disabled:cursor-not-allowed" [disabled]="m.seleccionarTutorId==null">
+              <button *ngIf="m.editing || !m.tutorId" (click)="guardar(m)"
+                class="px-3 py-1.5 text-xs rounded-md bg-emerald-600 text-white hover:bg-emerald-700 disabled:opacity-60 disabled:cursor-not-allowed"
+                [disabled]="m.seleccionarTutorId==null">
                 <i class="fa fa-check mr-1"></i> Guardar
               </button>
             </div>

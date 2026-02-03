@@ -1,8 +1,12 @@
 import axios from 'axios';
 
+const API_BASE =
+  (typeof window !== 'undefined' && (window as any).__API_BASE__) ||
+  (typeof window !== 'undefined' ? `${window.location.origin}/api` : '/api');
+
 // Configuración global de Axios
 const api = axios.create({
-  baseURL: 'http://localhost:3000/api', // URL de tu backend
+  baseURL: API_BASE, // URL de tu backend
   withCredentials: true,
   headers: {
     'Content-Type': 'application/json',
