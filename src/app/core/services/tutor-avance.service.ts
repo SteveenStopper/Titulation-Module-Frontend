@@ -122,10 +122,19 @@ export class TutorAvanceService {
       for (const al of alumnos) {
         this.http.get<any>(`/api/docente/uic/avances`, { params: { estudianteId: al.id } }).subscribe(resp => {
           if (!resp || String(resp.alumnoId) !== String(al.id)) return;
-          const p1 = resp.p1 ? { nota: resp.p1.nota ?? null, obs: resp.p1.obs ?? '', estado: (resp.p1.nota != null ? 'saved' : 'editing') as ParcialEstado } : { nota: null, obs: '', estado: 'editing' as ParcialEstado };
-          const p2 = resp.p2 ? { nota: resp.p2.nota ?? null, obs: resp.p2.obs ?? '', estado: (resp.p2.nota != null ? 'saved' : 'editing') as ParcialEstado } : { nota: null, obs: '', estado: 'editing' as ParcialEstado };
-          const p3 = resp.p3 ? { nota: resp.p3.nota ?? null, obs: resp.p3.obs ?? '', estado: (resp.p3.nota != null ? 'saved' : 'editing') as ParcialEstado } : { nota: null, obs: '', estado: 'editing' as ParcialEstado };
-          const publicado = !!(p1.nota != null && p2.nota != null && p3.nota != null);
+          const mapParcial = (p: any): Parcial => {
+            const nota = (p && p.nota !== undefined) ? (p.nota ?? null) : null;
+            const obs = (p && p.obs !== undefined) ? (p.obs ?? '') : '';
+            const published = !!(p && p.published);
+            const estado: ParcialEstado = published
+              ? 'published'
+              : (nota != null ? 'saved' : 'editing');
+            return { nota, obs, estado };
+          };
+          const p1 = mapParcial(resp.p1);
+          const p2 = mapParcial(resp.p2);
+          const p3 = mapParcial(resp.p3);
+          const publicado = (p1.estado === 'published') && (p2.estado === 'published') && (p3.estado === 'published');
           const updated = store.avances$.value.map(a => a.alumnoId === al.id ? { ...a, p1, p2, p3, publicado } : a);
           store.avances$.next(updated);
         });
@@ -204,5 +213,9 @@ export class TutorAvanceService {
         });
       return () => sub.unsubscribe();
     });
+  }
+
+  downloadInformeFinal(estudianteId: string) {
+    return this.http.get(`/api/docente/uic/informe/${estudianteId}/download`, { responseType: 'blob' });
   }
 }

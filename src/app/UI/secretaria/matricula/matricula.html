@@ -1,38 +1,39 @@
 <section class="space-y-4">
   <!-- Toast Notifications -->
   <div class="fixed top-4 right-4 space-y-2 z-50 w-80">
-    <div *ngFor="let t of toasts" 
-         [ngClass]="{
+    <div *ngFor="let t of toasts" [ngClass]="{
            'bg-green-500': t.type==='success',
            'bg-red-500': t.type==='error'
-         }"
-         class="text-white px-4 py-2 rounded-lg shadow-lg flex items-center justify-between">
+         }" class="text-white px-4 py-2 rounded-lg shadow-lg flex items-center justify-between">
       <span class="text-sm">{{t.message}}</span>
       <button (click)="removeToast(t.id)" class="ml-2 text-white hover:text-gray-200">
         <i class="fa fa-xmark"></i>
       </button>
     </div>
 
-  <!-- Rechazo Modal -->
-  <div *ngIf="rejectOpen" class="fixed inset-0 z-50 flex items-center justify-center">
-    <div class="absolute inset-0 bg-black/50" (click)="cancelarRechazo()"></div>
-    <div class="relative bg-white w-[92vw] max-w-md rounded-xl shadow-lg overflow-hidden">
-      <div class="flex items-center justify-between px-4 py-2 border-b">
-        <div class="font-medium text-gray-800">Rechazar documento</div>
-        <button (click)="cancelarRechazo()" class="p-2 rounded hover:bg-gray-100" aria-label="Cerrar">
-          <i class="fa fa-xmark"></i>
-        </button>
-      </div>
-      <div class="p-4 space-y-3">
-        <label class="block text-sm font-medium text-gray-700">Observación</label>
-        <textarea [(ngModel)]="rejectObs" rows="4" class="w-full border rounded-md px-3 py-2 text-sm" placeholder="Describe el motivo del rechazo"></textarea>
-        <div class="flex justify-end gap-2 pt-2">
-          <button (click)="cancelarRechazo()" class="px-3 py-1.5 text-xs rounded-md border hover:bg-gray-50">Cancelar</button>
-          <button (click)="confirmarRechazo()" class="px-3 py-1.5 text-xs rounded-md bg-red-600 text-white hover:bg-red-700">Confirmar rechazo</button>
+    <!-- Rechazo Modal -->
+    <div *ngIf="rejectOpen" class="fixed inset-0 z-50 flex items-center justify-center">
+      <div class="absolute inset-0 bg-black/50" (click)="cancelarRechazo()"></div>
+      <div class="relative bg-white w-[92vw] max-w-md rounded-xl shadow-lg overflow-hidden">
+        <div class="flex items-center justify-between px-4 py-2 border-b">
+          <div class="font-medium text-gray-800">Rechazar documento</div>
+          <button (click)="cancelarRechazo()" class="p-2 rounded hover:bg-gray-100" aria-label="Cerrar">
+            <i class="fa fa-xmark"></i>
+          </button>
+        </div>
+        <div class="p-4 space-y-3">
+          <label class="block text-sm font-medium text-gray-700">Observación</label>
+          <textarea [(ngModel)]="rejectObs" rows="4" class="w-full border rounded-md px-3 py-2 text-sm"
+            placeholder="Describe el motivo del rechazo"></textarea>
+          <div class="flex justify-end gap-2 pt-2">
+            <button (click)="cancelarRechazo()"
+              class="px-3 py-1.5 text-xs rounded-md border hover:bg-gray-50">Cancelar</button>
+            <button (click)="confirmarRechazo()"
+              class="px-3 py-1.5 text-xs rounded-md bg-red-600 text-white hover:bg-red-700">Confirmar rechazo</button>
+          </div>
         </div>
       </div>
     </div>
-  </div>
   </div>
   <!-- Header -->
   <div class="bg-white rounded-xl border border-gray-200 shadow-sm px-4 py-3 flex items-center justify-between">
@@ -41,7 +42,8 @@
       <p class="text-gray-600">Revisión de documentos para matriculación</p>
     </div>
     <div class="flex items-center gap-2">
-      <input [(ngModel)]="search" type="text" placeholder="Buscar por estudiante" class="px-3 py-2 border rounded-lg text-sm w-72" />
+      <input [(ngModel)]="search" type="text" placeholder="Buscar por estudiante"
+        class="px-3 py-2 border rounded-lg text-sm w-72" />
     </div>
   </div>
 
@@ -73,23 +75,44 @@
           </td>
           <td class="px-3 py-2">
             <div class="flex items-center justify-center gap-2">
-              <button (click)="verDocumento(it)" class="px-3 py-1.5 text-xs rounded-md bg-indigo-600 text-white hover:bg-indigo-700">
+              <button (click)="verDocumento(it)"
+                class="px-3 py-1.5 text-xs rounded-md bg-indigo-600 text-white hover:bg-indigo-700">
                 <i class="fa fa-eye mr-1"></i> Ver
               </button>
-              <button (click)="aceptar(it.id)" [disabled]="processing.has(it.id) || statuses[it.id] !== 'en_revision'" class="px-3 py-1.5 text-xs rounded-md bg-green-600 text-white hover:bg-green-700 disabled:opacity-60">
-                <i class="fa" [ngClass]="processing.has(it.id) ? 'fa-spinner fa-spin mr-1' : 'fa-check mr-1'"></i> Aceptar
+              <button (click)="aceptar(it.id)" [disabled]="processing.has(it.id) || statuses[it.id] !== 'en_revision'"
+                class="px-3 py-1.5 text-xs rounded-md bg-green-600 text-white hover:bg-green-700 disabled:opacity-60">
+                <i class="fa" [ngClass]="processing.has(it.id) ? 'fa-spinner fa-spin mr-1' : 'fa-check mr-1'"></i>
+                Aceptar
               </button>
-              <button (click)="abrirRechazo(it.id)" [disabled]="processing.has(it.id) || statuses[it.id] !== 'en_revision'" class="px-3 py-1.5 text-xs rounded-md bg-red-600 text-white hover:bg-red-700 disabled:opacity-60">
-                <i class="fa" [ngClass]="processing.has(it.id) ? 'fa-spinner fa-spin mr-1' : 'fa-xmark mr-1'"></i> Rechazar
+              <button (click)="abrirRechazo(it.id)"
+                [disabled]="processing.has(it.id) || statuses[it.id] !== 'en_revision'"
+                class="px-3 py-1.5 text-xs rounded-md bg-red-600 text-white hover:bg-red-700 disabled:opacity-60">
+                <i class="fa" [ngClass]="processing.has(it.id) ? 'fa-spinner fa-spin mr-1' : 'fa-xmark mr-1'"></i>
+                Rechazar
               </button>
             </div>
           </td>
         </tr>
         <tr *ngIf="filtered.length===0">
-          <td colspan="5" class="px-4 py-6 text-center text-gray-500">Sin resultados</td>
+          <td colspan="6" class="px-4 py-6 text-center text-gray-500">Sin resultados</td>
         </tr>
       </tbody>
     </table>
+  </div>
+
+  <!-- Paginación -->
+  <div class="flex items-center justify-between pt-3">
+    <div class="text-xs text-gray-600">Página {{ page }} de {{ totalPages }}</div>
+    <div class="flex items-center gap-2">
+      <button (click)="changePage(-1)" [disabled]="page <= 1"
+        class="px-3 py-1.5 text-xs rounded-md border bg-white hover:bg-gray-50 disabled:opacity-60">
+        Anterior
+      </button>
+      <button (click)="changePage(1)" [disabled]="page >= totalPages"
+        class="px-3 py-1.5 text-xs rounded-md border bg-white hover:bg-gray-50 disabled:opacity-60">
+        Siguiente
+      </button>
+    </div>
   </div>
 
   <!-- Preview Modal -->
@@ -99,7 +122,8 @@
       <div class="flex items-center justify-between px-4 py-2 border-b">
         <div class="font-medium text-gray-800">{{ previewTitle }}</div>
         <div class="flex items-center gap-2">
-          <a *ngIf="previewUrl" [href]="previewUrl" download class="px-3 py-1.5 text-xs rounded-md bg-slate-100 hover:bg-slate-200">
+          <a *ngIf="previewUrl" [href]="previewUrl" download
+            class="px-3 py-1.5 text-xs rounded-md bg-slate-100 hover:bg-slate-200">
             <i class="fa fa-download mr-1"></i> Descargar
           </a>
           <button (click)="cerrarPreview()" class="p-2 rounded hover:bg-gray-100" aria-label="Cerrar">

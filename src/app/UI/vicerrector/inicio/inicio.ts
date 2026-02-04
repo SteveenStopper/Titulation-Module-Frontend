@@ -17,7 +17,6 @@ export class Inicio {
     { titulo: 'Carreras activas', valor: 0, icono: 'fa-school', color: 'text-indigo-600' },
     { titulo: 'Materias registradas', valor: 0, icono: 'fa-book', color: 'text-emerald-600' },
     { titulo: 'Pendientes de publicar', valor: 0, icono: 'fa-bullhorn', color: 'text-amber-600' },
-    { titulo: 'Tutores disponibles', valor: 0, icono: 'fa-user-tie', color: 'text-sky-600' },
   ];
 
   accesos = [
@@ -53,7 +52,6 @@ export class Inicio {
         { titulo: 'Carreras activas', valor: Number(d?.carrerasActivas || 0), icono: 'fa-school', color: 'text-indigo-600' },
         { titulo: 'Materias registradas', valor: Number(d?.materiasRegistradas || 0), icono: 'fa-book', color: 'text-emerald-600' },
         { titulo: 'Pendientes de publicar', valor: Number(d?.pendientesPublicar || 0), icono: 'fa-bullhorn', color: 'text-amber-600' },
-        { titulo: 'Tutores disponibles', valor: Number(d?.tutoresDisponibles || 0), icono: 'fa-user-tie', color: 'text-sky-600' },
       ];
     });
     // cargar notificaciones reales

@@ -6,9 +6,12 @@
       <p class="text-gray-600">Resumen de gestión y accesos rápidos</p>
     </div>
     <div class="relative">
-      <button type="button" (click)="toggleNotif()" class="relative inline-flex items-center justify-center h-8 w-8 rounded-full bg-rose-600 text-white hover:bg-rose-700" aria-label="Notificaciones" [attr.aria-expanded]="isNotifOpen">
+      <button type="button" (click)="toggleNotif()"
+        class="relative inline-flex items-center justify-center h-8 w-8 rounded-full bg-rose-600 text-white hover:bg-rose-700"
+        aria-label="Notificaciones" [attr.aria-expanded]="isNotifOpen">
         <i class="fa-solid fa-bell text-sm"></i>
-        <span *ngIf="pendingCount > 0" class="absolute -top-1 -right-1 inline-flex items-center justify-center px-1 py-0.5 text-[10px] font-medium leading-none bg-white text-rose-600 border border-rose-600 rounded-full min-w-[16px]">
+        <span *ngIf="pendingCount > 0"
+          class="absolute -top-1 -right-1 inline-flex items-center justify-center px-1 py-0.5 text-[10px] font-medium leading-none bg-white text-rose-600 border border-rose-600 rounded-full min-w-[16px]">
           {{ pendingCount }}
         </span>
       </button>
@@ -17,7 +20,8 @@
 
   <!-- Resumen -->
   <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-    <div *ngFor="let item of resumen" class="bg-white rounded-xl border border-gray-200 shadow-sm p-4 flex items-center gap-3">
+    <div *ngFor="let item of resumen"
+      class="bg-white rounded-xl border border-gray-200 shadow-sm p-4 flex items-center gap-3">
       <div class="text-2xl" [ngClass]="item.color"><i class="fa" [ngClass]="item.icono"></i></div>
       <div>
         <div class="text-2xl font-bold text-gray-800">{{ item.valor }}</div>
@@ -30,7 +34,8 @@
   <div class="bg-white rounded-xl border border-gray-200 shadow-sm p-4">
     <h2 class="text-lg font-semibold text-gray-800 mb-3">Accesos rápidos</h2>
     <div class="flex flex-wrap gap-3">
-      <a *ngFor="let a of accesos" [routerLink]="a.ruta" class="inline-flex items-center gap-2 text-white px-4 py-2 rounded-lg" [ngClass]="a.color">
+      <a *ngFor="let a of accesos" [routerLink]="a.ruta"
+        class="inline-flex items-center gap-2 text-white px-4 py-2 rounded-lg" [ngClass]="a.color">
         <i class="fa" [ngClass]="a.icono"></i>
         <span>{{ a.titulo }}</span>
       </a>
@@ -47,7 +52,8 @@
           <button (click)="onlyUnread = !onlyUnread" class="text-xs text-gray-700 hover:underline">
             {{ onlyUnread ? 'Ver todas' : 'Solo no leídas' }}
           </button>
-          <button (click)="marcarTodasLeidas()" class="text-xs text-rose-600 hover:underline">Marcar todas como leídas</button>
+          <button (click)="marcarTodasLeidas()" class="text-xs text-rose-600 hover:underline">Marcar todas como
+            leídas</button>
         </div>
       </div>
       <div class="flex-1 overflow-y-auto divide-y">
@@ -57,11 +63,13 @@
             <div class="text-sm font-medium text-gray-800">{{ n.text }}</div>
             <div class="text-[10px] text-gray-400 mt-1">{{ n.time }}</div>
           </div>
-          <button *ngIf="!n.leida" (click)="marcarLeida(n)" class="text-xs text-emerald-700 hover:underline">Leída</button>
+          <button *ngIf="!n.leida" (click)="marcarLeida(n)"
+            class="text-xs text-emerald-700 hover:underline">Leída</button>
         </div>
       </div>
       <div class="p-3 border-t text-right">
-        <button (click)="toggleNotif()" class="px-3 py-1.5 text-sm rounded-md bg-gray-800 text-white hover:bg-gray-900">Cerrar</button>
+        <button (click)="toggleNotif()"
+          class="px-3 py-1.5 text-sm rounded-md bg-gray-800 text-white hover:bg-gray-900">Cerrar</button>
       </div>
     </aside>
   </div>

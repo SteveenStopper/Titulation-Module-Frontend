@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { HttpClient } from '@angular/common/http';
 import { AuthService } from '../../../services/auth.service';
+import Swal from 'sweetalert2';
 
 @Component({
   selector: 'app-calificacion',
@@ -12,7 +13,7 @@ import { AuthService } from '../../../services/auth.service';
   styleUrl: './calificacion.scss'
 })
 export class Calificacion {
-  items: Array<{ id: number; estudiante: string; carrera: string; nota: number | null; guardado: boolean }> = [];
+  items: Array<{ id: number; estudiante: string; carrera: string; nota: number | null; guardado: boolean; certificate_doc_id?: number | null }> = [];
   private adminIngles = false;
 
   constructor(private http: HttpClient, private auth: AuthService) {
@@ -46,32 +47,90 @@ export class Calificacion {
     if (this.adminIngles) {
       // En modo Admin/Inglés, 'estudiante' es el nombre del alumno y debemos guardar para ese usuario.
       const target = this.lookupTargetUserIdByNombre(it.estudiante);
-      if (!target) { alert('No se pudo resolver el estudiante.'); return; }
+      if (!target) {
+        Swal.fire({
+          title: 'No se pudo resolver',
+          text: 'No se pudo resolver el estudiante.',
+          icon: 'error',
+          confirmButtonText: 'Cerrar',
+          customClass: { confirmButton: 'swal-btn-cancel' }
+        });
+        return;
+      }
       this.http.post('/api/english/save-for', { target_user_id: target, score }).subscribe({
         next: (_res: any) => {
           it.guardado = true;
-          alert('Calificación guardada.');
+          Swal.fire({
+            title: 'Guardado',
+            text: 'Calificación guardada.',
+            icon: 'success',
+            confirmButtonText: 'Aceptar',
+            customClass: { confirmButton: 'swal-btn-confirm' }
+          });
         },
-        error: () => { alert('No se pudo guardar la calificación.'); }
+        error: () => {
+          Swal.fire({
+            title: 'Error',
+            text: 'No se pudo guardar la calificación.',
+            icon: 'error',
+            confirmButtonText: 'Cerrar',
+            customClass: { confirmButton: 'swal-btn-cancel' }
+          });
+        }
       });
     } else {
       this.http.post('/api/english/save', { score }).subscribe({
         next: (res: any) => {
           it.guardado = true;
           if (res && typeof res.id === 'number') it.id = Number(res.id);
-          alert('Calificación guardada.');
+          Swal.fire({
+            title: 'Guardado',
+            text: 'Calificación guardada.',
+            icon: 'success',
+            confirmButtonText: 'Aceptar',
+            customClass: { confirmButton: 'swal-btn-confirm' }
+          });
         },
         error: () => {
-          alert('No se pudo guardar la calificación.');
+          Swal.fire({
+            title: 'Error',
+            text: 'No se pudo guardar la calificación.',
+            icon: 'error',
+            confirmButtonText: 'Cerrar',
+            customClass: { confirmButton: 'swal-btn-cancel' }
+          });
         }
       });
     }
   }
 
+  verCertificado(id: number) {
+    const it = this.items.find(x => x.id === id);
+    const docId = Number(it?.certificate_doc_id);
+    if (!Number.isFinite(docId)) return;
+    this.http.get(`/api/documents/${docId}/download`, { responseType: 'blob' }).subscribe({
+      next: (blob) => {
+        const url = window.URL.createObjectURL(blob);
+        window.open(url, '_blank');
+        setTimeout(() => window.URL.revokeObjectURL(url), 60_000);
+      },
+      error: () => {
+        Swal.fire({
+          title: 'Error',
+          text: 'No se pudo abrir el certificado.',
+          icon: 'error',
+          confirmButtonText: 'Cerrar',
+          customClass: { confirmButton: 'swal-btn-cancel' }
+        });
+      }
+    });
+  }
+
   generarCertificado(id: number) {
     const it = this.items.find(x => x.id === id);
     if (!it) return;
-    this.http.post('/api/english/certificate', {}, { responseType: 'blob', observe: 'response' }).subscribe({
+    const body = this.adminIngles ? { target_user_id: Number(it.id) } : {};
+    this.http.post('/api/english/certificate', body, { responseType: 'blob', observe: 'response' }).subscribe({
       next: (resp) => {
         const blob = resp.body as Blob;
         if (blob) {
@@ -79,14 +138,32 @@ export class Calificacion {
           window.open(url, '_blank');
           setTimeout(() => window.URL.revokeObjectURL(url), 60_000);
         } else {
-          alert('No se recibió el archivo del certificado.');
+          Swal.fire({
+            title: 'Error',
+            text: 'No se recibió el archivo del certificado.',
+            icon: 'error',
+            confirmButtonText: 'Cerrar',
+            customClass: { confirmButton: 'swal-btn-cancel' }
+          });
         }
       },
       error: (err) => {
         if (err?.status === 501) {
-          alert('La generación de PDF no está disponible en el servidor. Instalar dependencia pdfkit.');
+          Swal.fire({
+            title: 'No disponible',
+            text: 'La generación de PDF no está disponible en el servidor. Instalar dependencia pdfkit.',
+            icon: 'warning',
+            confirmButtonText: 'Aceptar',
+            customClass: { confirmButton: 'swal-btn-confirm' }
+          });
         } else {
-          alert('No se pudo generar el certificado.');
+          Swal.fire({
+            title: 'Error',
+            text: 'No se pudo generar el certificado.',
+            icon: 'error',
+            confirmButtonText: 'Cerrar',
+            customClass: { confirmButton: 'swal-btn-cancel' }
+          });
         }
       }
     });
@@ -94,7 +171,7 @@ export class Calificacion {
 
   private cargarElegibles() {
     // Lista de estudiantes aprobados en Tesorería
-    this.http.get<Array<{ id_user: number; fullname: string; score?: number|null; status?: string|null }>>('/api/english/eligible')
+    this.http.get<Array<{ id_user: number; fullname: string; career_name?: string|null; career?: string|null; certificate_doc_id?: number|null; score?: number|null; status?: string|null }>>('/api/english/eligible')
       .subscribe(rows => {
         const list = Array.isArray(rows) ? rows : [];
         this._eligibleMap = new Map<number, string>();
@@ -105,9 +182,10 @@ export class Calificacion {
           return {
             id: r.id_user, // usamos id_user como id local de fila
             estudiante: r.fullname,
-            carrera: '',
+            carrera: (r.career_name || r.career || ''),
             nota: r.score != null ? Number(r.score) : null,
-            guardado: r.status === 'saved' || r.status === 'validated'
+            guardado: r.status === 'saved' || r.status === 'validated',
+            certificate_doc_id: r.certificate_doc_id ?? null,
           };
         });
       });

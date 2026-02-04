@@ -15,12 +15,17 @@ export class TutorUicDocente {
   tab: 'avance' = 'avance';
   estudiantes: FilaAvance[] = [];
   private tutorId = '';
+  private isAdmin = false;
   showToast = false;
   toastMsg = '';
   toastOk = true;
 
   constructor(private avanceSvc: TutorAvanceService, private auth: AuthService) {
     const me = this.auth.currentUserValue?.id_user;
+    const roles = (this.auth.currentUserValue as any)?.roles;
+    const role = (this.auth.currentUserValue as any)?.role;
+    const list = Array.isArray(roles) ? roles.map(String) : (role ? [String(role)] : []);
+    this.isAdmin = list.includes('Administrador') || list.includes('Admin') || list.includes('ADMIN');
     if (Number.isFinite(Number(me))) {
       this.tutorId = String(me);
       this.avanceSvc.syncFromBackend(this.tutorId);
@@ -55,13 +60,13 @@ export class TutorUicDocente {
   }
 
   puedeEditar(e: any, key: 'p1'|'p2'|'p3'): boolean {
-    if (e.publicado) return false;
-    if (!this.previoCompleto(e, key)) return false;
-    return e[key].estado === 'editing';
+    if (this.isAdmin) return e[key].estado === 'editing';
+    return e[key].estado !== 'published';
   }
 
   puedeMostrarEditar(e: any, key: 'p1'|'p2'|'p3'): boolean {
-    return !e.publicado && (e[key].estado === 'saved');
+    if (!this.isAdmin) return false;
+    return (e[key].estado === 'saved' || e[key].estado === 'published');
   }
 
   guardar(e: FilaAvance, key: 'p1'|'p2'|'p3') {
@@ -74,13 +79,12 @@ export class TutorUicDocente {
   }
 
   editar(e: FilaAvance, key: 'p1'|'p2'|'p3') {
-    if (e.publicado) return;
+    if (!this.isAdmin) return;
     e[key].estado = 'editing';
   }
 
   puedePublicar(e: FilaAvance, key: 'p1'|'p2'|'p3'): boolean {
-    if (e.publicado) return false;
-    if (!this.previoCompleto(e, key)) return false;
+    if (this.isAdmin) return false;
     return e[key].nota !== null && e[key].estado !== 'published';
   }
 
@@ -104,6 +108,18 @@ export class TutorUicDocente {
   verDocumento(e: FilaAvance) {
     if (!e?.alumnoId) return;
     if (!Number.isFinite(Number(e?.documentoId))) return;
-    window.open(`/api/docente/uic/informe/${e.alumnoId}/download`, '_blank');
+    this.avanceSvc.downloadInformeFinal(String(e.alumnoId)).subscribe({
+      next: (blob: Blob) => {
+        const url = window.URL.createObjectURL(blob);
+        window.open(url, '_blank');
+        setTimeout(() => window.URL.revokeObjectURL(url), 60_000);
+      },
+      error: () => {
+        this.toastOk = false;
+        this.toastMsg = 'No autorizado para ver el documento';
+        this.showToast = true;
+        setTimeout(() => this.showToast = false, 3500);
+      }
+    });
   }
 }

@@ -46,10 +46,21 @@ export class Matricula {
     // Solo documentos de matrícula (excluir comprobantes de pagos)
     this.documents.list({ category: 'matricula', page: this.page, pageSize: this.pageSize }).subscribe({
       next: (res: any) => {
+        const allowed = new Set(['solicitud', 'oficio', 'cert_vinculacion', 'cert_practicas', 'cert_ingles']);
         const data = (Array.isArray(res?.data) ? res.data : (Array.isArray(res) ? res : []))
           .filter((d: any) => {
             const t = String(d?.tipo || '').toLowerCase();
-            return t !== 'cert_secretaria' && t !== 'cert_tesoreria';
+            if (!t || !allowed.has(t)) return false;
+
+            // Ocultar certificados AUTOGENERADOS (se guardan con nombre tipo: cert_ingles_*.pdf)
+            // Pero mantener visibles los archivos que el estudiante sube manualmente aunque sean tipo cert_*.
+            if (t === 'cert_ingles' || t === 'cert_practicas' || t === 'cert_vinculacion') {
+              const fn = String(d?.nombre_archivo || d?.filename || '').toLowerCase();
+              const autoPrefix = `${t}_`;
+              if (fn && fn.startsWith(autoPrefix)) return false;
+            }
+
+            return true;
           });
         const pag = res?.pagination || {};
         this.total = Number(pag.total || 0);

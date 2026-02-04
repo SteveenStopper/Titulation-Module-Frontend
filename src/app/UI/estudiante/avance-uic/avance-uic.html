@@ -36,22 +36,24 @@
     <div class="flex items-center justify-between mb-2">
       <h3 class="text-lg font-semibold text-gray-800">Informe Final</h3>
       <span class="text-xs px-2 py-1 rounded-full"
-            [ngClass]="puedeSubirInforme ? 'bg-green-100 text-green-700 border border-green-200' : 'bg-yellow-100 text-yellow-700 border border-yellow-200'">
-        {{ puedeSubirInforme ? 'Habilitado' : 'Pendiente de Parcial 2' }}
+        [ngClass]="informeFinalEntregado ? 'bg-gray-100 text-gray-700 border border-gray-200' : (puedeSubirInforme ? 'bg-green-100 text-green-700 border border-green-200' : 'bg-yellow-100 text-yellow-700 border border-yellow-200')">
+        {{ informeFinalEntregado ? 'Entregado' : (puedeSubirInforme ? 'Habilitado' : 'Pendiente de Parcial 2') }}
       </span>
     </div>
-    <p class="text-sm text-gray-600 mb-3">Podrás subir tu informe final cuando se registre la calificación del <strong>Parcial 2</strong>.</p>
+    <p class="text-sm text-gray-600 mb-3">Podrás subir tu informe final cuando se registre la calificación del
+      <strong>Parcial 2</strong>.</p>
 
     <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
       <div>
         <label class="block text-sm font-medium text-gray-700 mb-1">Archivo (PDF)</label>
-        <input type="file" accept="application/pdf" (change)="onInformeChange($event)" [disabled]="!puedeSubirInforme"
-               class="block w-full text-sm text-gray-700 disabled:opacity-60 file:mr-3 file:py-2 file:px-3 file:rounded-md file:border-0 file:text-sm file:font-medium file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"/>
+        <input type="file" accept="application/pdf" (change)="onInformeChange($event)"
+          [disabled]="!puedeSubirInforme || informeFinalEntregado"
+          class="block w-full text-sm text-gray-700 disabled:opacity-60 file:mr-3 file:py-2 file:px-3 file:rounded-md file:border-0 file:text-sm file:font-medium file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100" />
         <div class="text-xs text-gray-500 mt-1" *ngIf="informeNombre">Archivo: {{ informeNombre }}</div>
       </div>
       <div class="flex items-end">
-        <button type="button" (click)="enviarInforme()" [disabled]="!canEnviarInforme"
-                class="inline-flex items-center gap-2 px-4 py-2 rounded-md text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-60 text-sm">
+        <button type="button" (click)="enviarInforme()" [disabled]="!canEnviarInforme || informeFinalEntregado"
+          class="inline-flex items-center gap-2 px-4 py-2 rounded-md text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-60 text-sm">
           <i class="fa-solid fa-upload"></i>
           Enviar informe final
         </button>

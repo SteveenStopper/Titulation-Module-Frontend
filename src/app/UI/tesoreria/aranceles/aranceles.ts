@@ -3,7 +3,6 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ToastrService } from 'ngx-toastr';
 import { TesoreriaService, TesoreriaResumenItem } from '../../../services/tesoreria.service';
-import { saveBlobToFile } from '../../../core/download.util';
 import { NotificationsService } from '../../../services/notifications.service';
 import { DialogModule } from 'primeng/dialog';
 
@@ -193,10 +192,15 @@ export class Aranceles {
     this.tesoreria.descargarCertificadoPorEstudiante(Number(it.estudiante_id), periodo)
       .subscribe({
         next: (blob) => {
-          saveBlobToFile(blob, `cert_tesoreria_${it.estudiante_id}.pdf`);
           this.loading = false;
+          const url = window.URL.createObjectURL(blob);
+          window.open(url, '_blank');
+          setTimeout(() => window.URL.revokeObjectURL(url), 60_000);
         },
-        error: (err) => { this.loading = false; this.toast.error(err?.error?.message || 'No se pudo descargar'); }
+        error: (err) => {
+          this.loading = false;
+          this.toast.error(err?.error?.message || 'No se pudo abrir el certificado');
+        }
       });
   }
 }

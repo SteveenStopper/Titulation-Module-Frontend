@@ -74,11 +74,12 @@ export class TribunalEvaluador {
   }
 
   private refreshEstudiantes() {
-    if (!Number.isFinite(Number(this.model.periodo)) || !Number.isFinite(Number(this.model.carrera))) {
+    if (!Number.isFinite(Number(this.model.periodo))) {
       this.estudiantesUIC = [];
       return;
     }
-    const params: any = { careerId: this.model.carrera, academicPeriodId: this.model.periodo };
+    const params: any = { academicPeriodId: this.model.periodo };
+    if (Number.isFinite(Number(this.model.carrera))) params.careerId = this.model.carrera;
     this.http.get<any[]>('/api/uic/admin/estudiantes-uic-sin-tribunal', { params }).subscribe(rows => {
       const list = Array.isArray(rows) ? rows : [];
       this.estudiantesUIC = list.map((r: any) => ({
@@ -91,11 +92,12 @@ export class TribunalEvaluador {
   }
 
   private refreshTribunalAsignado() {
-    if (!Number.isFinite(Number(this.model.periodo)) || !Number.isFinite(Number(this.model.carrera))) {
+    if (!Number.isFinite(Number(this.model.periodo))) {
       this.tribunalAsignado = [];
       return;
     }
-    const params: any = { careerId: this.model.carrera, academicPeriodId: this.model.periodo };
+    const params: any = { academicPeriodId: this.model.periodo };
+    if (Number.isFinite(Number(this.model.carrera))) params.careerId = this.model.carrera;
     this.http.get<any[]>('/api/uic/admin/asignaciones/tribunal', { params }).subscribe(rows => {
       this.tribunalAsignado = Array.isArray(rows) ? rows : [];
     });
