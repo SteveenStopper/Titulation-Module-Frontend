@@ -27,10 +27,31 @@ export class TribunalEvaluador {
     estudianteId?: number;
     miembros: Array<{ rol?: string; docente?: number }>;
   } = {
-    miembros: [],
-  };
+      miembros: [],
+    };
 
   errors: string[] = [];
+
+  get canGuardar(): boolean {
+    if (!Number.isFinite(Number(this.model.periodo))) return false;
+    if (!Number.isFinite(Number(this.model.estudianteId))) return false;
+    if (!Array.isArray(this.model.miembros) || this.model.miembros.length !== 3) return false;
+    const roles = new Set<string>();
+    const docentes = new Set<number>();
+    const tutorId = this.getSelectedTutorId();
+    for (const m of this.model.miembros) {
+      const r = String(m?.rol || '').trim();
+      if (!r) return false;
+      if (roles.has(r)) return false;
+      roles.add(r);
+      if (!Number.isFinite(Number(m?.docente))) return false;
+      const did = Number(m.docente);
+      if (docentes.has(did)) return false;
+      docentes.add(did);
+      if (tutorId && did === tutorId) return false;
+    }
+    return true;
+  }
 
   constructor(private http: HttpClient) { }
 
@@ -140,12 +161,12 @@ export class TribunalEvaluador {
   guardar() {
     if (!this.validate()) return;
     // Mapear a presidente/secretario/vocal desde los roles visibles
-    const roleMap: Record<string, 'Presidente'|'Secretario'|'Vocal'> = {
+    const roleMap: Record<string, 'Presidente' | 'Secretario' | 'Vocal'> = {
       'Integrante del Tribunal 1': 'Presidente',
       'Integrante del Tribunal 2': 'Secretario',
       'Integrante del Tribunal 3': 'Vocal',
     };
-    const getIdByMapped = (target: 'Presidente'|'Secretario'|'Vocal') => {
+    const getIdByMapped = (target: 'Presidente' | 'Secretario' | 'Vocal') => {
       const m = this.model.miembros.find(x => roleMap[x.rol || ''] === target);
       return m?.docente ? Number(m.docente) : undefined;
     };
@@ -156,6 +177,7 @@ export class TribunalEvaluador {
       id_vocal: getIdByMapped('Vocal'),
     };
     if (Number.isFinite(Number(this.model.periodo))) body.academicPeriodId = this.model.periodo;
+    if (Number.isFinite(Number(this.model.carrera))) body.careerId = this.model.carrera;
     this.http.post('/api/tribunal/assignments', body).subscribe({
       next: () => {
         this.model.estudianteId = undefined;

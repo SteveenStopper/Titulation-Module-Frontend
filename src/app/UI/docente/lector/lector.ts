@@ -39,8 +39,18 @@ export class LectorDocente {
   }
 
   verDocumento(e: { documentoUrl?: string | null; nombre: string }) {
-    if (e.documentoUrl) {
-      window.open(e.documentoUrl, '_blank');
+    const raw = e.documentoUrl != null ? String(e.documentoUrl).trim() : '';
+    if (raw) {
+      let url = raw;
+      // Si viene relativo (ej: "uploads/documents/..."), convertir a URL absoluta
+      // usando el mismo host del backend (API_BASE) para soportar front/back en puertos distintos.
+      if (!/^https?:\/\//i.test(url)) {
+        const apiBase = (window as any).__API_BASE__ || `${window.location.origin}/api`;
+        const backendBase = String(apiBase).replace(/\/+$/, '').replace(/\/api$/, '');
+        if (!url.startsWith('/')) url = '/' + url;
+        url = backendBase + url;
+      }
+      window.open(url, '_blank', 'noopener');
     } else {
       alert(`El estudiante ${e.nombre} aún no tiene documento disponible.`);
     }
@@ -53,7 +63,7 @@ export class LectorDocente {
           id: e.id,
           nombre: e.nombre,
           carrera: e.carrera ?? null,
-          documentoUrl: e.documentoUrl ?? null,
+          documentoUrl: e.documentoUrl == null ? null : String(e.documentoUrl),
           calificacion: e.calificacion == null ? null : Number(e.calificacion),
           observacion: e.observacion ?? ''
         }));

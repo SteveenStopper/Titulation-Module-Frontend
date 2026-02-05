@@ -5,6 +5,7 @@ import { CronogramaUIC } from '../../../services/cronograma-uic.service';
 import { CronogramaComplexivoService } from '../../../services/cronograma-complexivo.service';
 import { PeriodService } from '../../../services/period.service';
 import { CronogramaExportService } from '../../../services/cronograma-export.service';
+import Swal from 'sweetalert2';
 
 @Component({
   selector: 'app-cronograma-examen-complexivo',
@@ -124,20 +125,29 @@ export class CronogramaExamenComplexivo {
     this.recomputeGlobalMin();
   }
   publish() {
-    if (!this.hasSelectedPeriod) { alert('Seleccione un período antes de publicar.'); return; }
+    if (!this.hasSelectedPeriod) {
+      Swal.fire({ icon: 'warning', title: 'Atención', text: 'Seleccione un período antes de publicar.' });
+      return;
+    }
     if (!this.validate()) return;
-    if (!this.model.periodo) { alert('Seleccione un período antes de publicar.'); return; }
+    if (!this.model.periodo) {
+      Swal.fire({ icon: 'warning', title: 'Atención', text: 'Seleccione un período antes de publicar.' });
+      return;
+    }
     const active = this.periodSvc.getActivePeriod();
-    if (!active || this.model.periodo !== active) { alert('Seleccione el período activo para poder publicar.'); return; }
+    if (!active || this.model.periodo !== active) {
+      Swal.fire({ icon: 'warning', title: 'Atención', text: 'Seleccione el período activo para poder publicar.' });
+      return;
+    }
     this.ensureProyecto();
     this.svc.setDraft(this.model);
     this.svc.publish().subscribe({
       next: (_res) => {
         this.svc.saveAsPublished(this.model.periodo!, this.model);
-        alert('Cronograma de Examen Complexivo publicado correctamente.');
+        Swal.fire({ icon: 'success', title: 'Publicado', text: 'Cronograma de Examen Complexivo publicado correctamente.' });
       },
       error: (err) => {
-        alert(err?.error?.message || 'No se pudo publicar el cronograma de Examen Complexivo.');
+        Swal.fire({ icon: 'error', title: 'Error', text: err?.error?.message || 'No se pudo publicar el cronograma de Examen Complexivo.' });
       }
     });
   }

@@ -4,6 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { CronogramaUicService, CronogramaUIC } from '../../../services/cronograma-uic.service';
 import { PeriodService } from '../../../services/period.service';
 import { CronogramaExportService } from '../../../services/cronograma-export.service';
+import Swal from 'sweetalert2';
 
 @Component({
   selector: 'app-cronograma-uic',
@@ -124,29 +125,29 @@ export class CronogramaUic {
 
   publish() {
     if (!this.hasSelectedPeriod) {
-      alert('Seleccione un período antes de publicar.');
+      Swal.fire({ icon: 'warning', title: 'Atención', text: 'Seleccione un período antes de publicar.' });
       return;
     }
     if (!this.validate()) {
       return;
     }
     if (!this.model.periodo) {
-      alert('Seleccione un período antes de publicar.');
+      Swal.fire({ icon: 'warning', title: 'Atención', text: 'Seleccione un período antes de publicar.' });
       return;
     }
     const active = this.periodSvc.getActivePeriod();
     if (!active || this.model.periodo !== active) {
-      alert('Seleccione el período activo para poder publicar.');
+      Swal.fire({ icon: 'warning', title: 'Atención', text: 'Seleccione el período activo para poder publicar.' });
       return;
     }
     this.svc.setDraft(this.model);
     this.svc.publish().subscribe({
       next: (_res) => {
         this.svc.saveAsPublished(this.model.periodo!, this.model);
-        alert('Cronograma UIC publicado correctamente.');
+        Swal.fire({ icon: 'success', title: 'Publicado', text: 'Cronograma UIC publicado correctamente.' });
       },
       error: (err) => {
-        alert(err?.error?.message || 'No se pudo publicar el cronograma UIC.');
+        Swal.fire({ icon: 'error', title: 'Error', text: err?.error?.message || 'No se pudo publicar el cronograma UIC.' });
       }
     });
   }

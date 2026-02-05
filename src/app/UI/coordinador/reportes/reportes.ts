@@ -3,8 +3,8 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { HttpClient } from '@angular/common/http';
 import { PeriodService } from '../../../services/period.service';
-import { BehaviorSubject, Observable, combineLatest, firstValueFrom, of } from 'rxjs';
-import { catchError, map, shareReplay, startWith, switchMap } from 'rxjs/operators';
+import { firstValueFrom, Observable, of } from 'rxjs';
+import { catchError, map, shareReplay } from 'rxjs/operators';
 
 @Component({
   selector: 'app-reportes',
@@ -17,14 +17,21 @@ export class Reportes {
   periods$!: Observable<Array<{ id: number; name: string }>>;
   careers$!: Observable<Array<{ id: number; nombre: string }>>;
 
-  selectedPeriodId$ = new BehaviorSubject<number | null>(null);
-  selectedCareerId$ = new BehaviorSubject<number | null>(null);
+  generalOpen = true;
+  specificOpen = true;
 
-  dash$!: Observable<{ totalEnProceso: number; sinTutor: number; totalEstudiantes: number; uicPercent: number; complexivoPercent: number }>;
-  sinTutor$!: Observable<Array<{ id_user: number; fullname: string; career_id: number | null; career_name: string | null; suggested_tutor: string | null }>>;
-  conTutor$!: Observable<Array<{ id_user: number; fullname: string; career_id: number | null; career_name: string | null; tutor_id: number | null; tutor_name: string | null }>>;
+  generalPeriodId: number | null = null;
+  generalCareerId: number | null = null;
 
-  today = new Date();
+  specificPeriodId: number | null = null;
+  specificCareerId: number | null = null;
+  specificModalidad: 'UIC' | 'EXAMEN_COMPLEXIVO' | '' = '';
+
+  previewGeneral: Array<{ nro: number; estudiante: string; carrera: string | null; modalidad: string }> = [];
+  previewEspecifico: Array<{ nro: number; estudiante: string; carrera: string | null; modalidad: string; tutor?: string | null; tribunal?: string | null }> = [];
+
+  previewGeneralInfo: { periodLabel: string; careerLabel: string } | null = null;
+  previewEspecificoInfo: { periodLabel: string; careerLabel: string; modalidadLabel: string } | null = null;
 
   constructor(private http: HttpClient, private periodSvc: PeriodService) {
     this.periods$ = this.periodSvc.listAll().pipe(
@@ -42,180 +49,339 @@ export class Reportes {
     if (activeName && typeof activeName === 'string') {
       this.periods$.subscribe((rows) => {
         const match = (rows || []).find(r => r.name === activeName);
-        if (match?.id) this.selectedPeriodId$.next(Number(match.id));
+        if (match?.id) {
+          this.generalPeriodId = Number(match.id);
+          this.specificPeriodId = Number(match.id);
+        }
       });
     }
-
-    this.dash$ = this.selectedPeriodId$.pipe(
-      switchMap((pid) => this.http.get<any>(`/api/uic/admin/dashboard${pid ? `?academicPeriodId=${pid}` : ''}`).pipe(
-        map((d) => ({
-          totalEnProceso: Number(d?.totalEnProceso || 0),
-          sinTutor: Number(d?.sinTutor || 0),
-          totalEstudiantes: Number(d?.totalEstudiantes || 0),
-          uicPercent: Number(d?.uicPercent || 0),
-          complexivoPercent: Number(d?.complexivoPercent || 0),
-        })),
-        catchError(() => of({ totalEnProceso: 0, sinTutor: 0, totalEstudiantes: 0, uicPercent: 0, complexivoPercent: 0 }))
-      )),
-      startWith({ totalEnProceso: 0, sinTutor: 0, totalEstudiantes: 0, uicPercent: 0, complexivoPercent: 0 }),
-      shareReplay(1)
-    );
-
-    this.sinTutor$ = combineLatest([this.selectedPeriodId$, this.selectedCareerId$]).pipe(
-      switchMap(([pid, cid]) => this.http.get<any[]>(`/api/uic/admin/estudiantes-sin-tutor${this.buildQuery({ academicPeriodId: pid, careerId: cid })}`).pipe(
-        map(list => (Array.isArray(list) ? list : [])),
-        catchError(() => of([]))
-      )),
-      startWith([] as any[]),
-      shareReplay(1)
-    );
-
-    this.conTutor$ = combineLatest([this.selectedPeriodId$, this.selectedCareerId$]).pipe(
-      switchMap(([pid, cid]) => this.http.get<any[]>(`/api/uic/admin/estudiantes-con-tutor${this.buildQuery({ academicPeriodId: pid, careerId: cid })}`).pipe(
-        map(list => (Array.isArray(list) ? list : [])),
-        catchError(() => of([]))
-      )),
-      startWith([] as any[]),
-      shareReplay(1)
-    );
   }
 
-  onChangePeriod(event: Event) {
+  toggleGeneral() { this.generalOpen = !this.generalOpen; }
+  toggleSpecific() { this.specificOpen = !this.specificOpen; }
+
+  onChangeGeneralPeriod(event: Event) {
     const select = event.target as HTMLSelectElement | null;
     const v = select && select.value ? Number(select.value) : null;
-    this.selectedPeriodId$.next(v);
+    this.generalPeriodId = v;
   }
 
-  onChangeCareer(event: Event) {
+  onChangeGeneralCareer(event: Event) {
     const select = event.target as HTMLSelectElement | null;
     const v = select && select.value ? Number(select.value) : null;
-    this.selectedCareerId$.next(v);
+    this.generalCareerId = v;
   }
 
-  private buildQuery(params: { [k: string]: any }) {
-    const qp = Object.entries(params)
-      .filter(([, val]) => val !== null && val !== undefined && val !== '')
-      .map(([k, v]) => `${encodeURIComponent(k)}=${encodeURIComponent(String(v))}`)
-      .join('&');
-    return qp ? `?${qp}` : '';
+  onChangeSpecificPeriod(event: Event) {
+    const select = event.target as HTMLSelectElement | null;
+    const v = select && select.value ? Number(select.value) : null;
+    this.specificPeriodId = v;
   }
 
-  // Exportaciones
-  async exportKpisCsv() {
-    const dash = await firstValueFrom(this.dash$);
-    const rows: (string | number)[][] = [
-      ['KPI', 'Valor'],
-      ['Total en proceso', dash.totalEnProceso],
-      ['Sin tutor (UIC)', dash.sinTutor],
-      ['Total estudiantes (período)', dash.totalEstudiantes],
-      ['UIC %', dash.uicPercent],
-      ['Examen Complexivo %', dash.complexivoPercent],
-    ];
-    this.downloadCsv(rows, 'coordinador-kpis.csv');
+  onChangeSpecificCareer(event: Event) {
+    const select = event.target as HTMLSelectElement | null;
+    const v = select && select.value ? Number(select.value) : null;
+    this.specificCareerId = v;
   }
 
-  async exportDetalleCsv() {
-    const [sinTutor, conTutor] = await Promise.all([
-      firstValueFrom(this.sinTutor$),
-      firstValueFrom(this.conTutor$)
-    ]);
-    const rows: (string | number)[][] = [
-      ['Tipo', 'Estudiante', 'Carrera', 'Tutor'],
-      ...sinTutor.map(r => ['Sin tutor', r.fullname, r.career_name || '', r.suggested_tutor || '']),
-      ...conTutor.map(r => ['Con tutor', r.fullname, r.career_name || '', r.tutor_name || '']),
-    ];
-    this.downloadCsv(rows, 'coordinador-detalle-estudiantes.csv');
+  onChangeSpecificModalidad(event: Event) {
+    const select = event.target as HTMLSelectElement | null;
+    const v = select && select.value ? String(select.value) : '';
+    this.specificModalidad = (v === 'UIC' || v === 'EXAMEN_COMPLEXIVO') ? (v as any) : '';
   }
 
-  async printPdf() {
-    const w = window.open('', '_blank', 'noopener,noreferrer');
-    if (!w) return;
+  limpiarGeneral() {
+    this.generalCareerId = null;
+    this.previewGeneral = [];
+    this.previewGeneralInfo = null;
+  }
 
-    const [periods, careers, pid, cid, dash, sinTutor, conTutor] = await Promise.all([
+  limpiarSpecific() {
+    this.specificCareerId = null;
+    this.specificModalidad = '';
+    this.previewEspecifico = [];
+    this.previewEspecificoInfo = null;
+  }
+
+  async previsualizarGeneral() {
+    const pid = this.generalPeriodId;
+    if (!Number.isFinite(Number(pid))) return;
+
+    const [periods, careers] = await Promise.all([
       firstValueFrom(this.periods$),
       firstValueFrom(this.careers$),
-      firstValueFrom(this.selectedPeriodId$),
-      firstValueFrom(this.selectedCareerId$),
-      firstValueFrom(this.dash$),
-      firstValueFrom(this.sinTutor$),
-      firstValueFrom(this.conTutor$),
     ]);
 
-    const origin = window.location.origin;
-    const periodLabel = pid ? (periods.find(p => Number(p.id) === Number(pid))?.name || '') : 'Activo';
-    const careerLabel = cid ? (careers.find(c => Number(c.id) === Number(cid))?.nombre || '') : 'Todas';
-    const ts = new Date().toLocaleString();
+    const periodLabel = periods.find(p => Number(p.id) === Number(pid))?.name || '';
+    const careerLabel = Number.isFinite(Number(this.generalCareerId))
+      ? (careers.find(c => Number(c.id) === Number(this.generalCareerId))?.nombre || '')
+      : 'Todas';
 
-    const style = `
-      <style>
-        @page { margin: 14mm; }
-        body { font-family: Arial, sans-serif; -webkit-print-color-adjust: exact; print-color-adjust: exact; color:#111827; }
-        h1 { margin: 0 0 6px; font-size: 20px; }
-        h2 { margin: 18px 0 8px; font-size: 14px; }
-        .header { display:flex; align-items:center; gap:12px; }
-        .right { margin-left:auto; text-align:right; font-weight:600; }
-        .muted { color:#6b7280; font-weight:500; font-size:12px; }
-        .kpis { display:grid; grid-template-columns: repeat(5, 1fr); gap: 10px; margin: 12px 0; }
-        .card { border:1px solid #e5e7eb; border-radius:10px; padding:10px; background:#fff; }
-        .card .title { font-size:12px; color:#6b7280; }
-        .card .value { font-size:18px; font-weight:700; margin-top:4px; }
-        table { width:100%; border-collapse: collapse; margin-top: 8px; }
-        th, td { border: 1px solid #d1d5db; padding: 6px 8px; font-size: 12px; }
-        th { background: #f3f4f6; text-align:left; }
-        .footer { position: fixed; bottom: 10mm; left: 14mm; right: 14mm; font-size: 11px; color: #6b7280; display:flex; justify-content: space-between; }
-        @media print { .pagenum:after { content: counter(page); } }
-      </style>`;
+    const params = new URLSearchParams();
+    params.set('academicPeriodId', String(pid));
+    if (Number.isFinite(Number(this.generalCareerId))) params.set('careerId', String(this.generalCareerId));
 
-    const header = `
-      <div class="header">
-        <img src="${origin}/assets/Logo.png" style="height:44px;"/>
-        <div class="right">
-          <div>Coordinación</div>
-          <div class="muted">Período: ${periodLabel} · Carrera: ${careerLabel}</div>
-        </div>
-      </div>
-      <h1>Reporte del Coordinador</h1>`;
+    const list = await firstValueFrom(
+      this.http.get<any[]>(`/api/uic/admin/reportes/general?${params.toString()}`).pipe(
+        catchError(() => of([] as any[]))
+      )
+    );
 
-    const kpis = `
-      <div class="kpis">
-        <div class="card"><div class="title">Total en proceso</div><div class="value">${dash.totalEnProceso}</div></div>
-        <div class="card"><div class="title">Sin tutor (UIC)</div><div class="value">${dash.sinTutor}</div></div>
-        <div class="card"><div class="title">Total estudiantes</div><div class="value">${dash.totalEstudiantes}</div></div>
-        <div class="card"><div class="title">UIC</div><div class="value">${dash.uicPercent}%</div></div>
-        <div class="card"><div class="title">Complexivo</div><div class="value">${dash.complexivoPercent}%</div></div>
-      </div>`;
-
-    const sinTutorRows = (sinTutor || []).map(r => `<tr><td>${r.fullname}</td><td>${r.career_name || ''}</td><td>${r.suggested_tutor || ''}</td></tr>`).join('');
-    const conTutorRows = (conTutor || []).map(r => `<tr><td>${r.fullname}</td><td>${r.career_name || ''}</td><td>${r.tutor_name || ''}</td></tr>`).join('');
-
-    const tables = `
-      <h2>Estudiantes sin tutor (${(sinTutor || []).length})</h2>
-      <table>
-        <thead><tr><th>Estudiante</th><th>Carrera</th><th>Tutor sugerido</th></tr></thead>
-        <tbody>${sinTutorRows || '<tr><td colspan="3" class="muted">Sin registros</td></tr>'}</tbody>
-      </table>
-
-      <h2>Estudiantes con tutor (${(conTutor || []).length})</h2>
-      <table>
-        <thead><tr><th>Estudiante</th><th>Carrera</th><th>Tutor</th></tr></thead>
-        <tbody>${conTutorRows || '<tr><td colspan="3" class="muted">Sin registros</td></tr>'}</tbody>
-      </table>`;
-
-    const footer = `
-      <div class="footer">
-        <div>Generado: ${ts}</div>
-        <div>Página <span class="pagenum"></span></div>
-      </div>`;
-
-    w.document.write(`<!doctype html><html><head><meta charset="utf-8">${style}</head><body>${header}${kpis}${tables}${footer}<script>setTimeout(()=>{window.print()},100)</script></body></html>`);
-    w.document.close();
+    this.previewGeneral = (Array.isArray(list) ? list : []).map((r, idx) => ({
+      nro: idx + 1,
+      estudiante: String(r?.estudiante || r?.fullname || ''),
+      carrera: r?.carrera != null ? String(r.carrera) : (r?.career_name != null ? String(r.career_name) : null),
+      modalidad: String(r?.modalidad || ''),
+    }));
+    this.previewGeneralInfo = { periodLabel, careerLabel };
   }
 
-  private downloadCsv(rows: (string | number)[][], filename: string) {
-    const csv = rows.map(r => r.map(v => '"' + String(v).replace(/"/g, '""') + '"').join(',')).join('\n');
-    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url; a.download = filename; a.click(); URL.revokeObjectURL(url);
+  async generarPdfGeneral() {
+    if (!this.previewGeneralInfo) return;
+    if (!Array.isArray(this.previewGeneral)) return;
+    this.printReporteGeneral(this.previewGeneralInfo, this.previewGeneral);
+  }
+
+  async previsualizarEspecifico() {
+    const pid = this.specificPeriodId;
+    if (!Number.isFinite(Number(pid))) return;
+    if (!this.specificModalidad) return;
+
+    const [periods, careers] = await Promise.all([
+      firstValueFrom(this.periods$),
+      firstValueFrom(this.careers$),
+    ]);
+
+    const periodLabel = periods.find(p => Number(p.id) === Number(pid))?.name || '';
+    const careerLabel = Number.isFinite(Number(this.specificCareerId))
+      ? (careers.find(c => Number(c.id) === Number(this.specificCareerId))?.nombre || '')
+      : 'Todas';
+    const modalidadLabel = this.specificModalidad === 'UIC' ? 'UIC' : 'Examen Complexivo';
+
+    const params = new URLSearchParams();
+    params.set('academicPeriodId', String(pid));
+    params.set('modalidad', String(this.specificModalidad));
+    if (Number.isFinite(Number(this.specificCareerId))) params.set('careerId', String(this.specificCareerId));
+
+    const list = await firstValueFrom(
+      this.http.get<any[]>(`/api/uic/admin/reportes/especifico?${params.toString()}`).pipe(
+        catchError(() => of([] as any[]))
+      )
+    );
+
+    this.previewEspecifico = (Array.isArray(list) ? list : []).map((r, idx) => ({
+      nro: idx + 1,
+      estudiante: String(r?.estudiante || r?.fullname || ''),
+      carrera: r?.carrera != null ? String(r.carrera) : (r?.career_name != null ? String(r.career_name) : null),
+      modalidad: String(r?.modalidad || modalidadLabel),
+      tutor: r?.tutor != null ? String(r.tutor) : (r?.tutor_name != null ? String(r.tutor_name) : null),
+      tribunal: r?.tribunal != null ? String(r.tribunal) : null,
+    }));
+
+    this.previewEspecificoInfo = { periodLabel, careerLabel, modalidadLabel };
+  }
+
+  async generarPdfEspecifico() {
+    if (!this.previewEspecificoInfo) return;
+    if (!Array.isArray(this.previewEspecifico)) return;
+    this.printReporteEspecifico(this.previewEspecificoInfo, this.previewEspecifico);
+  }
+
+  private async openPrintTab(html: string) {
+    const w = window.open('about:blank', '_blank');
+    if (!w) return;
+
+    try {
+      w.document.open();
+      w.document.write(html);
+      w.document.close();
+
+      const waitForImages = () => {
+        const imgs = Array.from(w.document.images || []);
+        if (!imgs.length) return Promise.resolve();
+        return Promise.all(
+          imgs.map(
+            (img) =>
+              new Promise<void>((resolve) => {
+                if ((img as HTMLImageElement).complete) return resolve();
+                img.addEventListener('load', () => resolve(), { once: true });
+                img.addEventListener('error', () => resolve(), { once: true });
+              })
+          )
+        ).then(() => undefined);
+      };
+
+      await waitForImages();
+      w.focus();
+      w.print();
+    } catch (_) {
+      try {
+        w.document.open();
+        w.document.write(
+          '<!doctype html><html><head><meta charset="utf-8"><title>Error</title></head><body><div style="font-family:Arial,Helvetica,sans-serif;padding:24px;color:#991b1b;">No se pudo generar el reporte. Inténtalo nuevamente.</div></body></html>'
+        );
+        w.document.close();
+      } catch (_) {}
+    }
+  }
+
+  private printReporteGeneral(info: { periodLabel: string; careerLabel: string }, rows: Array<{ nro: number; estudiante: string; carrera: string | null; modalidad: string }>) {
+    const origin = window.location.origin;
+    const ts = new Date();
+    const fecha = ts.toLocaleDateString('es-EC', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+
+    const bodyRows = rows.map(r => `
+      <tr>
+        <td style="width:36px;text-align:center;">${r.nro}</td>
+        <td>${this.escapeHtml(r.estudiante)}</td>
+        <td>${this.escapeHtml(r.carrera || '')}</td>
+        <td>${this.escapeHtml(r.modalidad || '')}</td>
+      </tr>
+    `).join('');
+
+    const html = `<!doctype html><html><head><meta charset="utf-8">
+      <style>
+        @page { margin: 0; }
+        body { margin: 0; font-family: Arial, Helvetica, sans-serif; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+        .page { position: relative; width: 210mm; height: 297mm; }
+        .bg { position:absolute; inset:0; width:100%; height:100%; object-fit:cover; }
+        .content { position: relative; padding: 32mm 18mm 22mm 18mm; }
+        .title { text-align:center; font-weight:700; font-size:14px; margin-top: 10mm; }
+        .meta { margin-top: 14mm; font-size: 11px; font-weight:700; }
+        .section { margin-top: 18mm; font-size: 11px; font-weight:700; }
+        table { width:100%; border-collapse: collapse; margin-top: 6mm; font-size: 10px; }
+        th, td { border: 1px solid #111; padding: 6px; }
+        th { text-align:left; font-weight:700; }
+        .foot { margin-top: 10mm; font-size: 10px; }
+        .firma { margin-top: 34mm; text-align:center; font-size: 10px; }
+        .firma .name { font-weight:700; }
+        .firma .role { font-weight:700; letter-spacing:0.5px; }
+      </style>
+    </head><body>
+      <div class="page">
+        <img class="bg" src="${origin}/assets/Fondo_doc.jpg" />
+        <div class="content">
+          <div class="title">REPORTE DE ESTUDIANTES EN PROCESO DE TITULACIÓN</div>
+          <div class="meta">PERIODO ACADÉMICO: <span style="font-weight:500;">${this.escapeHtml(info.periodLabel || '')}</span></div>
+          <div class="section">LISTADO DE ESTUDIANTES</div>
+          <table>
+            <thead>
+              <tr>
+                <th style="width:36px;text-align:center;">N°</th>
+                <th>Estudiante</th>
+                <th style="width:38%;">Carrera</th>
+                <th style="width:22%;">Modalidad</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${bodyRows || `<tr><td colspan="4" style="text-align:center;">Sin registros</td></tr>`}
+            </tbody>
+          </table>
+          <div class="foot"><strong>Total de registros:</strong> ${rows.length}<br/><span style="font-weight:500;">${this.escapeHtml(fecha)}</span></div>
+          <div class="firma">
+            <div class="name">Ing. [Nombre], Ph.D.</div>
+            <div class="role">COORDINADOR</div>
+            <div class="role">INSTITUTO SUPERIOR TECNOLÓGICO LOS ANDES</div>
+          </div>
+        </div>
+      </div>
+    </body></html>`;
+
+    void this.openPrintTab(html);
+  }
+
+  private printReporteEspecifico(
+    info: { periodLabel: string; careerLabel: string; modalidadLabel: string },
+    rows: Array<{ nro: number; estudiante: string; carrera: string | null; modalidad: string; tutor?: string | null; tribunal?: string | null }>
+  ) {
+    const origin = window.location.origin;
+    const ts = new Date();
+    const fecha = ts.toLocaleDateString('es-EC', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+
+    const isUic = String(info.modalidadLabel) === 'UIC';
+    const titulo = isUic
+      ? 'REPORTE DE ESTUDIANTES CON TUTOR Y TRIBUNAL\nASIGNADO'
+      : 'REPORTE DE ESTUDIANTES EN EXAMEN COMPLEXIVO';
+
+    const bodyRows = rows.map(r => {
+      const common = `
+        <td style="width:36px;text-align:center;">${r.nro}</td>
+        <td>${this.escapeHtml(r.estudiante)}</td>
+        <td>${this.escapeHtml(r.carrera || '')}</td>
+        <td>${this.escapeHtml(r.modalidad || '')}</td>
+      `;
+      const extra = isUic
+        ? `<td>${this.escapeHtml(r.tutor || '')}</td><td>${this.escapeHtml(r.tribunal || '')}</td>`
+        : '';
+      return `<tr>${common}${extra}</tr>`;
+    }).join('');
+
+    const headCols = isUic
+      ? `<tr>
+          <th style="width:36px;text-align:center;">N°</th>
+          <th>Estudiante</th>
+          <th style="width:24%;">Carrera</th>
+          <th style="width:14%;">Modalidad</th>
+          <th style="width:16%;">Tutor</th>
+          <th style="width:16%;">Tribunal</th>
+        </tr>`
+      : `<tr>
+          <th style="width:36px;text-align:center;">N°</th>
+          <th>Estudiante</th>
+          <th style="width:38%;">Carrera</th>
+          <th style="width:22%;">Modalidad</th>
+        </tr>`;
+
+    const colSpan = isUic ? 6 : 4;
+
+    const html = `<!doctype html><html><head><meta charset="utf-8">
+      <style>
+        @page { margin: 0; }
+        body { margin: 0; font-family: Arial, Helvetica, sans-serif; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+        .page { position: relative; width: 210mm; height: 297mm; }
+        .bg { position:absolute; inset:0; width:100%; height:100%; object-fit:cover; }
+        .content { position: relative; padding: 32mm 18mm 22mm 18mm; }
+        .title { text-align:center; font-weight:700; font-size:14px; margin-top: 10mm; white-space: pre-line; }
+        .meta { margin-top: 14mm; font-size: 11px; font-weight:700; }
+        .section { margin-top: 18mm; font-size: 11px; font-weight:700; }
+        table { width:100%; border-collapse: collapse; margin-top: 6mm; font-size: 10px; }
+        th, td { border: 1px solid #111; padding: 6px; vertical-align: top; }
+        th { text-align:left; font-weight:700; }
+        .foot { margin-top: 10mm; font-size: 10px; }
+        .firma { margin-top: 34mm; text-align:center; font-size: 10px; }
+        .firma .name { font-weight:700; }
+        .firma .role { font-weight:700; letter-spacing:0.5px; }
+      </style>
+    </head><body>
+      <div class="page">
+        <img class="bg" src="${origin}/assets/Fondo_doc.jpg" />
+        <div class="content">
+          <div class="title">${titulo}</div>
+          <div class="meta">PERIODO ACADÉMICO: <span style="font-weight:500;">${this.escapeHtml(info.periodLabel || '')}</span></div>
+          <div class="section">LISTADO DE ESTUDIANTES</div>
+          <table>
+            <thead>${headCols}</thead>
+            <tbody>${bodyRows || `<tr><td colspan="${colSpan}" style="text-align:center;">Sin registros</td></tr>`}</tbody>
+          </table>
+          <div class="foot"><strong>Total de registros:</strong> ${rows.length}<br/><span style="font-weight:500;">${this.escapeHtml(fecha)}</span></div>
+          <div class="firma">
+            <div class="name">Ing. [Nombre], Ph.D.</div>
+            <div class="role">COORDINADOR</div>
+            <div class="role">INSTITUTO SUPERIOR TECNOLÓGICO LOS ANDES</div>
+          </div>
+        </div>
+      </div>
+    </body></html>`;
+
+    void this.openPrintTab(html);
+  }
+
+  private escapeHtml(s: string) {
+    return String(s || '')
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#039;');
   }
 }

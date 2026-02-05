@@ -4,7 +4,7 @@ import { RouterModule } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { NotificationsService } from '../../../services/notifications.service';
 import { HttpClient } from '@angular/common/http';
-import { catchError, of } from 'rxjs';
+import { catchError, forkJoin, of } from 'rxjs';
 import { AuthService } from '../../../services/auth.service';
 
 @Component({
@@ -16,7 +16,7 @@ import { AuthService } from '../../../services/auth.service';
 })
 export class Inicio {
   resumen = [
-    { titulo: 'Tutorías próximas', valor: 0, icono: 'fa-calendar-check', color: 'text-indigo-600' },
+    { titulo: 'Carreras Veedurías', valor: 0, icono: 'fa-user-check', color: 'text-indigo-600' },
     { titulo: 'Revisiones pendientes', valor: 0, icono: 'fa-file-circle-check', color: 'text-amber-600' },
     { titulo: 'Materias a cargo', valor: 0, icono: 'fa-book', color: 'text-emerald-600' },
   ];
@@ -50,18 +50,24 @@ export class Inicio {
   selectedDocenteId: number | null = null;
 
   private cargarDashboard() {
-    this.http.get<any>('/api/docente/dashboard')
-      .pipe(catchError(() => of({ tutoriasProximas: 0, revisionesPendientes: 0, materiasACargo: 0 })))
-      .subscribe((d) => {
-        const tutoriasProximas = Number(d?.tutoriasProximas || 0);
-        const revisionesPendientes = Number(d?.revisionesPendientes || 0);
-        const materiasACargo = Number(d?.materiasACargo || 0);
-        this.resumen = [
-          { titulo: 'Tutorías próximas', valor: tutoriasProximas, icono: 'fa-calendar-check', color: 'text-indigo-600' },
-          { titulo: 'Revisiones pendientes', valor: revisionesPendientes, icono: 'fa-file-circle-check', color: 'text-amber-600' },
-          { titulo: 'Materias a cargo', valor: materiasACargo, icono: 'fa-book', color: 'text-emerald-600' },
-        ];
-      });
+    const dashboard$ = this.http
+      .get<any>('/api/docente/dashboard')
+      .pipe(catchError(() => of({ revisionesPendientes: 0, materiasACargo: 0 })));
+
+    const veeduriasCarreras$ = this.http
+      .get<string[]>('/api/docente/veedor/estudiantes')
+      .pipe(catchError(() => of([] as string[])));
+
+    forkJoin({ dashboard: dashboard$, carreras: veeduriasCarreras$ }).subscribe(({ dashboard, carreras }) => {
+      const carrerasVeedurias = Array.isArray(carreras) ? carreras.length : 0;
+      const revisionesPendientes = Number(dashboard?.revisionesPendientes || 0);
+      const materiasACargo = Number(dashboard?.materiasACargo || 0);
+      this.resumen = [
+        { titulo: 'Carreras Veedurías', valor: carrerasVeedurias, icono: 'fa-user-check', color: 'text-indigo-600' },
+        { titulo: 'Revisiones pendientes', valor: revisionesPendientes, icono: 'fa-file-circle-check', color: 'text-amber-600' },
+        { titulo: 'Materias a cargo', valor: materiasACargo, icono: 'fa-book', color: 'text-emerald-600' },
+      ];
+    });
   }
 
   onChangeDocente() {

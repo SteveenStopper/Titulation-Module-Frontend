@@ -5,8 +5,22 @@
     <p class="text-gray-600">Gestión de hojas de tribunal y calificación del tribunal</p>
   </div>
 
+  <!-- Tabs -->
+  <div class="bg-white rounded-xl border border-gray-200 shadow-sm px-4 py-2">
+    <div class="flex gap-2">
+      <button type="button" (click)="activeTab='uic'" class="px-4 py-2 text-sm rounded-md"
+        [ngClass]="activeTab==='uic' ? 'bg-indigo-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'">
+        Estudiantes UIC
+      </button>
+      <button type="button" (click)="activeTab='complexivo'" class="px-4 py-2 text-sm rounded-md"
+        [ngClass]="activeTab==='complexivo' ? 'bg-indigo-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'">
+        Examen Complexivo
+      </button>
+    </div>
+  </div>
+
   <!-- Tabla -->
-  <div class="bg-white rounded-xl border border-gray-200 shadow-sm overflow-x-auto">
+  <div *ngIf="activeTab==='uic'" class="bg-white rounded-xl border border-gray-200 shadow-sm overflow-x-auto">
     <table class="min-w-full text-sm">
       <thead class="bg-gray-50 text-gray-700 text-xs uppercase">
         <tr>
@@ -31,17 +45,17 @@
           </td>
           <td class="px-3 py-2">
             <div class="flex items-center justify-center gap-2">
-              <button (click)="generarHoja(it.id)"
-                class="px-3 py-1.5 text-xs rounded-md bg-indigo-600 text-white hover:bg-indigo-700">
-                <i class="fa fa-file-lines mr-1"></i> Generar Acta de Grado
-              </button>
               <input type="file" accept="application/pdf" class="hidden" #fileInp
                 (change)="onFileSelected($event, it.id)" />
-              <button (click)="fileInp.click()" [disabled]="!isCalificacionValida(it)"
+              <button type="button" (click)="fileInp.click()"
                 class="px-3 py-1.5 text-xs rounded-md bg-amber-600 text-white hover:bg-amber-700 disabled:opacity-50 disabled:cursor-not-allowed">
                 <i class="fa fa-upload mr-1"></i> Cargar hoja de tribunal
               </button>
-              <button (click)="guardar(it.id)" [disabled]="!isCalificacionValida(it)"
+              <button type="button" (click)="generarHoja(it.id)" [disabled]="!canGenerarActaUIC(it)"
+                class="px-3 py-1.5 text-xs rounded-md bg-indigo-600 text-white hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed">
+                <i class="fa fa-file-lines mr-1"></i> Generar Acta de Grado
+              </button>
+              <button type="button" (click)="guardar(it.id)" [disabled]="!canGuardarUIC(it)"
                 class="px-3 py-1.5 text-xs rounded-md bg-green-600 text-white hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed">
                 <i class="fa fa-floppy-disk mr-1"></i> Guardar
               </button>
@@ -50,6 +64,48 @@
         </tr>
         <tr *ngIf="items.length===0">
           <td colspan="5" class="px-4 py-6 text-center text-gray-500">Sin registros</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Tabla Complexivo -->
+  <div *ngIf="activeTab==='complexivo'" class="bg-white rounded-xl border border-gray-200 shadow-sm overflow-x-auto">
+    <table class="min-w-full text-sm">
+      <thead class="bg-gray-50 text-gray-700 text-xs uppercase">
+        <tr>
+          <th class="px-3 py-2 text-left">Estudiante</th>
+          <th class="px-3 py-2 text-left">Carrera</th>
+          <th class="px-3 py-2 text-center">Calificación Examen Complexivo</th>
+          <th class="px-3 py-2 text-center">Acciones</th>
+        </tr>
+      </thead>
+      <tbody class="divide-y divide-gray-100">
+        <tr *ngFor="let it of complexivoItems" class="odd:bg-white even:bg-gray-50">
+          <td class="px-3 py-2 font-medium text-gray-800">{{ it.estudiante }}</td>
+          <td class="px-3 py-2 text-gray-700">{{ it.carrera || '-' }}</td>
+          <td class="px-3 py-2 text-center">
+            <input type="number" class="w-28 text-center border rounded-md px-2 py-1"
+              [(ngModel)]="it.calificacionComplexivo" min="0" max="10" step="0.1" [ngClass]="{
+                     'border-gray-300': !isCalificacionComplexivoValida(it),
+                     'border-green-400': isCalificacionComplexivoValida(it)
+                   }" placeholder="0 - 10" />
+          </td>
+          <td class="px-3 py-2">
+            <div class="flex items-center justify-center gap-2">
+              <button type="button" (click)="guardarComplexivo(it.id)" [disabled]="!canGuardarComplexivo(it)"
+                class="px-3 py-1.5 text-xs rounded-md bg-green-600 text-white hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed">
+                <i class="fa fa-floppy-disk mr-1"></i> Guardar
+              </button>
+              <button type="button" (click)="generarActaComplexivo(it.id)" [disabled]="!canGenerarActaComplexivo(it)"
+                class="px-3 py-1.5 text-xs rounded-md bg-indigo-600 text-white hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed">
+                <i class="fa fa-file-lines mr-1"></i> Generar Acta de Grado
+              </button>
+            </div>
+          </td>
+        </tr>
+        <tr *ngIf="complexivoItems.length===0">
+          <td colspan="4" class="px-4 py-6 text-center text-gray-500">Sin registros</td>
         </tr>
       </tbody>
     </table>

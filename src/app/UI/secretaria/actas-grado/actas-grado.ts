@@ -11,6 +11,8 @@ import { HttpClient } from '@angular/common/http';
   styleUrl: './actas-grado.scss'
 })
 export class ActasGrado {
+  activeTab: 'uic' | 'complexivo' = 'uic';
+
   items: Array<{
     id: number;
     estudiante: string;
@@ -21,12 +23,40 @@ export class ActasGrado {
     guardado: boolean;
   }> = [];
 
+  complexivoItems: Array<{
+    id: number;
+    estudiante: string;
+    carrera: string | null;
+    calificacionComplexivo: number | null;
+    guardado: boolean;
+  }> = [];
+
   constructor(private http: HttpClient) {
     this.cargar();
   }
 
   isCalificacionValida(it: { calificacionTribunal: number | null }): boolean {
     return typeof it.calificacionTribunal === 'number' && it.calificacionTribunal >= 0 && it.calificacionTribunal <= 10;
+  }
+
+  isCalificacionComplexivoValida(it: { calificacionComplexivo: number | null }): boolean {
+    return typeof it.calificacionComplexivo === 'number' && it.calificacionComplexivo >= 0 && it.calificacionComplexivo <= 10;
+  }
+
+  canGuardarUIC(it: { calificacionTribunal: number | null; hojaCargada: boolean }): boolean {
+    return !!it.hojaCargada && this.isCalificacionValida(it);
+  }
+
+  canGenerarActaUIC(it: { guardado: boolean }): boolean {
+    return !!it.guardado;
+  }
+
+  canGuardarComplexivo(it: { calificacionComplexivo: number | null }): boolean {
+    return this.isCalificacionComplexivoValida(it);
+  }
+
+  canGenerarActaComplexivo(it: { guardado: boolean }): boolean {
+    return !!it.guardado;
   }
 
   generarHoja(id: number) {
@@ -59,7 +89,7 @@ export class ActasGrado {
     const file = input?.files && input.files[0] ? input.files[0] : null;
     if (!file) return;
     const it = this.items.find(x => x.id === id);
-    if (!it || !this.isCalificacionValida(it)) { alert('Ingrese una calificación válida antes de subir.'); return; }
+    if (!it) return;
     const form = new FormData();
     form.append('file', file);
     form.append('tipo', 'uic_acta_tribunal');
@@ -82,8 +112,38 @@ export class ActasGrado {
   guardar(id: number) {
     const it = this.items.find(x => x.id === id);
     if (!it) return;
-    if (!this.isCalificacionValida(it)) return;
+    if (!this.canGuardarUIC(it)) return;
     this.http.put('/api/secretaria/actas/nota', { id_user_student: id, score: it.calificacionTribunal }).subscribe({
+      next: () => { it.guardado = true; alert('Calificación guardada.'); },
+      error: () => { alert('No se pudo guardar la calificación.'); }
+    });
+  }
+
+  generarActaComplexivo(id: number) {
+    const it = this.complexivoItems.find(x => x.id === id);
+    if (!it || !this.canGenerarActaComplexivo(it)) return;
+    this.http.post('/api/secretaria/actas/complexivo/acta', { id_user_student: id }, { responseType: 'blob', observe: 'response' })
+      .subscribe({
+        next: (resp) => {
+          const blob = resp.body as Blob;
+          if (blob) {
+            const url = window.URL.createObjectURL(blob);
+            window.open(url, '_blank');
+            setTimeout(() => window.URL.revokeObjectURL(url), 60_000);
+          } else { alert('No se recibió el archivo del acta.'); }
+        },
+        error: (err) => {
+          if (err?.status === 501) alert('La generación de PDF no está disponible en el servidor. Instalar dependencia pdfkit.');
+          else alert('No se pudo generar el acta.');
+        }
+      });
+  }
+
+  guardarComplexivo(id: number) {
+    const it = this.complexivoItems.find(x => x.id === id);
+    if (!it) return;
+    if (!this.canGuardarComplexivo(it)) return;
+    this.http.put('/api/secretaria/actas/complexivo/nota', { id_user_student: id, score: it.calificacionComplexivo }).subscribe({
       next: () => { it.guardado = true; alert('Calificación guardada.'); },
       error: () => { alert('No se pudo guardar la calificación.'); }
     });
@@ -99,6 +159,17 @@ export class ActasGrado {
           tribunal: r.tribunal,
           calificacionTribunal: r.calificacionTribunal,
           hojaCargada: !!r.hojaCargada,
+          guardado: false,
+        }));
+      });
+
+    this.http.get<Array<{ id: number; estudiante: string; carrera: string | null; calificacionComplexivo: number | null }>>('/api/secretaria/actas/complexivo')
+      .subscribe(list => {
+        this.complexivoItems = (Array.isArray(list) ? list : []).map(r => ({
+          id: r.id,
+          estudiante: r.estudiante,
+          carrera: r.carrera ?? null,
+          calificacionComplexivo: r.calificacionComplexivo == null ? null : Number(r.calificacionComplexivo),
           guardado: false,
         }));
       });
