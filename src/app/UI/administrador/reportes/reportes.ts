@@ -1,10 +1,11 @@
-import { Component, ElementRef, ViewChild } from '@angular/core';
+import { Component } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { HttpClient } from '@angular/common/http';
-import { Observable, BehaviorSubject, combineLatest, of, firstValueFrom } from 'rxjs';
-import { catchError, map, shareReplay, startWith, switchMap } from 'rxjs/operators';
+import { Observable, firstValueFrom, of } from 'rxjs';
+import { catchError, map, shareReplay } from 'rxjs/operators';
 import { PeriodService } from '../../../services/period.service';
+import { AuthService } from '../../../services/auth.service';
 
 @Component({
   selector: 'app-reportes',
@@ -14,171 +15,356 @@ import { PeriodService } from '../../../services/period.service';
   styleUrl: './reportes.scss'
 })
 export class Reportes {
-  @ViewChild('printHeader', { static: false }) printHeaderRef?: ElementRef<HTMLDivElement>;
-  @ViewChild('printContent', { static: false }) printContentRef?: ElementRef<HTMLDivElement>;
-  // Filtros
-  periods$!: Observable<any[]>;
-  selectedPeriodId$ = new BehaviorSubject<number | null>(null);
-  careers$!: Observable<Array<{ id: number; nombre: string }>>;
-  selectedCareerId$ = new BehaviorSubject<number | null>(null);
-  // Labels para impresión
-  selectedPeriodLabel$!: Observable<string>;
-  selectedCareerLabel$!: Observable<string>;
-  today = new Date();
+  periods$!: Observable<Array<{ id: number; name: string }>>;
 
-  // KPIs del dashboard por periodo
-  dash$ = this.selectedPeriodId$.pipe(
-    switchMap((pid) => this.http.get<any>(`/api/uic/admin/dashboard${pid ? `?academicPeriodId=${pid}` : ''}`)
-      .pipe(
-        map(r => ({
-          totalEnProceso: Number(r?.totalEnProceso ?? r?.totalEstudiantes ?? 0),
-          uicPercent: Number(r?.uicPercent ?? 0),
-          complexivoPercent: Number(r?.complexivoPercent ?? 0)
-        })),
-        catchError(()=> of({ totalEnProceso: 0, uicPercent: 0, complexivoPercent: 0 }))
-      )
-    ),
-    startWith({ totalEnProceso: 0, uicPercent: 0, complexivoPercent: 0 }),
-    shareReplay(1)
-  );
+  filtersOpen = true;
+  selectedPeriodId: number | null = null;
+  reportType: 'PERIODOS' | 'USUARIOS' | 'GENERAL' | '' = '';
 
-  // Listas
-  sinTutor$ = combineLatest([this.selectedPeriodId$, this.selectedCareerId$]).pipe(
-    switchMap(([pid, cid]) => this.http.get<any[]>(`/api/uic/admin/estudiantes-sin-tutor${pid || cid ? `?${[pid?`academicPeriodId=${pid}`:'', cid?`careerId=${cid}`:''].filter(Boolean).join('&')}` : ''}`)
-      .pipe(catchError(()=> of([])))
-    ),
-    startWith([] as any[]),
-    shareReplay(1)
-  );
+  previewPeriodos: Array<{ nro: number; nombre: string; fecha_inicio: string; fecha_fin: string; estado: string }> = [];
+  previewUsuarios: Array<{ nro: number; usuario: string; rol: string | null; estado: string }> = [];
+  previewGeneral: { estudiantes_en_proceso: number; modalidad_uic: number; modalidad_examen_complexivo: number } | null = null;
 
-  conTutor$ = combineLatest([this.selectedPeriodId$, this.selectedCareerId$]).pipe(
-    switchMap(([pid, cid]) => this.http.get<any[]>(`/api/uic/admin/estudiantes-con-tutor${pid || cid ? `?${[pid?`academicPeriodId=${pid}`:'', cid?`careerId=${cid}`:''].filter(Boolean).join('&')}` : ''}`)
-      .pipe(catchError(()=> of([])))
-    ),
-    startWith([] as any[]),
-    shareReplay(1)
-  );
+  previewInfo: { periodLabel: string } | null = null;
 
-  constructor(private http: HttpClient, private periodSvc: PeriodService) {
-    // Cargar periodos cuando el servicio está disponible
-    this.periods$ = this.periodSvc.listAll().pipe(shareReplay(1));
-    // Cargar carreras desde el esquema del instituto (endpoint backend ya expuesto)
-    this.careers$ = this.http.get<Array<{ id: number; nombre: string }>>('/api/uic/admin/carreras')
-      .pipe(catchError(()=> of([])), shareReplay(1));
-    // Preseleccionar período activo si está disponible
+  constructor(private http: HttpClient, private periodSvc: PeriodService, private auth: AuthService) {
+    this.periods$ = this.periodSvc.listAll().pipe(
+      map((arr: any[]) => (arr || []).map((p: any) => ({ id: Number(p.id_academic_periods), name: String(p.name) }))),
+      catchError(() => of([] as Array<{ id: number; name: string }>)),
+      shareReplay(1)
+    );
+
     const activeName = this.periodSvc.getActivePeriod();
-    this.periods$.subscribe((rows:any[])=>{
-      const match = rows?.find(r => String(r.name) === activeName);
-      if (match) this.selectedPeriodId$.next(Number(match.id_academic_periods));
+    if (activeName && typeof activeName === 'string') {
+      this.periods$.subscribe((rows) => {
+        const match = (rows || []).find(r => r.name === activeName);
+        if (match?.id) this.selectedPeriodId = Number(match.id);
+      });
+    }
+  }
+
+  toggleFilters() { this.filtersOpen = !this.filtersOpen; }
+
+  limpiar() {
+    this.reportType = '';
+    this.previewPeriodos = [];
+    this.previewUsuarios = [];
+    this.previewGeneral = null;
+    this.previewInfo = null;
+  }
+
+  private getSignerFullName() {
+    const u = this.auth.currentUserValue;
+    const full = (u?.name || `${u?.firstname || ''} ${u?.lastname || ''}`.trim()).trim();
+    return full || 'N/D';
+  }
+
+  private formatLongDate(d: Date) {
+    return d.toLocaleDateString('es-EC', {
+      weekday: 'long',
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
     });
-
-    // Labels combinados
-    this.selectedPeriodLabel$ = combineLatest([this.periods$, this.selectedPeriodId$]).pipe(
-      map(([rows, pid]) => {
-        if (!pid) return 'Activo';
-        const r = (rows || []).find((x:any)=> Number(x.id_academic_periods) === Number(pid));
-        return r?.name || 'Activo';
-      })
-    );
-    this.selectedCareerLabel$ = combineLatest([this.careers$, this.selectedCareerId$]).pipe(
-      map(([rows, cid]) => {
-        if (!cid) return 'Todas';
-        const r = (rows || []).find((x:any)=> Number(x.id) === Number(cid));
-        return r?.nombre || 'Todas';
-      })
-    );
   }
 
-  onChangePeriod(event: Event) {
-    const select = event.target as HTMLSelectElement | null;
-    const value = select && select.value ? Number(select.value) : null;
-    this.selectedPeriodId$.next(value);
-  }
-
-  onChangeCareer(event: Event) {
-    const select = event.target as HTMLSelectElement | null;
-    const value = select && select.value ? Number(select.value) : null;
-    this.selectedCareerId$.next(value);
-  }
-
-  onPrint() { /* deprecated in favor of onExportReport; kept noop to avoid breaking references */ }
-
-  async onExportReport() {
-    // Abrir ventana primero para evitar bloqueos del navegador
-    const w = window.open('', '_blank', 'noopener,noreferrer,width=900,height=700');
+  private async openPrintTab(html: string) {
+    const w = window.open('about:blank', '_blank');
     if (!w) return;
-    w.document.write('<!doctype html><html><head><meta charset="utf-8"><title>Reporte</title></head><body><div style="font-family:Arial,Helvetica,sans-serif;padding:24px;color:#111827;">Generando reporte...</div></body></html>');
-    w.document.close();
+
     try {
-      const [periodLabel, careerLabel, dash, sinTutor, conTutor] = await Promise.all([
-        firstValueFrom(this.selectedPeriodLabel$),
-        firstValueFrom(this.selectedCareerLabel$),
-        firstValueFrom(this.dash$),
-        firstValueFrom(this.sinTutor$),
-        firstValueFrom(this.conTutor$)
-      ]);
-      const total = Number(dash?.totalEnProceso || 0);
-      const uicPercent = Number(dash?.uicPercent || 0);
-      const complexivoPercent = Math.max(0, 100 - uicPercent);
-      const uicCount = Math.round((total * uicPercent) / 100);
-      const complexivoCount = Math.max(0, total - uicCount);
+      w.document.open();
+      w.document.write(html);
+      w.document.close();
 
-      const styles = `
-        <style>
-          * { box-sizing: border-box; }
-          body { font-family: Arial, Helvetica, sans-serif; color: #111827; margin: 28px; }
-          h1 { font-size: 20px; margin: 0 0 6px 0; text-align: center; }
-          .meta { text-align: center; font-size: 12px; color: #6b7280; margin-bottom: 18px; }
-          .section { margin-top: 18px; }
-          .lead { font-size: 14px; line-height: 1.6; }
-          .kpis { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-top: 12px; }
-          .kpi { border: 1px solid #e5e7eb; border-radius: 10px; padding: 12px; text-align: center; }
-          .kpi .label { font-size: 12px; color: #6b7280; }
-          .kpi .value { font-size: 22px; font-weight: 700; color: #111827; }
-          .footer { margin-top: 24px; font-size: 11px; color: #6b7280; text-align: right; }
-          @media print { .no-print { display:none !important; } }
-        </style>
-      `;
-      const now = new Date();
-      const listItem = (t: any) => `<li style="display:flex;justify-content:space-between;border-bottom:1px solid #eee;padding:6px 0;">
-        <span><strong>${(t?.fullname||'').toString()}</strong>${t?.career_name?`<br/><span style='color:#6b7280;font-size:12px;'>${t.career_name}</span>`:''}</span>
-        <span style='color:#6b7280;font-size:12px;'>${t?.tutor_name?`Tutor: ${t.tutor_name}`:(t?.suggested_tutor?`Sugerido: ${t.suggested_tutor}`:'')}</span>
-      </li>`;
+      const imgs = Array.from(w.document.images || []);
+      if (imgs.length) {
+        await Promise.all(
+          imgs.map(
+            (img) =>
+              new Promise<void>((resolve) => {
+                if ((img as HTMLImageElement).complete) return resolve();
+                img.addEventListener('load', () => resolve(), { once: true });
+                img.addEventListener('error', () => resolve(), { once: true });
+              })
+          )
+        );
+      }
 
-      const html = `<!doctype html><html><head><meta charset="utf-8">${styles}</head><body>
-        <h1>Reporte del Administrador</h1>
-        <div class="meta">Generado: ${now.toLocaleDateString()} · Período: ${periodLabel} · Carrera: ${careerLabel}</div>
+      w.focus();
+      w.print();
+    } catch (_) {
+      try {
+        w.document.open();
+        w.document.write(
+          '<!doctype html><html><head><meta charset="utf-8"><title>Error</title></head><body><div style="font-family:Arial,Helvetica,sans-serif;padding:24px;color:#991b1b;">No se pudo generar el reporte. Inténtalo nuevamente.</div></body></html>'
+        );
+        w.document.close();
+      } catch (_) {}
+    }
+  }
 
-        <div class="section">
-          <p class="lead">
-            En el período seleccionado, para la carrera indicada, se registran <strong>${total}</strong> estudiantes en proceso.
-            De ellos, <strong>${uicCount}</strong> (${uicPercent}%) optaron por la modalidad <strong>UIC</strong> y
-            <strong>${complexivoCount}</strong> (${complexivoPercent}%) por <strong>Examen Complexivo</strong>.
-          </p>
-          <div class="kpis">
-            <div class="kpi"><div class="label">Total en proceso</div><div class="value">${total}</div></div>
-            <div class="kpi"><div class="label">UIC</div><div class="value">${uicPercent}%</div></div>
-            <div class="kpi"><div class="label">Examen Complexivo</div><div class="value">${complexivoPercent}%</div></div>
+  private escapeHtml(s: string) {
+    return String(s || '')
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#039;');
+  }
+
+  private fmtDateCell(d: any) {
+    const dt = d ? new Date(d) : null;
+    if (!dt || Number.isNaN(dt.getTime())) return '';
+    return dt.toLocaleDateString('es-EC');
+  }
+
+  async previsualizar() {
+    if (!this.reportType) return;
+    const [periods] = await Promise.all([firstValueFrom(this.periods$)]);
+
+    const periodLabel = this.selectedPeriodId
+      ? (periods.find(p => Number(p.id) === Number(this.selectedPeriodId))?.name || '')
+      : 'Periodo Activo';
+    this.previewInfo = { periodLabel };
+
+    if (this.reportType === 'PERIODOS') {
+      const list = await firstValueFrom(this.http.get<any[]>(`/api/uic/admin/reportes/admin/periodos`).pipe(catchError(() => of([] as any[]))));
+      this.previewPeriodos = (Array.isArray(list) ? list : []).map((r, idx) => ({
+        nro: idx + 1,
+        nombre: String(r?.nombre || ''),
+        fecha_inicio: this.fmtDateCell(r?.fecha_inicio),
+        fecha_fin: this.fmtDateCell(r?.fecha_fin),
+        estado: String(r?.estado || ''),
+      }));
+      this.previewUsuarios = [];
+      this.previewGeneral = null;
+      return;
+    }
+
+    if (this.reportType === 'USUARIOS') {
+      const list = await firstValueFrom(this.http.get<any[]>(`/api/uic/admin/reportes/admin/usuarios`).pipe(catchError(() => of([] as any[]))));
+      this.previewUsuarios = (Array.isArray(list) ? list : []).map((r, idx) => ({
+        nro: idx + 1,
+        usuario: String(r?.usuario || ''),
+        rol: r?.rol != null ? String(r.rol) : null,
+        estado: String(r?.estado || ''),
+      }));
+      this.previewPeriodos = [];
+      this.previewGeneral = null;
+      return;
+    }
+
+    const params = new URLSearchParams();
+    if (this.selectedPeriodId) params.set('academicPeriodId', String(this.selectedPeriodId));
+    const gen = await firstValueFrom(this.http.get<any>(`/api/uic/admin/reportes/admin/general?${params.toString()}`).pipe(catchError(() => of(null))));
+    this.previewGeneral = gen ? {
+      estudiantes_en_proceso: Number(gen?.estudiantes_en_proceso || 0),
+      modalidad_uic: Number(gen?.modalidad_uic || 0),
+      modalidad_examen_complexivo: Number(gen?.modalidad_examen_complexivo || 0),
+    } : { estudiantes_en_proceso: 0, modalidad_uic: 0, modalidad_examen_complexivo: 0 };
+    this.previewPeriodos = [];
+    this.previewUsuarios = [];
+  }
+
+  generarPdf() {
+    if (!this.previewInfo || !this.reportType) return;
+    if (this.reportType === 'PERIODOS') return void this.printPdfPeriodos(this.previewInfo, this.previewPeriodos);
+    if (this.reportType === 'USUARIOS') return void this.printPdfUsuarios(this.previewInfo, this.previewUsuarios);
+    return void this.printPdfGeneral(this.previewInfo, this.previewGeneral);
+  }
+
+  private printPdfPeriodos(info: { periodLabel: string }, rows: Array<{ nro: number; nombre: string; fecha_inicio: string; fecha_fin: string; estado: string }>) {
+    const origin = window.location.origin;
+    const fecha = this.formatLongDate(new Date());
+    const signerName = this.getSignerFullName();
+
+    const bodyRows = (rows || []).map(r => `
+      <tr>
+        <td style="width:36px;text-align:center;">${r.nro}</td>
+        <td>${this.escapeHtml(r.nombre)}</td>
+        <td>${this.escapeHtml(r.fecha_inicio)}</td>
+        <td>${this.escapeHtml(r.fecha_fin)}</td>
+        <td>${this.escapeHtml(r.estado)}</td>
+      </tr>
+    `).join('');
+
+    const html = `<!doctype html><html><head><meta charset="utf-8">
+      <style>
+        @page { margin: 0; }
+        body { margin: 0; font-family: Arial, Helvetica, sans-serif; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+        .page { position: relative; width: 210mm; height: 297mm; }
+        .bg { position:absolute; inset:0; width:100%; height:100%; object-fit:cover; }
+        .logo { position:absolute; top: 16mm; left: 18mm; height: 18mm; width: auto; }
+        .content { position: relative; padding: 32mm 18mm 22mm 18mm; }
+        .title { text-align:center; font-weight:700; font-size:14px; margin-top: 10mm; }
+        .section { margin-top: 18mm; font-size: 11px; font-weight:700; }
+        table { width:100%; border-collapse: collapse; margin-top: 6mm; font-size: 10px; }
+        th, td { border: 1px solid #111; padding: 6px; vertical-align: top; }
+        th { text-align:left; font-weight:700; }
+        .foot { margin-top: 10mm; font-size: 10px; }
+        .firma { margin-top: 34mm; text-align:center; font-size: 10px; }
+        .firma .name { font-weight:700; }
+        .firma .role { font-weight:700; letter-spacing:0.5px; }
+      </style>
+    </head><body>
+      <div class="page">
+        <img class="bg" src="${origin}/assets/Fondo_doc.jpg" />
+        <img class="logo" src="${origin}/assets/Logo.png" />
+        <div class="content">
+          <div class="title">REPORTE DE PERIODOS ACADÉMICOS REGISTRADOS</div>
+          <div class="section">LISTADO DE PERIODOS</div>
+          <table>
+            <thead>
+              <tr>
+                <th style="width:36px;text-align:center;">N°</th>
+                <th>Periodo Académico</th>
+                <th style="width:22%;">Fecha Inicio</th>
+                <th style="width:22%;">Fecha Fin</th>
+                <th style="width:18%;">Estado</th>
+              </tr>
+            </thead>
+            <tbody>${bodyRows || `<tr><td colspan="5" style="text-align:center;">Sin registros</td></tr>`}</tbody>
+          </table>
+          <div class="foot">
+            <div><strong>Total de registros:</strong> ${rows.length}</div>
+            <div style="margin-top:4mm;font-weight:500;">${this.escapeHtml(fecha)}</div>
+          </div>
+          <div class="firma">
+            <div class="name">Ing. ${this.escapeHtml(signerName)}, Ph.D.</div>
+            <div class="role">ADMINISTRADOR DEL SISTEMA DE TITULACIÓN</div>
+            <div class="role">INSTITUTO SUPERIOR TECNOLÓGICO LOS ANDES</div>
           </div>
         </div>
+      </div>
+    </body></html>`;
 
-        <div class="section">
-          <h2 style="font-size:14px;margin:0 0 8px 0;">Estudiantes sin tutor (${Array.isArray(sinTutor)?sinTutor.length:0})</h2>
-          ${Array.isArray(sinTutor) && sinTutor.length ? `<ul class="report-list">${sinTutor.slice(0,20).map(listItem).join('')}</ul>` : `<div class="meta">No hay registros.</div>`}
+    void this.openPrintTab(html);
+  }
+
+  private printPdfUsuarios(info: { periodLabel: string }, rows: Array<{ nro: number; usuario: string; rol: string | null; estado: string }>) {
+    const origin = window.location.origin;
+
+    const pageSize = 29;
+    const chunks: Array<Array<{ nro: number; usuario: string; rol: string | null; estado: string }>> = [];
+    for (let i = 0; i < (rows || []).length; i += pageSize) chunks.push((rows || []).slice(i, i + pageSize));
+    if (!chunks.length) chunks.push([]);
+
+    const renderRows = (slice: Array<{ nro: number; usuario: string; rol: string | null; estado: string }>) =>
+      (slice || []).map(r => `
+        <tr>
+          <td style="width:36px;text-align:center;">${r.nro}</td>
+          <td>${this.escapeHtml(r.usuario)}</td>
+          <td>${this.escapeHtml(r.rol || '')}</td>
+          <td>${this.escapeHtml(r.estado)}</td>
+        </tr>
+      `).join('');
+
+    const renderPage = (slice: Array<{ nro: number; usuario: string; rol: string | null; estado: string }>, pageIndex: number, totalPages: number) => {
+      const bodyRows = renderRows(slice);
+      const isFirst = pageIndex === 0;
+
+      return `
+        <div class="page">
+          <img class="bg" src="${origin}/assets/Fondo_doc.jpg" />
+          <img class="logo" src="${origin}/assets/Logo.png" />
+          <div class="content" style="${isFirst ? '' : 'padding-top: 18mm;'}">
+            ${isFirst ? `<div class="title">REPORTE DE USUARIOS DEL SISTEMA</div><div class="section">LISTADO DE USUARIOS</div>` : `<div style="height:18mm;"></div>`}
+            <table>
+              <thead>
+                <tr>
+                  <th style="width:36px;text-align:center;">N°</th>
+                  <th>Usuario</th>
+                  <th style="width:28%;">Rol</th>
+                  <th style="width:20%;">Estado</th>
+                </tr>
+              </thead>
+              <tbody>${bodyRows || `<tr><td colspan="4" style="text-align:center;">Sin registros</td></tr>`}</tbody>
+            </table>
+          </div>
         </div>
+      `;
+    };
 
-        <div class="section">
-          <h2 style="font-size:14px;margin:16px 0 8px 0;">Estudiantes con tutor (${Array.isArray(conTutor)?conTutor.length:0})</h2>
-          ${Array.isArray(conTutor) && conTutor.length ? `<ul class="report-list">${conTutor.slice(0,20).map(listItem).join('')}</ul>` : `<div class="meta">No hay registros.</div>`}
+    const pagesHtml = chunks
+      .map((slice, idx) => renderPage(slice, idx, chunks.length))
+      .join('');
+
+    const html = `<!doctype html><html><head><meta charset="utf-8">
+      <style>
+        @page { margin: 0; }
+        body { margin: 0; font-family: Arial, Helvetica, sans-serif; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+        .page { position: relative; width: 210mm; height: 297mm; page-break-after: always; }
+        .page:last-child { page-break-after: auto; }
+        .bg { position:absolute; inset:0; width:100%; height:100%; object-fit:cover; }
+        .logo { position:absolute; top: 16mm; left: 18mm; height: 18mm; width: auto; }
+        .content { position: relative; padding: 32mm 18mm 38mm 18mm; }
+        .title { text-align:center; font-weight:700; font-size:14px; margin-top: 6mm; }
+        .section { margin-top: 10mm; font-size: 11px; font-weight:700; }
+        table { width:100%; border-collapse: collapse; margin-top: 4mm; font-size: 10px; }
+        th, td { border: 1px solid #111; padding: 6px; vertical-align: top; }
+        th { text-align:left; font-weight:700; }
+      </style>
+    </head><body>${pagesHtml}</body></html>`;
+
+    void this.openPrintTab(html);
+  }
+
+  private printPdfGeneral(info: { periodLabel: string }, gen: { estudiantes_en_proceso: number; modalidad_uic: number; modalidad_examen_complexivo: number } | null) {
+    const origin = window.location.origin;
+    const fecha = this.formatLongDate(new Date());
+    const signerName = this.getSignerFullName();
+    const g = gen || { estudiantes_en_proceso: 0, modalidad_uic: 0, modalidad_examen_complexivo: 0 };
+
+    const html = `<!doctype html><html><head><meta charset="utf-8">
+      <style>
+        @page { margin: 0; }
+        body { margin: 0; font-family: Arial, Helvetica, sans-serif; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+        .page { position: relative; width: 210mm; height: 297mm; }
+        .bg { position:absolute; inset:0; width:100%; height:100%; object-fit:cover; }
+        .logo { position:absolute; top: 16mm; left: 18mm; height: 18mm; width: auto; }
+        .content { position: relative; padding: 32mm 18mm 22mm 18mm; }
+        .title { text-align:center; font-weight:700; font-size:14px; margin-top: 10mm; }
+        .lead { margin-top: 18mm; font-size: 10.5px; line-height: 1.5; }
+        .meta { margin-top: 12mm; font-size: 11px; font-weight:700; }
+        table { width:70%; border-collapse: collapse; margin-top: 4mm; font-size: 10px; }
+        th, td { border: 1px solid #111; padding: 6px; vertical-align: top; }
+        th { text-align:left; font-weight:700; }
+        .foot { margin-top: 14mm; font-size: 10px; }
+        .firma { margin-top: 34mm; text-align:center; font-size: 10px; }
+        .firma .name { font-weight:700; }
+        .firma .role { font-weight:700; letter-spacing:0.5px; }
+      </style>
+    </head><body>
+      <div class="page">
+        <img class="bg" src="${origin}/assets/Fondo_doc.jpg" />
+        <img class="logo" src="${origin}/assets/Logo.png" />
+        <div class="content">
+          <div class="title">REPORTE GENERAL DEL SISTEMA DE TITULACIÓN</div>
+          <div class="lead">El presente reporte muestra información general del proceso de titulación registrada en el sistema institucional, correspondiente al periodo académico seleccionado.</div>
+          <div class="meta">PERIODO ACADÉMICO: <span style="font-weight:500;">${this.escapeHtml(info.periodLabel || '')}</span></div>
+          <table>
+            <thead>
+              <tr><th>Indicador</th><th style="width:28%;text-align:center;">Total</th></tr>
+            </thead>
+            <tbody>
+              <tr><td>Estudiantes en proceso de titulación</td><td style="text-align:center;">${Number(g.estudiantes_en_proceso || 0)}</td></tr>
+              <tr><td>Modalidad UIC</td><td style="text-align:center;">${Number(g.modalidad_uic || 0)}</td></tr>
+              <tr><td>Modalidad Examen Complexivo</td><td style="text-align:center;">${Number(g.modalidad_examen_complexivo || 0)}</td></tr>
+            </tbody>
+          </table>
+          <div class="foot">
+            <div style="margin-top:4mm;font-weight:500;">${this.escapeHtml(fecha)}</div>
+          </div>
+          <div class="firma">
+            <div class="name">Ing. ${this.escapeHtml(signerName)}, Ph.D.</div>
+            <div class="role">ADMINISTRADOR DEL SISTEMA DE TITULACIÓN</div>
+            <div class="role">INSTITUTO SUPERIOR TECNOLÓGICO LOS ANDES</div>
+          </div>
         </div>
+      </div>
+    </body></html>`;
 
-        <div class="footer">Este informe fue generado automáticamente por el sistema.</div>
-      </body></html>`;
-      w.document.open(); w.document.write(html); w.document.close();
-    } catch (e) {
-      w.document.open();
-      w.document.write('<!doctype html><html><head><meta charset="utf-8"><title>Error</title></head><body><div style="font-family:Arial,Helvetica,sans-serif;padding:24px;color:#991b1b;">No se pudo generar el reporte. Inténtalo nuevamente.</div></body></html>');
-      w.document.close();
-    }
+    void this.openPrintTab(html);
   }
 }

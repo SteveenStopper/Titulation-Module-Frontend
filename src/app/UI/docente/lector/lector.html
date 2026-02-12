@@ -23,19 +23,28 @@
             <td class="px-3 py-2 font-medium text-gray-800">{{ e.nombre }}</td>
             <td class="px-3 py-2">{{ e.carrera }}</td>
             <td class="px-3 py-2 text-center">
-              <button type="button" (click)="verDocumento(e)" [disabled]="!e.documentoUrl"
-                [title]="e.documentoUrl ? 'Abrir documento' : 'Sin documento'"
+              <button type="button" (click)="verDocumento(e)" [disabled]="!e.documentoUrl && !e.documentoId"
+                [title]="(e.documentoUrl || e.documentoId) ? 'Abrir documento' : 'Sin documento'"
                 class="px-3 py-1.5 text-xs rounded-md bg-indigo-600 text-white hover:bg-indigo-700 disabled:opacity-60">
                 <i class="fa fa-eye mr-1"></i> Ver
               </button>
             </td>
             <td class="px-3 py-2 text-center">
-              <input type="number" min="0" max="10" step="0.1" [(ngModel)]="e.calificacion"
-                class="w-24 px-2 py-1 border rounded-md text-center" placeholder="0-10" />
+              <div class="flex flex-col items-center gap-1">
+                <input type="number" min="0" max="10" step="0.1" [(ngModel)]="e.calificacion"
+                  [disabled]="isInputDisabled(e)" (ngModelChange)="markChanged()"
+                  class="w-24 px-2 py-1 border rounded-md text-center disabled:bg-gray-100" placeholder="0-10" />
+                <button *ngIf="isAdmin" type="button"
+                  class="px-2 py-1 text-xs rounded bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-60"
+                  (click)="toggleEditar(e)">
+                  {{ e.editing ? 'Cancelar' : 'Editar' }}
+                </button>
+              </div>
             </td>
             <td class="px-3 py-2">
-              <textarea rows="1" [(ngModel)]="e.observacion" class="w-full px-2 py-1 border rounded-md"
-                placeholder="Escribe una observación..."></textarea>
+              <textarea rows="1" [(ngModel)]="e.observacion"
+                class="w-full px-2 py-1 border rounded-md disabled:bg-gray-100" [disabled]="isInputDisabled(e)"
+                (ngModelChange)="markChanged()" placeholder="Escribe una observación..."></textarea>
             </td>
           </tr>
           <tr *ngIf="estudiantes.length===0">
@@ -44,8 +53,9 @@
         </tbody>
       </table>
       <div class="mt-4 flex justify-end">
-        <button class="px-3 py-1.5 rounded-md bg-emerald-600 text-white text-sm hover:bg-emerald-700"
-          (click)="guardar()">
+        <button
+          class="px-3 py-1.5 rounded-md bg-emerald-600 text-white text-sm hover:bg-emerald-700 disabled:opacity-60"
+          [disabled]="saving || !hasChanges" (click)="guardar()">
           Guardar
         </button>
       </div>

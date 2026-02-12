@@ -5,6 +5,8 @@ import { FormsModule } from '@angular/forms';
 import { ToastrService } from 'ngx-toastr';
 import { VouchersService } from '../../../services/vouchers.service';
 import { NotificationsService } from '../../../services/notifications.service';
+import { PeriodService } from '../../../services/period.service';
+import { Subject, takeUntil } from 'rxjs';
 
 @Component({
   selector: 'app-pagos',
@@ -50,8 +52,41 @@ export class Pagos {
   rejectTarget: any = null;
   actionLoading = false;
 
-  constructor(private toast: ToastrService, private vouchers: VouchersService, private notifications: NotificationsService, private sanitizer: DomSanitizer) {
+  private destroyed$ = new Subject<void>();
+
+  constructor(private toast: ToastrService, private vouchers: VouchersService, private notifications: NotificationsService, private sanitizer: DomSanitizer, private periodSvc: PeriodService) {
     this.load();
+
+    this.periodSvc.activePeriod$
+      .pipe(takeUntil(this.destroyed$))
+      .subscribe(() => {
+        this.resetView();
+        this.load();
+      });
+  }
+
+  private resetView() {
+    this.loading = false;
+    this.items = [];
+    this.page = 1;
+    this.totalPages = 1;
+    this.total = 0;
+    this.search = '';
+    this.isPreviewOpen = false;
+    this.previewUrl = null;
+    this.previewSafeUrl = null;
+    this.previewType = 'other';
+    this.previewTitle = 'Comprobante';
+    this.zoomScale = 1;
+    this.isRejectOpen = false;
+    this.rejectObs = '';
+    this.rejectTarget = null;
+    this.actionLoading = false;
+  }
+
+  ngOnDestroy() {
+    this.destroyed$.next();
+    this.destroyed$.complete();
   }
 
   private tabToVType(): 'pago_certificado' | 'pago_titulacion' | 'pago_acta_grado' {

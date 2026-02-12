@@ -126,17 +126,35 @@ export class CronogramaExamenComplexivo {
   }
   publish() {
     if (!this.hasSelectedPeriod) {
-      Swal.fire({ icon: 'warning', title: 'Atención', text: 'Seleccione un período antes de publicar.' });
+      Swal.fire({
+        icon: 'warning',
+        title: 'Atención',
+        text: 'Seleccione un período antes de publicar.',
+        confirmButtonText: 'Aceptar',
+        customClass: { confirmButton: 'swal-btn-confirm' }
+      });
       return;
     }
     if (!this.validate()) return;
     if (!this.model.periodo) {
-      Swal.fire({ icon: 'warning', title: 'Atención', text: 'Seleccione un período antes de publicar.' });
+      Swal.fire({
+        icon: 'warning',
+        title: 'Atención',
+        text: 'Seleccione un período antes de publicar.',
+        confirmButtonText: 'Aceptar',
+        customClass: { confirmButton: 'swal-btn-confirm' }
+      });
       return;
     }
     const active = this.periodSvc.getActivePeriod();
     if (!active || this.model.periodo !== active) {
-      Swal.fire({ icon: 'warning', title: 'Atención', text: 'Seleccione el período activo para poder publicar.' });
+      Swal.fire({
+        icon: 'warning',
+        title: 'Atención',
+        text: 'Seleccione el período activo para poder publicar.',
+        confirmButtonText: 'Aceptar',
+        customClass: { confirmButton: 'swal-btn-confirm' }
+      });
       return;
     }
     this.ensureProyecto();
@@ -144,10 +162,22 @@ export class CronogramaExamenComplexivo {
     this.svc.publish().subscribe({
       next: (_res) => {
         this.svc.saveAsPublished(this.model.periodo!, this.model);
-        Swal.fire({ icon: 'success', title: 'Publicado', text: 'Cronograma de Examen Complexivo publicado correctamente.' });
+        Swal.fire({
+          icon: 'success',
+          title: 'Publicado',
+          text: 'Cronograma de Examen Complexivo publicado correctamente.',
+          confirmButtonText: 'Aceptar',
+          customClass: { confirmButton: 'swal-btn-confirm' }
+        });
       },
       error: (err) => {
-        Swal.fire({ icon: 'error', title: 'Error', text: err?.error?.message || 'No se pudo publicar el cronograma de Examen Complexivo.' });
+        Swal.fire({
+          icon: 'error',
+          title: 'Error',
+          text: err?.error?.message || 'No se pudo publicar el cronograma de Examen Complexivo.',
+          confirmButtonText: 'Aceptar',
+          customClass: { confirmButton: 'swal-btn-cancel' }
+        });
       }
     });
   }

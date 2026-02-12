@@ -1,91 +1,105 @@
-<section class="space-y-4">
-  <!-- Header -->
-  <div class="bg-white rounded-xl border border-gray-200 shadow-sm px-4 py-4">
-    <h1 class="text-2xl font-bold text-gray-800">Reportes</h1>
-    <p class="text-gray-600">Estadísticas y distribución de materias y tutores</p>
-  </div>
+<div class="space-y-4">
+  <div class="bg-white rounded-xl border border-gray-200 shadow-sm p-4">
+    <div class="flex items-center justify-between">
+      <div>
+        <div class="text-base font-semibold text-gray-800">Reportes - Vicerrectorado</div>
+        <div class="text-xs text-gray-500">Examen Complexivo</div>
+      </div>
+      <button class="text-xs px-3 py-1.5 rounded border" (click)="toggleFilters()">
+        {{ filtersOpen ? 'Ocultar filtros' : 'Mostrar filtros' }}
+      </button>
+    </div>
 
-  <!-- Export y filtros -->
-  <div class="flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
-    <div class="flex items-center gap-2">
+    <div *ngIf="filtersOpen" class="mt-4 grid grid-cols-1 md:grid-cols-3 gap-3">
       <div>
         <label class="block text-xs text-gray-500 mb-1">Período</label>
-        <select [(ngModel)]="selectedPeriodPrint" (ngModelChange)="onChangePeriodPrint()" class="px-3 py-2 border border-gray-300 rounded-md text-sm w-64 focus:outline-none focus:ring-2 focus:ring-indigo-500">
-          <option [ngValue]="undefined" disabled>Seleccione un periodo</option>
-          <option *ngFor="let p of periodOptionsPrint" [ngValue]="p">{{ p }}</option>
+        <select class="w-full text-sm border rounded-md px-3 py-2" [(ngModel)]="selectedPeriodId">
+          <option [ngValue]="null">Seleccione un período</option>
+          <option *ngFor="let p of (periods$ | async)" [ngValue]="p.id">{{ p.name }}</option>
+        </select>
+      </div>
+      <div>
+        <label class="block text-xs text-gray-500 mb-1">Carrera</label>
+        <select class="w-full text-sm border rounded-md px-3 py-2" [(ngModel)]="selectedCareerId">
+          <option [ngValue]="null">Todas</option>
+          <option *ngFor="let c of (careers$ | async)" [ngValue]="c.id">{{ c.nombre }}</option>
+        </select>
+      </div>
+      <div>
+        <label class="block text-xs text-gray-500 mb-1">Tipo de reporte</label>
+        <select class="w-full text-sm border rounded-md px-3 py-2" [(ngModel)]="reportType">
+          <option value="">Seleccione</option>
+          <option value="MATERIAS">Materias asignadas para complexivo</option>
+          <option value="DOCENTES">Docentes asignados a complexivo</option>
         </select>
       </div>
     </div>
-    <div class="flex flex-wrap items-center justify-end gap-2">
-      <button type="button" (click)="exportResumenCsv()" [disabled]="!canExportResumen" class="px-3 py-1.5 text-xs rounded-md bg-emerald-600 text-white hover:bg-emerald-700 disabled:opacity-60 disabled:cursor-not-allowed">
-        <i class="fa fa-file-csv mr-1"></i> CSV Resumen
-      </button>
-      <button type="button" (click)="exportDistribucionCsv()" [disabled]="!canExportDistribucion" class="px-3 py-1.5 text-xs rounded-md bg-emerald-600 text-white hover:bg-emerald-700 disabled:opacity-60 disabled:cursor-not-allowed">
-        <i class="fa fa-file-csv mr-1"></i> CSV Distribución
-      </button>
-      <button type="button" (click)="exportTopTutoresCsv()" [disabled]="!canExportTop" class="px-3 py-1.5 text-xs rounded-md bg-emerald-600 text-white hover:bg-emerald-700 disabled:opacity-60 disabled:cursor-not-allowed">
-        <i class="fa fa-file-csv mr-1"></i> CSV Top Tutores
-      </button>
-      <button type="button" (click)="printPdf()" class="px-3 py-1.5 text-xs rounded-md bg-indigo-600 text-white hover:bg-indigo-700">
-        <i class="fa fa-file-pdf mr-1"></i> Imprimir PDF
-      </button>
+
+    <div class="mt-4 flex flex-wrap justify-end gap-2">
+      <button class="text-xs px-3 py-1.5 rounded border" (click)="limpiar()">Limpiar</button>
+      <button class="text-xs px-3 py-1.5 rounded-md bg-slate-700 text-white hover:bg-slate-800"
+        (click)="previsualizar()">Previsualizar</button>
+      <button class="text-xs px-3 py-1.5 rounded-md bg-indigo-600 text-white hover:bg-indigo-700"
+        (click)="generarPdf()">Generar PDF</button>
     </div>
   </div>
 
-  <!-- Resumen -->
-  <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-    <div *ngFor="let item of resumen" class="bg-white rounded-xl border border-gray-200 shadow-sm p-4 flex items-center gap-3">
-      <div class="text-2xl" [ngClass]="item.color"><i class="fa" [ngClass]="item.icono"></i></div>
-      <div>
-        <div class="text-2xl font-bold text-gray-800">{{ item.valor }}</div>
-        <div class="text-sm text-gray-600">{{ item.titulo }}</div>
-      </div>
+  <div *ngIf="previewInfo" class="bg-white rounded-xl border border-gray-200 shadow-sm p-4">
+    <div class="text-sm font-semibold text-gray-800">Previsualización</div>
+    <div class="text-xs text-gray-500 mt-1">
+      Período: <strong>{{ previewInfo.periodLabel }}</strong>
+      <span class="mx-2">|</span>
+      Carrera: <strong>{{ previewInfo.careerLabel }}</strong>
     </div>
-  </div>
 
-  <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
-    <!-- Distribución por carrera -->
-    <div class="bg-white rounded-xl border border-gray-200 shadow-sm p-4">
-      <h2 class="text-lg font-semibold text-gray-800 mb-3">Distribución por carrera</h2>
+    <div class="mt-4 overflow-x-auto" *ngIf="reportType==='MATERIAS'">
       <table class="min-w-full text-sm">
         <thead class="bg-gray-50 text-gray-700 text-xs uppercase">
           <tr>
+            <th class="px-3 py-2 text-left">N°</th>
+            <th class="px-3 py-2 text-left">Materias</th>
             <th class="px-3 py-2 text-left">Carrera</th>
-            <th class="px-3 py-2 text-left">Registradas</th>
-            <th class="px-3 py-2 text-left">Publicadas</th>
-            <th class="px-3 py-2 text-left">Avance</th>
+            <th class="px-3 py-2 text-left">Estado</th>
           </tr>
         </thead>
         <tbody class="divide-y divide-gray-100">
-          <tr *ngFor="let c of distribucionCarreras">
-            <td class="px-3 py-2">{{ c.carrera }}</td>
-            <td class="px-3 py-2">{{ c.registradas }}</td>
-            <td class="px-3 py-2">{{ c.publicadas }}</td>
-            <td class="px-3 py-2">
-              <div class="w-full bg-gray-100 rounded-full h-2">
-                <div class="h-2 rounded-full bg-emerald-500" [style.width.%]="pctPublicado(c)"></div>
-              </div>
-              <div class="text-xs text-gray-500 mt-1">{{ pctPublicado(c) }}%</div>
-            </td>
+          <tr *ngFor="let r of previewMaterias">
+            <td class="px-3 py-2">{{ r.nro }}</td>
+            <td class="px-3 py-2">{{ r.materia }}</td>
+            <td class="px-3 py-2">{{ r.carrera }}</td>
+            <td class="px-3 py-2">{{ r.estado }}</td>
+          </tr>
+          <tr *ngIf="!previewMaterias.length">
+            <td class="px-3 py-3 text-center text-gray-500" colspan="4">Sin registros</td>
           </tr>
         </tbody>
       </table>
     </div>
 
-    <!-- Top tutores -->
-    <div class="bg-white rounded-xl border border-gray-200 shadow-sm p-4">
-      <h2 class="text-lg font-semibold text-gray-800 mb-3">Top tutores por asignaciones</h2>
-      <div class="space-y-3">
-        <div *ngFor="let t of topTutores" class="flex items-center justify-between">
-          <div class="flex items-center gap-2">
-            <div class="w-8 h-8 rounded-full bg-sky-100 flex items-center justify-center text-sky-700">
-              <i class="fa fa-user-tie"></i>
-            </div>
-            <span class="text-sm text-gray-800">{{ t.tutor }}</span>
-          </div>
-          <span class="text-sm font-semibold text-gray-700">{{ t.asignadas }}</span>
-        </div>
-      </div>
+    <div class="mt-4 overflow-x-auto" *ngIf="reportType==='DOCENTES'">
+      <table class="min-w-full text-sm">
+        <thead class="bg-gray-50 text-gray-700 text-xs uppercase">
+          <tr>
+            <th class="px-3 py-2 text-left">N°</th>
+            <th class="px-3 py-2 text-left">Docente</th>
+            <th class="px-3 py-2 text-left">Materia</th>
+            <th class="px-3 py-2 text-left">Carrera</th>
+            <th class="px-3 py-2 text-left">Estado</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-gray-100">
+          <tr *ngFor="let r of previewDocentes">
+            <td class="px-3 py-2">{{ r.nro }}</td>
+            <td class="px-3 py-2">{{ r.docente }}</td>
+            <td class="px-3 py-2">{{ r.materia }}</td>
+            <td class="px-3 py-2">{{ r.carrera }}</td>
+            <td class="px-3 py-2">{{ r.estado }}</td>
+          </tr>
+          <tr *ngIf="!previewDocentes.length">
+            <td class="px-3 py-3 text-center text-gray-500" colspan="5">Sin registros</td>
+          </tr>
+        </tbody>
+      </table>
     </div>
   </div>
-</section>
+</div>

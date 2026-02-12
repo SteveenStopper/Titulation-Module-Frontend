@@ -2,6 +2,8 @@ import { Component } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { NotificationsService } from '../../../services/notifications.service';
 import { HttpClient } from '@angular/common/http';
+import { PeriodService } from '../../../services/period.service';
+import { Subject, takeUntil } from 'rxjs';
 
 @Component({
   selector: 'app-inicio',
@@ -16,8 +18,6 @@ export class Inicio {
     recaudadoPeriodo: 0,
     vouchersPendientes: 0,
     pagosHoy: 0,
-    deudasVencidas: 0,
-    arancelesActivos: 0,
   };
 
   // Notificaciones
@@ -50,7 +50,9 @@ export class Inicio {
     });
   }
 
-  constructor(private notificationsSvc: NotificationsService, private http: HttpClient) {
+  private destroyed$ = new Subject<void>();
+
+  constructor(private notificationsSvc: NotificationsService, private http: HttpClient, private periodSvc: PeriodService) {
     this.notificationsSvc.listMy().subscribe(list => {
       this.notifications = (list || []).map(n => ({
         id: Number((n as any).id_notification),
@@ -59,14 +61,33 @@ export class Inicio {
         leida: !!(n as any).is_read,
       }));
     });
+
+    this.loadData();
+
+    this.periodSvc.activePeriod$
+      .pipe(takeUntil(this.destroyed$))
+      .subscribe(() => {
+        this.resetView();
+        this.loadData();
+      });
+  }
+
+  private resetView() {
+    this.kpis = {
+      recaudadoPeriodo: 0,
+      vouchersPendientes: 0,
+      pagosHoy: 0,
+    };
+    this.recentPayments = [];
+  }
+
+  private loadData() {
     // KPIs reales
     this.http.get<any>('/api/tesoreria/dashboard').subscribe((d) => {
       this.kpis = {
         recaudadoPeriodo: Number(d?.recaudadoPeriodo || 0),
         vouchersPendientes: Number(d?.vouchersPendientes || 0),
         pagosHoy: Number(d?.pagosHoy || 0),
-        deudasVencidas: Number(d?.deudasVencidas || 0),
-        arancelesActivos: Number(d?.arancelesActivos || 0),
       };
     });
     // Pagos recientes: últimos comprobantes (vouchers) subidos
@@ -89,6 +110,11 @@ export class Inicio {
         };
       });
     });
+  }
+
+  ngOnDestroy() {
+    this.destroyed$.next();
+    this.destroyed$.complete();
   }
 
   // Pagos recientes

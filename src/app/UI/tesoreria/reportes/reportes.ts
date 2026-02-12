@@ -2,9 +2,10 @@ import { Component } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { HttpClient } from '@angular/common/http';
-import { BehaviorSubject, Observable, of, combineLatest, firstValueFrom } from 'rxjs';
-import { catchError, map, shareReplay, switchMap } from 'rxjs/operators';
+import { Observable, firstValueFrom, of } from 'rxjs';
+import { catchError, map, shareReplay } from 'rxjs/operators';
 import { PeriodService } from '../../../services/period.service';
+import { AuthService } from '../../../services/auth.service';
 
 @Component({
   selector: 'app-reportes',
@@ -14,149 +15,364 @@ import { PeriodService } from '../../../services/period.service';
   styleUrl: './reportes.scss'
 })
 export class Reportes {
-  // KPIs
-  kpis$!: Observable<{ recaudadoPeriodo: number; pagosHoy: number; vouchersPendientes: number; deudasVencidas: number; arancelesActivos: number }>;
-
-  // Resumen por estudiante filtrado por período/carrera
-  resumen$!: Observable<{ data: any[]; pagination: any }>;
-
-  // Vouchers recientes (paginación simple)
-  page$ = new BehaviorSubject<number>(1);
-  pageSize$ = new BehaviorSubject<number>(10);
-  vouchers$!: Observable<{ data: any[]; pagination: any }>;
-
-  // Períodos y carreras
   periods$!: Observable<Array<{ id: number; name: string }>>;
   careers$!: Observable<Array<{ id: number; nombre: string }>>;
-  selectedPeriodId$ = new BehaviorSubject<number | null>(null);
-  selectedCareerId$ = new BehaviorSubject<number | null>(null);
-  selectedPeriodLabel$!: Observable<string>;
-  selectedCareerLabel$!: Observable<string>;
-  today = new Date();
+  filtersOpen = true;
 
-  constructor(private http: HttpClient, private periodSvc: PeriodService) {
-    // Catálogos
+  selectedPeriodId: number | null = null;
+  selectedCareerId: number | null = null;
+  reportType: 'ARANCELES' | 'COMPROBANTES' | '' = '';
+
+  previewInfo: { periodLabel: string; careerLabel: string } | null = null;
+
+  previewComprobantes: Array<{
+    nro: number;
+    estudiante: string;
+    carrera: string;
+    comprobante_certificados: string;
+    comprobante_titulacion: string;
+    comprobante_acta_grado: string;
+  }> = [];
+
+  previewAranceles: Array<{
+    nro: number;
+    estudiante: string;
+    carrera: string;
+    estado_aranceles: string;
+  }> = [];
+
+  constructor(private http: HttpClient, private periodSvc: PeriodService, private auth: AuthService) {
     this.periods$ = this.periodSvc.listAll().pipe(
-      map((arr: any[]) => (arr || []).map((p: any) => ({ id: p.id_academic_periods, name: p.name }))),
-      catchError(()=> of([] as any[])),
+      map((arr: any[]) => (arr || []).map((p: any) => ({ id: Number(p.id_academic_periods), name: String(p.name) }))),
+      catchError(() => of([] as Array<{ id: number; name: string }>)),
       shareReplay(1)
     );
-    this.careers$ = this.http.get<any[]>('/api/uic/admin/carreras').pipe(catchError(()=> of([])), shareReplay(1));
+    this.careers$ = this.http.get<any[]>('/api/uic/admin/carreras').pipe(
+      map((arr: any[]) => (arr || []).map((c: any) => ({ id: Number(c.id), nombre: String(c.nombre) }))),
+      catchError(() => of([] as Array<{ id: number; nombre: string }>)),
+      shareReplay(1)
+    );
 
-    // Inicializar período activo por nombre si existe
-    const active = this.periodSvc.getActivePeriod();
-    if (active && typeof active === 'string') {
-      this.periods$.subscribe(list => {
-        const found = (list || []).find((p: any) => p?.name === active);
-        if (found?.id) this.selectedPeriodId$.next(Number(found.id));
+    const activeName = this.periodSvc.getActivePeriod();
+    if (activeName && typeof activeName === 'string') {
+      this.periods$.subscribe((rows) => {
+        const match = (rows || []).find(r => r.name === activeName);
+        if (match?.id) this.selectedPeriodId = Number(match.id);
       });
     }
-
-    this.kpis$ = combineLatest([this.selectedPeriodId$, this.selectedCareerId$]).pipe(
-      switchMap(([pid, cid]) => this.http.get<any>(`/api/tesoreria/dashboard${this.buildQuery({ academicPeriodId: pid, careerId: cid })}`).pipe(
-        map(r => ({
-          recaudadoPeriodo: Number(r?.recaudadoPeriodo || 0),
-          pagosHoy: Number(r?.pagosHoy || 0),
-          vouchersPendientes: Number(r?.vouchersPendientes || 0),
-          deudasVencidas: Number(r?.deudasVencidas || 0),
-          arancelesActivos: Number(r?.arancelesActivos || 0)
-        })),
-        catchError(()=> of({ recaudadoPeriodo: 0, pagosHoy: 0, vouchersPendientes: 0, deudasVencidas: 0, arancelesActivos: 0 }))
-      )),
-      shareReplay(1)
-    );
-
-    this.resumen$ = combineLatest([this.selectedPeriodId$, this.selectedCareerId$]).pipe(
-      switchMap(([pid, cid]) => this.http.get<any>(`/api/tesoreria/resumen${this.buildQuery({ academicPeriodId: pid, careerId: cid })}`).pipe(catchError(()=> of({ data: [], pagination: { page:1, pageSize:10, total:0 } })))),
-      shareReplay(1)
-    );
-
-    this.vouchers$ = this.page$.pipe(
-      switchMap((page)=> this.http.get<any>(`/api/vouchers?page=${page}&pageSize=${this.pageSize$.value}`).pipe(catchError(()=> of({ data: [], pagination: { page, pageSize: this.pageSize$.value, total: 0 } })))),
-      shareReplay(1)
-    );
   }
 
-  onChangePeriod(event: Event) {
-    const select = event.target as HTMLSelectElement | null;
-    const v = select && select.value ? Number(select.value) : null;
-    this.selectedPeriodId$.next(v);
+  toggleFilters() { this.filtersOpen = !this.filtersOpen; }
+
+  limpiar() {
+    this.reportType = '';
+    this.previewInfo = null;
+    this.previewComprobantes = [];
+    this.previewAranceles = [];
   }
 
-  onChangeCareer(event: Event) {
-    const select = event.target as HTMLSelectElement | null;
-    const v = select && select.value ? Number(select.value) : null;
-    this.selectedCareerId$.next(v);
+  private getSignerFullName() {
+    const u = this.auth.currentUserValue as any;
+    const full = (u?.name || `${u?.firstname || ''} ${u?.lastname || ''}`.trim()).trim();
+    return full || 'N/D';
   }
 
-  nextPage() { this.page$.next(this.page$.value + 1); }
-  prevPage() { this.page$.next(Math.max(1, this.page$.value - 1)); }
-
-  private buildQuery(params: { [k: string]: any }) {
-    const qp = Object.entries(params)
-      .filter(([, val]) => val !== null && val !== undefined && val !== '')
-      .map(([k, v]) => `${encodeURIComponent(k)}=${encodeURIComponent(String(v))}`)
-      .join('&');
-    return qp ? `?${qp}` : '';
+  private formatLongDate(d: Date) {
+    return d.toLocaleDateString('es-EC', {
+      weekday: 'long',
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+    });
   }
 
-  async onExportReport() {
-    const w = window.open('', '_blank', 'noopener,noreferrer,width=900,height=700');
+  private escapeHtml(s: string) {
+    return String(s || '')
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#039;');
+  }
+
+  private normalizeEstado(s: any) {
+    const v = String(s || '').toLowerCase();
+    if (!v) return 'Sin comprobante';
+    if (v === 'aprobado') return 'Aprobado';
+    if (v === 'rechazado') return 'Rechazado';
+    if (v === 'en_revision') return 'En revisión';
+    return String(s);
+  }
+
+  private async openPrintTab(html: string) {
+    const w = window.open('about:blank', '_blank');
     if (!w) return;
-    w.document.write('<!doctype html><html><head><meta charset="utf-8"><title>Reporte Tesorería</title></head><body><div style="font-family:Arial,Helvetica,sans-serif;padding:24px;color:#111827;">Generando reporte...</div></body></html>');
-    w.document.close();
+
     try {
-      // Construir labels derivados
-      this.selectedPeriodLabel$ = combineLatest([this.periods$, this.selectedPeriodId$]).pipe(
-        map(([arr, id]) => {
-          const it: any = (arr || []).find((p: any) => Number(p.id) === Number(id));
-          return it?.name || 'Todos los períodos';
-        }),
-        shareReplay(1)
-      );
-      this.selectedCareerLabel$ = combineLatest([this.careers$, this.selectedCareerId$]).pipe(
-        map(([arr, id]) => {
-          const it: any = (arr || []).find((c: any) => Number(c.id) === Number(id));
-          return it?.nombre || 'Todas las carreras';
-        }),
-        shareReplay(1)
-      );
-      const [perLabel, carLabel, kpis, resumen, vouchers] = await Promise.all([
-        firstValueFrom(this.selectedPeriodLabel$),
-        firstValueFrom(this.selectedCareerLabel$),
-        firstValueFrom(this.kpis$),
-        firstValueFrom(this.resumen$),
-        firstValueFrom(this.vouchers$)
-      ]);
-      const listRes = (r: any) => `<li style=\"display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid #f3f4f6\">`+
-        `<div><div style=\"font-weight:600\">${r.nombre||''}</div><div style=\"color:#6b7280;font-size:12px\">${r.carrera_nombre||r.carrera||''}</div></div>`+
-        `<div style=\"color:#6b7280;font-size:12px\">${r.estado_aranceles||'-'}</div></li>`;
-      const listVoucher = (v: any) => `<li style=\"display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid #f3f4f6\">`+
-        `<div><div style=\"font-weight:600\">${v.voucher_type||'voucher'}</div><div class=\"muted\" style=\"font-size:12px\">${v.users?.firstname||''} ${v.users?.lastname||''}</div></div>`+
-        `<div style=\"color:#111827;font-weight:600\">$${Number(v.amount||0).toFixed(2)}</div></li>`;
-      const styles = `<style>body{font-family:Arial,Helvetica,sans-serif;color:#111827;margin:24px}.muted{color:#6b7280}.kpis{display:grid;grid-template-columns:repeat(5,1fr);gap:12px}.kpi{border:1px solid #e5e7eb;border-radius:12px;padding:12px}.card{border:1px solid #e5e7eb;border-radius:12px;margin:12px 0}.card .h{padding:10px 16px;border-bottom:1px solid #e5e7eb;font-weight:600;color:#374151}.card .c{padding:12px 16px}</style>`;
-      const html = `<!doctype html><html><head><meta charset=\"utf-8\">${styles}<title>Reporte Tesorería</title></head><body>
-        <div style=\"text-align:center;margin-bottom:12px\"><div style=\"font-size:18px;font-weight:700\">Informe de Tesorería</div>
-          <div class=\"muted\">Fecha: ${this.today.toLocaleDateString()} · Período: ${perLabel || 'Todos'} · Carrera: ${carLabel || 'Todas'}</div></div>
-        <div class=\"kpis\">
-          <div class=\"kpi\"><div class=\"muted\">Recaudado (período)</div><div style=\"font-size:20px;font-weight:700\">$${Number(kpis?.recaudadoPeriodo||0).toFixed(2)}</div></div>
-          <div class=\"kpi\"><div class=\"muted\">Comprobantes hoy</div><div style=\"font-size:20px;font-weight:700\">${kpis?.pagosHoy||0}</div></div>
-          <div class=\"kpi\"><div class=\"muted\">Vouchers pendientes</div><div style=\"font-size:20px;font-weight:700\">${kpis?.vouchersPendientes||0}</div></div>
-          <div class=\"kpi\"><div class=\"muted\">Deudas vencidas</div><div style=\"font-size:20px;font-weight:700\">${kpis?.deudasVencidas||0}</div></div>
-          <div class=\"kpi\"><div class=\"muted\">Aranceles activos</div><div style=\"font-size:20px;font-weight:700\">${kpis?.arancelesActivos||0}</div></div>
-        </div>
-        <div class=\"card\"><div class=\"h\">Resumen por estudiante (${Array.isArray(resumen?.data)?resumen.data.length:0})</div>
-          <div class=\"c\">${Array.isArray(resumen?.data)&&resumen.data.length?`<ul style=\"list-style:none;margin:0;padding:0\">${resumen.data.slice(0,20).map(listRes).join('')}</ul>`:'<div class=\"muted\">No hay registros.</div>'}</div>
-        </div>
-        <div class=\"card\"><div class=\"h\">Vouchers (${Array.isArray(vouchers?.data)?vouchers.data.length:0})</div>
-          <div class=\"c\">${Array.isArray(vouchers?.data)&&vouchers.data.length?`<ul style=\"list-style:none;margin:0;padding:0\">${vouchers.data.slice(0,20).map(listVoucher).join('')}</ul>`:'<div class=\"muted\">No hay registros.</div>'}</div>
-        </div>
-      </body></html>`;
-      w.document.open(); w.document.write(html); w.document.close();
-    } catch (e) {
       w.document.open();
-      w.document.write('<!doctype html><html><head><meta charset="utf-8"><title>Error</title></head><body><div style="font-family:Arial,Helvetica,sans-serif;padding:24px;color:#991b1b;">No se pudo generar el reporte. Inténtalo nuevamente.</div></body></html>');
+      w.document.write(html);
       w.document.close();
+
+      const imgs = Array.from(w.document.images || []);
+      if (imgs.length) {
+        await Promise.all(
+          imgs.map(
+            (img) =>
+              new Promise<void>((resolve) => {
+                if ((img as HTMLImageElement).complete) return resolve();
+                img.addEventListener('load', () => resolve(), { once: true });
+                img.addEventListener('error', () => resolve(), { once: true });
+              })
+          )
+        );
+      }
+
+      w.focus();
+      w.print();
+    } catch (_) {
+      try {
+        w.document.open();
+        w.document.write(
+          '<!doctype html><html><head><meta charset="utf-8"><title>Error</title></head><body><div style="font-family:Arial,Helvetica,sans-serif;padding:24px;color:#991b1b;">No se pudo generar el reporte. Inténtalo nuevamente.</div></body></html>'
+        );
+        w.document.close();
+      } catch (_) {}
     }
+  }
+
+  async previsualizar() {
+    if (!this.selectedPeriodId || !this.reportType) return;
+    const periods = await firstValueFrom(this.periods$);
+    const careers = await firstValueFrom(this.careers$);
+    const perLabel = (periods || []).find(p => Number(p.id) === Number(this.selectedPeriodId))?.name || '';
+    const carLabel = !this.selectedCareerId
+      ? 'Todas las carreras'
+      : (careers || []).find(c => Number(c.id) === Number(this.selectedCareerId))?.nombre || '';
+
+    this.previewInfo = { periodLabel: perLabel, careerLabel: carLabel };
+    this.previewComprobantes = [];
+    this.previewAranceles = [];
+
+    if (this.reportType === 'COMPROBANTES') {
+      const q = new URLSearchParams();
+      q.set('academicPeriodId', String(this.selectedPeriodId));
+      if (this.selectedCareerId) q.set('careerId', String(this.selectedCareerId));
+      const resp = await firstValueFrom(this.http.get<any>(`/api/tesoreria/reportes/comprobantes?${q.toString()}`).pipe(catchError(() => of({ data: [] }))));
+      const data = Array.isArray(resp?.data) ? resp.data : [];
+      this.previewComprobantes = data.map((r: any) => ({
+        nro: Number(r?.nro || 0),
+        estudiante: String(r?.estudiante || '').trim(),
+        carrera: String(r?.carrera || '').trim(),
+        comprobante_certificados: this.normalizeEstado(r?.comprobante_certificados),
+        comprobante_titulacion: this.normalizeEstado(r?.comprobante_titulacion),
+        comprobante_acta_grado: this.normalizeEstado(r?.comprobante_acta_grado),
+      }));
+    }
+
+    if (this.reportType === 'ARANCELES') {
+      const q = new URLSearchParams();
+      q.set('academicPeriodId', String(this.selectedPeriodId));
+      if (this.selectedCareerId) q.set('careerId', String(this.selectedCareerId));
+      const resp = await firstValueFrom(this.http.get<any>(`/api/tesoreria/reportes/aranceles?${q.toString()}`).pipe(catchError(() => of({ data: [] }))));
+      const data = Array.isArray(resp?.data) ? resp.data : [];
+      this.previewAranceles = data.map((r: any) => ({
+        nro: Number(r?.nro || 0),
+        estudiante: String(r?.estudiante || '').trim(),
+        carrera: String(r?.carrera || '').trim(),
+        estado_aranceles: String(r?.estado_aranceles || '').trim() || 'Inactivo',
+      }));
+    }
+  }
+
+  async generarPdf() {
+    if (!this.previewInfo || !this.reportType) return;
+    if (this.reportType === 'COMPROBANTES') {
+      this.printPdfComprobantes(this.previewInfo, this.previewComprobantes);
+    }
+    if (this.reportType === 'ARANCELES') {
+      this.printPdfAranceles(this.previewInfo, this.previewAranceles);
+    }
+  }
+
+  private printPdfAranceles(info: { periodLabel: string; careerLabel: string }, rows: any[]) {
+    const origin = window.location.origin;
+    const fecha = this.formatLongDate(new Date());
+    const signerName = this.getSignerFullName();
+
+    const pageSize = 29;
+    const chunks: Array<any[]> = [];
+    for (let i = 0; i < (rows || []).length; i += pageSize) chunks.push((rows || []).slice(i, i + pageSize));
+    if (!chunks.length) chunks.push([]);
+
+    const renderRows = (slice: any[]) => (slice || []).map(r => `
+      <tr>
+        <td style="width:36px;text-align:center;">${r.nro}</td>
+        <td>${this.escapeHtml(r.estudiante)}</td>
+        <td style="width:32%;">${this.escapeHtml(r.carrera)}</td>
+        <td style="width:20%;text-align:center;">${this.escapeHtml(r.estado_aranceles)}</td>
+      </tr>
+    `).join('');
+
+    const renderPage = (slice: any[], pageIndex: number, totalPages: number) => {
+      const isLast = pageIndex === totalPages - 1;
+      const bodyRows = renderRows(slice);
+      const foot = isLast
+        ? `
+          <div class="foot">
+            <div><strong>Total de registros:</strong> ${(rows || []).length}</div>
+            <div style="margin-top:4mm;font-weight:500;">${this.escapeHtml(fecha)}</div>
+          </div>
+          <div class="firma">
+            <div class="name">${this.escapeHtml(signerName)}</div>
+            <div class="role">TESORERÍA</div>
+            <div class="role">INSTITUTO SUPERIOR TECNOLÓGICO LOS ANDES</div>
+          </div>
+        `
+        : `<div style="height:44mm;"></div>`;
+
+      return `
+        <div class="page">
+          <img class="bg" src="${origin}/assets/Fondo_doc.jpg" />
+          <img class="logo" src="${origin}/assets/Logo.png" />
+          <div class="content">
+            <div class="title">REPORTE DE ESTADO DE ARANCELES DE ESTUDIANTES</div>
+            <div class="meta"><strong>PERIODO ACADEMICO:</strong> ${this.escapeHtml(info.periodLabel)}</div>
+            <div class="section">LISTADO DE ESTUDIANTES</div>
+            <table>
+              <thead>
+                <tr>
+                  <th style="width:36px;text-align:center;">N°</th>
+                  <th>Estudiante</th>
+                  <th style="width:32%;">Carrera</th>
+                  <th style="width:20%;text-align:center;">Estado del arancel</th>
+                </tr>
+              </thead>
+              <tbody>${bodyRows || `<tr><td colspan="4" style="text-align:center;">Sin registros</td></tr>`}</tbody>
+            </table>
+            ${foot}
+          </div>
+        </div>
+      `;
+    };
+
+    const pagesHtml = chunks.map((slice, idx) => renderPage(slice, idx, chunks.length)).join('<div class="page-break"></div>');
+
+    const html = `<!doctype html><html><head><meta charset="utf-8">
+      <style>
+        @page { margin: 0; }
+        body { margin: 0; font-family: Arial, Helvetica, sans-serif; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+        .page { position: relative; width: 210mm; height: 297mm; page-break-after: always; }
+        .page:last-child { page-break-after: auto; }
+        .page-break { page-break-after: always; }
+        .bg { position:absolute; inset:0; width:100%; height:100%; object-fit:cover; }
+        .logo { position:absolute; top: 16mm; left: 18mm; height: 18mm; width: auto; }
+        .content { position: relative; padding: 32mm 18mm 42mm 18mm; }
+        .title { text-align:center; font-weight:700; font-size:14px; margin-top: 10mm; line-height:1.3; }
+        .meta { margin-top: 10mm; font-size: 10.5px; font-weight: 500; }
+        .section { margin-top: 14mm; font-size: 11px; font-weight:700; }
+        table { width:100%; border-collapse: collapse; margin-top: 6mm; font-size: 10px; }
+        th, td { border: 1px solid #111; padding: 6px; vertical-align: top; }
+        th { text-align:left; font-weight:700; }
+        .foot { margin-top: 10mm; font-size: 10px; }
+        .firma { margin-top: 28mm; text-align:center; font-size: 10px; }
+        .firma .name { font-weight:700; }
+        .firma .role { font-weight:700; letter-spacing:0.5px; }
+      </style>
+    </head><body>${pagesHtml}</body></html>`;
+
+    void this.openPrintTab(html);
+  }
+
+  private printPdfComprobantes(info: { periodLabel: string; careerLabel: string }, rows: any[]) {
+    const origin = window.location.origin;
+    const fecha = this.formatLongDate(new Date());
+    const signerName = this.getSignerFullName();
+
+    const pageSize = 29;
+    const chunks: Array<any[]> = [];
+    for (let i = 0; i < (rows || []).length; i += pageSize) chunks.push((rows || []).slice(i, i + pageSize));
+    if (!chunks.length) chunks.push([]);
+
+    const renderRows = (slice: any[]) => (slice || []).map(r => `
+      <tr>
+        <td style="width:36px;text-align:center;">${r.nro}</td>
+        <td>${this.escapeHtml(r.estudiante)}</td>
+        <td style="width:22%;">${this.escapeHtml(r.carrera)}</td>
+        <td style="width:14%;text-align:center;">${this.escapeHtml(r.comprobante_certificados)}</td>
+        <td style="width:14%;text-align:center;">${this.escapeHtml(r.comprobante_titulacion)}</td>
+        <td style="width:14%;text-align:center;">${this.escapeHtml(r.comprobante_acta_grado)}</td>
+      </tr>
+    `).join('');
+
+    const renderPage = (slice: any[], pageIndex: number, totalPages: number) => {
+      const isLast = pageIndex === totalPages - 1;
+      const bodyRows = renderRows(slice);
+      const foot = isLast
+        ? `
+          <div class="foot">
+            <div><strong>Total de registros:</strong> ${(rows || []).length}</div>
+            <div style="margin-top:4mm;font-weight:500;">${this.escapeHtml(fecha)}</div>
+          </div>
+          <div class="firma">
+            <div class="name">Ing. ${this.escapeHtml(signerName)}</div>
+            <div class="role">TESORERÍA</div>
+            <div class="role">INSTITUTO SUPERIOR TECNOLÓGICO LOS ANDES</div>
+          </div>
+        `
+        : `<div style="height:44mm;"></div>`;
+      return `
+        <div class="page">
+          <img class="bg" src="${origin}/assets/Fondo_doc.jpg" />
+          <img class="logo" src="${origin}/assets/Logo.png" />
+          <div class="content">
+            <div class="title">REPORTE DE COMPROBANTES DE PAGO</div>
+            <div class="meta"><strong>PERIODO ACADÉMICO:</strong> ${this.escapeHtml(info.periodLabel)}</div>
+            <div class="meta"><strong>CARRERA:</strong> ${this.escapeHtml(info.careerLabel || 'Todas')}</div>
+            <div class="section">LISTADO DE ESTUDIANTES</div>
+            <table>
+              <thead>
+                <tr>
+                  <th style="width:36px;text-align:center;">N°</th>
+                  <th>Estudiante</th>
+                  <th style="width:22%;">Carrera</th>
+                  <th style="width:14%;text-align:center;">Certificados</th>
+                  <th style="width:14%;text-align:center;">Titulación</th>
+                  <th style="width:14%;text-align:center;">Acta de grado</th>
+                </tr>
+              </thead>
+              <tbody>${bodyRows || `<tr><td colspan="6" style="text-align:center;">Sin registros</td></tr>`}</tbody>
+            </table>
+            ${foot}
+          </div>
+        </div>
+      `;
+    };
+
+    const pagesHtml = chunks.map((slice, idx) => renderPage(slice, idx, chunks.length)).join('<div class="page-break"></div>');
+
+    const html = `<!doctype html><html><head><meta charset="utf-8">
+      <style>
+        @page { margin: 0; }
+        body { margin: 0; font-family: Arial, Helvetica, sans-serif; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+        .page { position: relative; width: 210mm; height: 297mm; page-break-after: always; }
+        .page:last-child { page-break-after: auto; }
+        .page-break { page-break-after: always; }
+        .bg { position:absolute; inset:0; width:100%; height:100%; object-fit:cover; }
+        .logo { position:absolute; top: 16mm; left: 18mm; height: 18mm; width: auto; }
+        .content { position: relative; padding: 32mm 18mm 42mm 18mm; }
+        .title { text-align:center; font-weight:700; font-size:14px; margin-top: 10mm; line-height:1.3; }
+        .meta { margin-top: 6mm; font-size: 10.5px; font-weight: 500; }
+        .section { margin-top: 10mm; font-size: 11px; font-weight:700; }
+        table { width:100%; border-collapse: collapse; margin-top: 6mm; font-size: 10px; }
+        th, td { border: 1px solid #111; padding: 6px; vertical-align: top; }
+        th { text-align:left; font-weight:700; }
+        .foot { margin-top: 10mm; font-size: 10px; }
+        .firma { margin-top: 28mm; text-align:center; font-size: 10px; }
+        .firma .name { font-weight:700; }
+        .firma .role { font-weight:700; letter-spacing:0.5px; }
+      </style>
+    </head><body>${pagesHtml}</body></html>`;
+
+    void this.openPrintTab(html);
   }
 }

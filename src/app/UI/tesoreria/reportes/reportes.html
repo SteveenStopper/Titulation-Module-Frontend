@@ -1,117 +1,107 @@
-<div class="space-y-6">
-  <!-- Encabezado / Filtros -->
-  <div class="bg-white border border-gray-200 rounded-xl shadow-sm p-4">
-    <div class="flex items-center gap-4">
-      <div class="text-sm font-semibold text-gray-700">Reportes de Tesorería</div>
-      <div class="ml-auto flex items-center gap-3">
-        <div class="flex items-center gap-2">
-          <label class="text-xs text-gray-500">Período</label>
-          <select class="text-sm border rounded-md px-2 py-1" (change)="onChangePeriod($event)">
-            <option [value]="">Seleccione un período</option>
-            <option *ngFor="let p of (periods$ | async)" [value]="p.id">{{ p.name }}</option>
-          </select>
-        </div>
-        <div class="flex items-center gap-2">
-          <label class="text-xs text-gray-500">Carrera</label>
-          <select class="text-sm border rounded-md px-2 py-1" (change)="onChangeCareer($event)">
-            <option [value]="">Todas</option>
-            <option *ngFor="let c of (careers$ | async)" [value]="c.id">{{ c.nombre }}</option>
-          </select>
-        </div>
-        <button class="text-xs px-3 py-1.5 rounded-md bg-blue-600 text-white hover:bg-blue-700" (click)="onExportReport()">Exportar PDF</button>
-        <div class="flex items-center gap-2">
-          <button class="text-xs px-2 py-1.5 rounded border" (click)="prevPage()">Anterior</button>
-          <button class="text-xs px-2 py-1.5 rounded border" (click)="nextPage()">Siguiente</button>
-        </div>
+<div class="space-y-4">
+  <div class="bg-white rounded-xl border border-gray-200 shadow-sm p-4">
+    <div class="flex items-center justify-between">
+      <div>
+        <div class="text-base font-semibold text-gray-800">Reportes de Tesorería</div>
+        <div class="text-xs text-gray-500">Seleccione filtros, previsualice y genere el PDF</div>
+      </div>
+      <button class="text-xs px-3 py-1.5 rounded border" (click)="toggleFilters()">
+        {{ filtersOpen ? 'Ocultar filtros' : 'Mostrar filtros' }}
+      </button>
+    </div>
+
+    <div *ngIf="filtersOpen" class="mt-4 grid grid-cols-1 md:grid-cols-3 gap-3">
+      <div>
+        <label class="block text-xs text-gray-500 mb-1">Período</label>
+        <select class="w-full text-sm border rounded-md px-3 py-2" [(ngModel)]="selectedPeriodId">
+          <option [ngValue]="null">Seleccione un período</option>
+          <option *ngFor="let p of (periods$ | async)" [ngValue]="p.id">{{ p.name }}</option>
+        </select>
+      </div>
+      <div>
+        <label class="block text-xs text-gray-500 mb-1">Carrera</label>
+        <select class="w-full text-sm border rounded-md px-3 py-2" [(ngModel)]="selectedCareerId">
+          <option [ngValue]="null">Todas</option>
+          <option *ngFor="let c of (careers$ | async)" [ngValue]="c.id">{{ c.nombre }}</option>
+        </select>
+      </div>
+      <div>
+        <label class="block text-xs text-gray-500 mb-1">Tipo de reporte</label>
+        <select class="w-full text-sm border rounded-md px-3 py-2" [(ngModel)]="reportType">
+          <option value="">Seleccione</option>
+          <option value="COMPROBANTES">Comprobantes de pago</option>
+          <option value="ARANCELES">Estado de aranceles</option>
+        </select>
       </div>
     </div>
-  </div>
 
-  <!-- KPIs -->
-  <div class="grid grid-cols-1 sm:grid-cols-3 lg:grid-cols-5 gap-4">
-    <div class="bg-white border border-gray-200 rounded-xl p-4">
-      <div class="text-xs text-gray-500">Recaudado (período)</div>
-      <div class="text-2xl font-semibold text-gray-800">{{ (kpis$ | async)?.recaudadoPeriodo | currency:'USD' }}</div>
-    </div>
-    <div class="bg-white border border-gray-200 rounded-xl p-4">
-      <div class="text-xs text-gray-500">Comprobantes hoy</div>
-      <div class="text-2xl font-semibold text-gray-800">{{ (kpis$ | async)?.pagosHoy ?? 0 }}</div>
-    </div>
-    <div class="bg-white border border-gray-200 rounded-xl p-4">
-      <div class="text-xs text-gray-500">Vouchers pendientes</div>
-      <div class="text-2xl font-semibold text-gray-800">{{ (kpis$ | async)?.vouchersPendientes ?? 0 }}</div>
-    </div>
-    <div class="bg-white border border-gray-200 rounded-xl p-4">
-      <div class="text-xs text-gray-500">Deudas vencidas</div>
-      <div class="text-2xl font-semibold text-gray-800">{{ (kpis$ | async)?.deudasVencidas ?? 0 }}</div>
-    </div>
-    <div class="bg-white border border-gray-200 rounded-xl p-4">
-      <div class="text-xs text-gray-500">Aranceles activos</div>
-      <div class="text-2xl font-semibold text-gray-800">{{ (kpis$ | async)?.arancelesActivos ?? 0 }}</div>
+    <div class="mt-4 flex flex-wrap justify-end gap-2">
+      <button class="text-xs px-3 py-1.5 rounded border" (click)="limpiar()">Limpiar</button>
+      <button class="text-xs px-3 py-1.5 rounded-md bg-slate-700 text-white hover:bg-slate-800"
+        (click)="previsualizar()">Previsualizar</button>
+      <button class="text-xs px-3 py-1.5 rounded-md bg-indigo-600 text-white hover:bg-indigo-700"
+        (click)="generarPdf()">Generar PDF</button>
     </div>
   </div>
 
-  <!-- Resumen Tesorería -->
-  <div class="bg-white border border-gray-200 rounded-xl shadow-sm">
-    <div class="px-5 py-3 border-b text-sm font-semibold text-gray-700">Resumen por estudiante</div>
-    <div class="p-4 overflow-x-auto">
-      <ng-container *ngIf="(resumen$ | async) as res">
-        <table class="min-w-full text-sm">
-          <thead>
-            <tr class="text-left text-gray-500">
-              <th class="py-2 pr-4">Estudiante</th>
-              <th class="py-2 pr-4">Carrera</th>
-              <th class="py-2 pr-4">Sem. aprobado máx.</th>
-              <th class="py-2 pr-4">Estado aranceles</th>
-            </tr>
-          </thead>
-          <tbody class="divide-y">
-            <tr *ngFor="let r of res.data">
-              <td class="py-2 pr-4 text-gray-800">{{ r.nombre }}</td>
-              <td class="py-2 pr-4 text-gray-700">{{ r.carrera_nombre || r.carrera }}</td>
-              <td class="py-2 pr-4 text-gray-600">{{ r.semestre_aprobado_max ?? '-' }}</td>
-              <td class="py-2 pr-4">
-                <span class="px-2 py-0.5 rounded text-xs"
-                      [ngClass]="{
-                        'bg-emerald-100 text-emerald-700': r.estado_aranceles==='Activo',
-                        'bg-rose-100 text-rose-700': r.estado_aranceles!=='Activo'
-                      }">{{ r.estado_aranceles }}</span>
-              </td>
-            </tr>
-          </tbody>
-        </table>
-      </ng-container>
+  <div *ngIf="previewInfo" class="bg-white rounded-xl border border-gray-200 shadow-sm p-4">
+    <div class="text-sm font-semibold text-gray-800">Previsualización</div>
+    <div class="text-xs text-gray-500 mt-1">
+      Período: <strong>{{ previewInfo.periodLabel }}</strong>
+      <span class="mx-2">|</span>
+      Carrera: <strong>{{ previewInfo.careerLabel }}</strong>
     </div>
-  </div>
 
-  <!-- Vouchers -->
-  <div class="bg-white border border-gray-200 rounded-xl shadow-sm">
-    <div class="px-5 py-3 border-b text-sm font-semibold text-gray-700">Vouchers</div>
-    <div class="p-4 overflow-x-auto">
-      <ng-container *ngIf="(vouchers$ | async) as v">
-        <table class="min-w-full text-sm">
-          <thead>
-            <tr class="text-left text-gray-500">
-              <th class="py-2 pr-4">Tipo</th>
-              <th class="py-2 pr-4">Monto</th>
-              <th class="py-2 pr-4">Referencia</th>
-              <th class="py-2 pr-4">Usuario</th>
-            </tr>
-          </thead>
-          <tbody class="divide-y">
-            <tr *ngFor="let it of v.data">
-              <td class="py-2 pr-4 text-gray-700">{{ it.voucher_type }}</td>
-              <td class="py-2 pr-4 text-gray-800">{{ it.amount | currency:'USD' }}</td>
-              <td class="py-2 pr-4 text-gray-600">{{ it.reference || '-' }}</td>
-              <td class="py-2 pr-4 text-gray-700">{{ it.users?.firstname }} {{ it.users?.lastname }}</td>
-            </tr>
-          </tbody>
-        </table>
-        <div class="mt-3 flex items-center justify-end gap-2">
-          <button class="text-xs px-2 py-1.5 rounded border" (click)="prevPage()">Anterior</button>
-          <button class="text-xs px-2 py-1.5 rounded border" (click)="nextPage()">Siguiente</button>
-        </div>
-      </ng-container>
+    <div class="mt-4 overflow-x-auto" *ngIf="reportType==='COMPROBANTES'">
+      <table class="min-w-full text-sm">
+        <thead class="bg-gray-50 text-gray-700 text-xs uppercase">
+          <tr>
+            <th class="px-3 py-2 text-left">N°</th>
+            <th class="px-3 py-2 text-left">Estudiante</th>
+            <th class="px-3 py-2 text-left">Carrera</th>
+            <th class="px-3 py-2 text-left">Certificados</th>
+            <th class="px-3 py-2 text-left">Titulación</th>
+            <th class="px-3 py-2 text-left">Acta de grado</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-gray-100">
+          <tr *ngFor="let r of previewComprobantes">
+            <td class="px-3 py-2">{{ r.nro }}</td>
+            <td class="px-3 py-2">{{ r.estudiante }}</td>
+            <td class="px-3 py-2">{{ r.carrera }}</td>
+            <td class="px-3 py-2">{{ r.comprobante_certificados }}</td>
+            <td class="px-3 py-2">{{ r.comprobante_titulacion }}</td>
+            <td class="px-3 py-2">{{ r.comprobante_acta_grado }}</td>
+          </tr>
+          <tr *ngIf="!previewComprobantes.length">
+            <td class="px-3 py-3 text-center text-gray-500" colspan="6">Sin registros</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="mt-4 overflow-x-auto" *ngIf="reportType==='ARANCELES'">
+      <table class="min-w-full text-sm">
+        <thead class="bg-gray-50 text-gray-700 text-xs uppercase">
+          <tr>
+            <th class="px-3 py-2 text-left">N°</th>
+            <th class="px-3 py-2 text-left">Estudiante</th>
+            <th class="px-3 py-2 text-left">Carrera</th>
+            <th class="px-3 py-2 text-left">Estado del arancel</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-gray-100">
+          <tr *ngFor="let r of previewAranceles">
+            <td class="px-3 py-2">{{ r.nro }}</td>
+            <td class="px-3 py-2">{{ r.estudiante }}</td>
+            <td class="px-3 py-2">{{ r.carrera }}</td>
+            <td class="px-3 py-2">{{ r.estado_aranceles }}</td>
+          </tr>
+          <tr *ngIf="!previewAranceles.length">
+            <td class="px-3 py-3 text-center text-gray-500" colspan="4">Sin registros</td>
+          </tr>
+        </tbody>
+      </table>
     </div>
   </div>
 </div>

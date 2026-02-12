@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { HttpClient } from '@angular/common/http';
 import { PeriodService } from '../../../services/period.service';
+import { AuthService } from '../../../services/auth.service';
 import { firstValueFrom, Observable, of } from 'rxjs';
 import { catchError, map, shareReplay } from 'rxjs/operators';
 
@@ -33,7 +34,7 @@ export class Reportes {
   previewGeneralInfo: { periodLabel: string; careerLabel: string } | null = null;
   previewEspecificoInfo: { periodLabel: string; careerLabel: string; modalidadLabel: string } | null = null;
 
-  constructor(private http: HttpClient, private periodSvc: PeriodService) {
+  constructor(private http: HttpClient, private periodSvc: PeriodService, private auth: AuthService) {
     this.periods$ = this.periodSvc.listAll().pipe(
       map((arr: any[]) => (arr || []).map((p: any) => ({ id: Number(p.id_academic_periods), name: String(p.name) }))),
       catchError(() => of([] as Array<{ id: number; name: string }>)),
@@ -187,6 +188,21 @@ export class Reportes {
     this.printReporteEspecifico(this.previewEspecificoInfo, this.previewEspecifico);
   }
 
+  private getSignerFullName() {
+    const u = this.auth.currentUserValue;
+    const full = (u?.name || `${u?.firstname || ''} ${u?.lastname || ''}`.trim()).trim();
+    return full || 'N/D';
+  }
+
+  private formatLongDate(d: Date) {
+    return d.toLocaleDateString('es-EC', {
+      weekday: 'long',
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+    });
+  }
+
   private async openPrintTab(html: string) {
     const w = window.open('about:blank', '_blank');
     if (!w) return;
@@ -228,7 +244,8 @@ export class Reportes {
   private printReporteGeneral(info: { periodLabel: string; careerLabel: string }, rows: Array<{ nro: number; estudiante: string; carrera: string | null; modalidad: string }>) {
     const origin = window.location.origin;
     const ts = new Date();
-    const fecha = ts.toLocaleDateString('es-EC', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+    const fecha = this.formatLongDate(ts);
+    const signerName = this.getSignerFullName();
 
     const bodyRows = rows.map(r => `
       <tr>
@@ -245,6 +262,7 @@ export class Reportes {
         body { margin: 0; font-family: Arial, Helvetica, sans-serif; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
         .page { position: relative; width: 210mm; height: 297mm; }
         .bg { position:absolute; inset:0; width:100%; height:100%; object-fit:cover; }
+        .logo { position:absolute; top: 16mm; left: 18mm; height: 18mm; width: auto; }
         .content { position: relative; padding: 32mm 18mm 22mm 18mm; }
         .title { text-align:center; font-weight:700; font-size:14px; margin-top: 10mm; }
         .meta { margin-top: 14mm; font-size: 11px; font-weight:700; }
@@ -260,6 +278,7 @@ export class Reportes {
     </head><body>
       <div class="page">
         <img class="bg" src="${origin}/assets/Fondo_doc.jpg" />
+        <img class="logo" src="${origin}/assets/Logo.png" />
         <div class="content">
           <div class="title">REPORTE DE ESTUDIANTES EN PROCESO DE TITULACIÓN</div>
           <div class="meta">PERIODO ACADÉMICO: <span style="font-weight:500;">${this.escapeHtml(info.periodLabel || '')}</span></div>
@@ -277,9 +296,12 @@ export class Reportes {
               ${bodyRows || `<tr><td colspan="4" style="text-align:center;">Sin registros</td></tr>`}
             </tbody>
           </table>
-          <div class="foot"><strong>Total de registros:</strong> ${rows.length}<br/><span style="font-weight:500;">${this.escapeHtml(fecha)}</span></div>
+          <div class="foot">
+            <div><strong>Total de registros:</strong> ${rows.length}</div>
+            <div style="margin-top:4mm;font-weight:500;">${this.escapeHtml(fecha)}</div>
+          </div>
           <div class="firma">
-            <div class="name">Ing. [Nombre], Ph.D.</div>
+            <div class="name">Ing. ${this.escapeHtml(signerName)}, Ph.D.</div>
             <div class="role">COORDINADOR</div>
             <div class="role">INSTITUTO SUPERIOR TECNOLÓGICO LOS ANDES</div>
           </div>
@@ -296,7 +318,8 @@ export class Reportes {
   ) {
     const origin = window.location.origin;
     const ts = new Date();
-    const fecha = ts.toLocaleDateString('es-EC', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+    const fecha = this.formatLongDate(ts);
+    const signerName = this.getSignerFullName();
 
     const isUic = String(info.modalidadLabel) === 'UIC';
     const titulo = isUic
@@ -340,6 +363,7 @@ export class Reportes {
         body { margin: 0; font-family: Arial, Helvetica, sans-serif; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
         .page { position: relative; width: 210mm; height: 297mm; }
         .bg { position:absolute; inset:0; width:100%; height:100%; object-fit:cover; }
+        .logo { position:absolute; top: 16mm; left: 18mm; height: 18mm; width: auto; }
         .content { position: relative; padding: 32mm 18mm 22mm 18mm; }
         .title { text-align:center; font-weight:700; font-size:14px; margin-top: 10mm; white-space: pre-line; }
         .meta { margin-top: 14mm; font-size: 11px; font-weight:700; }
@@ -355,6 +379,7 @@ export class Reportes {
     </head><body>
       <div class="page">
         <img class="bg" src="${origin}/assets/Fondo_doc.jpg" />
+        <img class="logo" src="${origin}/assets/Logo.png" />
         <div class="content">
           <div class="title">${titulo}</div>
           <div class="meta">PERIODO ACADÉMICO: <span style="font-weight:500;">${this.escapeHtml(info.periodLabel || '')}</span></div>
@@ -363,9 +388,12 @@ export class Reportes {
             <thead>${headCols}</thead>
             <tbody>${bodyRows || `<tr><td colspan="${colSpan}" style="text-align:center;">Sin registros</td></tr>`}</tbody>
           </table>
-          <div class="foot"><strong>Total de registros:</strong> ${rows.length}<br/><span style="font-weight:500;">${this.escapeHtml(fecha)}</span></div>
+          <div class="foot">
+            <div><strong>Total de registros:</strong> ${rows.length}</div>
+            <div style="margin-top:4mm;font-weight:500;">${this.escapeHtml(fecha)}</div>
+          </div>
           <div class="firma">
-            <div class="name">Ing. [Nombre], Ph.D.</div>
+            <div class="name">Ing. ${this.escapeHtml(signerName)}, Ph.D.</div>
             <div class="role">COORDINADOR</div>
             <div class="role">INSTITUTO SUPERIOR TECNOLÓGICO LOS ANDES</div>
           </div>

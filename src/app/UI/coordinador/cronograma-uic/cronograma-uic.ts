@@ -125,29 +125,59 @@ export class CronogramaUic {
 
   publish() {
     if (!this.hasSelectedPeriod) {
-      Swal.fire({ icon: 'warning', title: 'Atención', text: 'Seleccione un período antes de publicar.' });
+      Swal.fire({
+        icon: 'warning',
+        title: 'Atención',
+        text: 'Seleccione un período antes de publicar.',
+        confirmButtonText: 'Aceptar',
+        customClass: { confirmButton: 'swal-btn-confirm' }
+      });
       return;
     }
     if (!this.validate()) {
       return;
     }
     if (!this.model.periodo) {
-      Swal.fire({ icon: 'warning', title: 'Atención', text: 'Seleccione un período antes de publicar.' });
+      Swal.fire({
+        icon: 'warning',
+        title: 'Atención',
+        text: 'Seleccione un período antes de publicar.',
+        confirmButtonText: 'Aceptar',
+        customClass: { confirmButton: 'swal-btn-confirm' }
+      });
       return;
     }
     const active = this.periodSvc.getActivePeriod();
     if (!active || this.model.periodo !== active) {
-      Swal.fire({ icon: 'warning', title: 'Atención', text: 'Seleccione el período activo para poder publicar.' });
+      Swal.fire({
+        icon: 'warning',
+        title: 'Atención',
+        text: 'Seleccione el período activo para poder publicar.',
+        confirmButtonText: 'Aceptar',
+        customClass: { confirmButton: 'swal-btn-confirm' }
+      });
       return;
     }
     this.svc.setDraft(this.model);
     this.svc.publish().subscribe({
       next: (_res) => {
         this.svc.saveAsPublished(this.model.periodo!, this.model);
-        Swal.fire({ icon: 'success', title: 'Publicado', text: 'Cronograma UIC publicado correctamente.' });
+        Swal.fire({
+          icon: 'success',
+          title: 'Publicado',
+          text: 'Cronograma UIC publicado correctamente.',
+          confirmButtonText: 'Aceptar',
+          customClass: { confirmButton: 'swal-btn-confirm' }
+        });
       },
       error: (err) => {
-        Swal.fire({ icon: 'error', title: 'Error', text: err?.error?.message || 'No se pudo publicar el cronograma UIC.' });
+        Swal.fire({
+          icon: 'error',
+          title: 'Error',
+          text: err?.error?.message || 'No se pudo publicar el cronograma UIC.',
+          confirmButtonText: 'Aceptar',
+          customClass: { confirmButton: 'swal-btn-cancel' }
+        });
       }
     });
   }

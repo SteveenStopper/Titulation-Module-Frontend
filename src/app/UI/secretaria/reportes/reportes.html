@@ -1,94 +1,113 @@
 <div class="space-y-6">
-  <!-- Encabezado y filtros -->
-  <div class="bg-white border border-gray-200 rounded-xl shadow-sm p-4">
-    <div class="flex items-center gap-4">
-      <div class="text-sm font-semibold text-gray-700">Reportes de Secretaría</div>
-      <div class="ml-auto flex items-center gap-3">
-        <div class="flex items-center gap-2">
-          <label class="text-xs text-gray-500">Período</label>
-          <select class="text-sm border rounded-md px-2 py-1" (change)="onChangePeriod($event)">
-            <option [value]="">Seleccione un período</option>
-            <option *ngFor="let p of (periods$ | async)" [value]="p.id">{{ p.name }}</option>
+  <div class="bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden">
+    <button type="button" (click)="toggleFilters()"
+      class="w-full flex items-center justify-between px-5 py-4 text-left hover:bg-gray-50">
+      <div>
+        <div class="text-sm font-semibold text-gray-800">Reportes de Secretaría</div>
+        <div class="text-xs text-gray-500">Filtros y generación de reportes</div>
+      </div>
+      <i class="fa-solid" [ngClass]="filtersOpen ? 'fa-chevron-up' : 'fa-chevron-down'"></i>
+    </button>
+
+    <div *ngIf="filtersOpen" class="px-5 pb-5">
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div>
+          <label class="block text-xs font-medium text-gray-600 mb-1">Período</label>
+          <select class="w-full text-sm border border-gray-300 rounded-lg px-3 py-2" [(ngModel)]="selectedPeriodId">
+            <option [ngValue]="null">Período activo</option>
+            <option *ngFor="let p of (periods$ | async)" [ngValue]="p.id">{{ p.name }}</option>
           </select>
         </div>
-        <div class="flex items-center gap-2">
-          <label class="text-xs text-gray-500">Carrera</label>
-          <select class="text-sm border rounded-md px-2 py-1" (change)="onChangeCareer($event)">
-            <option [value]="">Todas</option>
-            <option *ngFor="let c of (careers$ | async)" [value]="c.id">{{ c.nombre }}</option>
+
+        <div>
+          <label class="block text-xs font-medium text-gray-600 mb-1">Tipo de comprobante</label>
+          <select class="w-full text-sm border border-gray-300 rounded-lg px-3 py-2" [(ngModel)]="reportType">
+            <option [ngValue]="''">Seleccione...</option>
+            <option [ngValue]="'MALLA_APROBADA'">Estudiantes con malla académica aprobada</option>
+            <option [ngValue]="'REQUISITOS'">Documentos de requisitos del estudiante</option>
           </select>
         </div>
-        <div class="flex items-center gap-2">
-          <label class="text-xs text-gray-500">Rango</label>
-          <select class="text-sm border rounded-md px-2 py-1" (change)="onChangeDays($event)">
-            <option [value]="7">Últimos 7 días</option>
-            <option [value]="14">Últimos 14 días</option>
-            <option [value]="30">Últimos 30 días</option>
-          </select>
+
+        <div class="flex items-end gap-2">
+          <button type="button" (click)="limpiar()"
+            class="w-full text-sm px-3 py-2 rounded-lg border border-gray-300 hover:bg-gray-50">
+            Limpiar
+          </button>
+          <button type="button" (click)="previsualizar()" [disabled]="!reportType"
+            class="w-full text-sm px-3 py-2 rounded-lg bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed">
+            Previsualizar
+          </button>
+          <button type="button" (click)="generarPdf()"
+            [disabled]="!previewInfo || (reportType==='MALLA_APROBADA' && previewMalla.length===0) || (reportType==='REQUISITOS' && previewRequisitos.length===0)"
+            class="w-full text-sm px-3 py-2 rounded-lg bg-rose-600 text-white hover:bg-rose-700 disabled:opacity-50 disabled:cursor-not-allowed">
+            Generar PDF
+          </button>
         </div>
-        <button class="text-xs px-3 py-1.5 rounded-md bg-blue-600 text-white hover:bg-blue-700" (click)="onExportReport()">Exportar PDF</button>
       </div>
     </div>
   </div>
 
-  <!-- KPIs -->
-  <div class="grid grid-cols-1 sm:grid-cols-3 lg:grid-cols-5 gap-4">
-    <div class="bg-white border border-gray-200 rounded-xl p-4">
-      <div class="text-xs text-gray-500">Actas pendientes</div>
-      <div class="text-2xl font-semibold text-gray-800">{{ (kpis$ | async)?.actasPendientes ?? 0 }}</div>
+  <div class="bg-white border border-gray-200 rounded-xl shadow-sm p-5">
+    <div class="flex items-center justify-between mb-4">
+      <div>
+        <div class="text-sm font-semibold text-gray-800">Previsualización</div>
+        <div class="text-xs text-gray-500" *ngIf="previewInfo">Período: {{ previewInfo.periodLabel }}</div>
+        <div class="text-xs text-gray-500" *ngIf="!previewInfo">Seleccione filtros y presione Previsualizar</div>
+      </div>
+      <div class="text-xs text-gray-500" *ngIf="previewInfo && reportType==='MALLA_APROBADA'">Registros: {{
+        previewMalla.length }}</div>
+      <div class="text-xs text-gray-500" *ngIf="previewInfo && reportType==='REQUISITOS'">Registros: {{
+        previewRequisitos.length }}</div>
     </div>
-    <div class="bg-white border border-gray-200 rounded-xl p-4">
-      <div class="text-xs text-gray-500">Certificados hoy</div>
-      <div class="text-2xl font-semibold text-gray-800">{{ (kpis$ | async)?.certificadosEmitidosHoy ?? 0 }}</div>
-    </div>
-    <div class="bg-white border border-gray-200 rounded-xl p-4">
-      <div class="text-xs text-gray-500">Matrículas procesadas</div>
-      <div class="text-2xl font-semibold text-gray-800">{{ (kpis$ | async)?.matriculasProcesadas ?? 0 }}</div>
-    </div>
-    <div class="bg-white border border-gray-200 rounded-xl p-4">
-      <div class="text-xs text-gray-500">Estudiantes atendidos</div>
-      <div class="text-2xl font-semibold text-gray-800">{{ (kpis$ | async)?.estudiantesAtendidos ?? 0 }}</div>
-    </div>
-    <div class="bg-white border border-gray-200 rounded-xl p-4">
-      <div class="text-xs text-gray-500">Solicitudes en curso</div>
-      <div class="text-2xl font-semibold text-gray-800">{{ (kpis$ | async)?.solicitudesEnCurso ?? 0 }}</div>
-    </div>
-  </div>
 
-  <!-- Actividad reciente -->
-  <div class="bg-white border border-gray-200 rounded-xl shadow-sm">
-    <div class="px-5 py-3 border-b text-sm font-semibold text-gray-700">Actividad reciente</div>
-    <div class="p-4">
-      <ng-container *ngIf="(recientes$ | async) as items">
-        <div *ngIf="items.length === 0" class="text-sm text-gray-500">No hay actividad en el rango seleccionado.</div>
-        <div *ngIf="items.length > 0" class="overflow-x-auto">
-          <table class="min-w-full text-sm">
-            <thead>
-              <tr class="text-left text-gray-500">
-                <th class="py-2 pr-4">Estudiante</th>
-                <th class="py-2 pr-4">Trámite</th>
-                <th class="py-2 pr-4">Fecha</th>
-                <th class="py-2 pr-4">Estado</th>
-              </tr>
-            </thead>
-            <tbody class="divide-y">
-              <tr *ngFor="let it of items">
-                <td class="py-2 pr-4 text-gray-800">{{ it.estudiante }}</td>
-                <td class="py-2 pr-4 text-gray-700">{{ it.tramite }}</td>
-                <td class="py-2 pr-4 text-gray-500">{{ it.fecha | date:'short' }}</td>
-                <td class="py-2 pr-4">
-                  <span class="px-2 py-0.5 rounded text-xs"
-                        [ngClass]="{
-                          'bg-emerald-100 text-emerald-700': it.estado==='completado',
-                          'bg-amber-100 text-amber-700': it.estado==='pendiente',
-                          'bg-rose-100 text-rose-700': it.estado==='rechazado'
-                        }">{{ it.estado }}</span>
-                </td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-      </ng-container>
+    <div *ngIf="reportType==='MALLA_APROBADA'">
+      <div *ngIf="previewMalla.length===0" class="text-sm text-gray-500">No hay registros.</div>
+      <div *ngIf="previewMalla.length>0" class="overflow-x-auto">
+        <table class="min-w-full text-sm border border-gray-200 rounded-lg overflow-hidden">
+          <thead class="bg-gray-50">
+            <tr>
+              <th class="text-left px-3 py-2 border-b" style="width:56px;">N°</th>
+              <th class="text-left px-3 py-2 border-b">Estudiante</th>
+              <th class="text-left px-3 py-2 border-b" style="width:240px;">Carrera</th>
+              <th class="text-left px-3 py-2 border-b" style="width:200px;">Semestres aprobados</th>
+              <th class="text-left px-3 py-2 border-b" style="width:160px;">Promedio general</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let r of previewMalla" class="hover:bg-gray-50">
+              <td class="px-3 py-2 border-b">{{ r.nro }}</td>
+              <td class="px-3 py-2 border-b">{{ r.estudiante }}</td>
+              <td class="px-3 py-2 border-b">{{ r.carrera }}</td>
+              <td class="px-3 py-2 border-b">{{ r.semestres_aprobados }}</td>
+              <td class="px-3 py-2 border-b">{{ r.promedio_general }}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div *ngIf="reportType==='REQUISITOS'">
+      <div *ngIf="previewRequisitos.length===0" class="text-sm text-gray-500">No hay registros.</div>
+      <div *ngIf="previewRequisitos.length>0" class="overflow-x-auto">
+        <table class="min-w-full text-sm border border-gray-200 rounded-lg overflow-hidden table-fixed">
+          <thead class="bg-gray-50">
+            <tr>
+              <th class="text-left px-3 py-2 border-b" style="width:56px;">N°</th>
+              <th class="text-left px-3 py-2 border-b" style="width:46%;">Estudiante</th>
+              <th class="text-left px-3 py-2 border-b" style="width:34%;">Carrera</th>
+              <th class="text-left px-3 py-2 border-b" style="width:20%;">Estado validación</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let r of previewRequisitos" class="hover:bg-gray-50">
+              <td class="px-3 py-2 border-b">{{ r.nro }}</td>
+              <td class="px-3 py-2 border-b">{{ r.estudiante }}</td>
+              <td class="px-3 py-2 border-b">{{ r.carrera }}</td>
+              <td class="px-3 py-2 border-b">{{ r.estado_validacion }}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
     </div>
   </div>
 </div>

@@ -2,6 +2,8 @@ import { Component } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { NotificationsService } from '../../../services/notifications.service';
 import { HttpClient } from '@angular/common/http';
+import { PeriodService } from '../../../services/period.service';
+import { Subject, takeUntil } from 'rxjs';
 
 @Component({
   selector: 'app-inicio',
@@ -32,7 +34,9 @@ export class Inicio {
     }});
   }
 
-  constructor(private notificationsSvc: NotificationsService, private http: HttpClient) {
+  private destroyed$ = new Subject<void>();
+
+  constructor(private notificationsSvc: NotificationsService, private http: HttpClient, private periodSvc: PeriodService) {
     this.notificationsSvc.listMy().subscribe(list => {
       this.notifications = (list || []).map(n => ({
         id: Number((n as any).id_notification),
@@ -41,6 +45,31 @@ export class Inicio {
         leida: !!(n as any).is_read,
       }));
     });
+
+    // Cargar datos iniciales
+    this.loadData();
+
+    // Si cambia el período activo, limpiar y recargar para no mostrar datos del período anterior
+    this.periodSvc.activePeriod$
+      .pipe(takeUntil(this.destroyed$))
+      .subscribe(() => {
+        this.resetView();
+        this.loadData();
+      });
+  }
+
+  private resetView() {
+    this.kpis = {
+      actasPendientes: 0,
+      certificadosEmitidosHoy: 0,
+      matriculasProcesadas: 0,
+      estudiantesAtendidos: 0,
+      solicitudesEnCurso: 0,
+    };
+    this.recientes = [];
+  }
+
+  private loadData() {
     // KPIs reales
     this.http.get<any>('/api/secretaria/dashboard').subscribe((d) => {
       this.kpis = {
@@ -55,6 +84,11 @@ export class Inicio {
     this.http.get<Array<{ estudiante: string; tramite: string; fecha: string; estado: 'completado'|'pendiente' }>>('/api/secretaria/recientes').subscribe((rows) => {
       if (Array.isArray(rows)) this.recientes = rows.map(r => ({ ...r, fecha: new Date(r.fecha).toLocaleDateString() }));
     });
+  }
+
+  ngOnDestroy() {
+    this.destroyed$.next();
+    this.destroyed$.complete();
   }
 
   // KPIs iniciales (se actualizan desde backend)

@@ -109,7 +109,7 @@ export class DocenteComplexivo {
               }).add(() => {
                 pending -= 1;
                 if (pending === 0) {
-                  history.sort((a, b) => b.date.localeCompare(a.date));
+                  history.sort((a,b)=> b.date.localeCompare(a.date));
                   this.attendanceHistory = history;
                 }
               });
@@ -136,15 +136,85 @@ export class DocenteComplexivo {
     const win = window.open('', '_blank', 'width=900,height=700');
     if (!win) return;
     const title = `Asistencias - ${this.materiaSeleccionada.nombre} (${this.materiaSeleccionada.codigo})`;
+    const logoUrl = `${window.location.origin}/assets/Logo.png`;
+    const fondoUrl = `${window.location.origin}/assets/Fondo_doc.jpg`;
     const rows = this.attendanceHistory.map(h => {
       const items = h.items.map(i => `<tr><td style="padding:4px 8px;border:1px solid #ddd;">${i.nombre}</td><td style="padding:4px 8px;border:1px solid #ddd; text-align:center;">${i.presente ? 'Presente' : 'Ausente'}</td></tr>`).join('');
-      return `<h3 style=\"margin:16px 0 8px;font-family:Arial\">Fecha: ${h.date}</h3><table style=\"border-collapse:collapse;width:100%;font-family:Arial;font-size:12px\"><thead><tr><th style=\"padding:6px 8px;border:1px solid #ddd;text-align:left\">Estudiante</th><th style=\"padding:6px 8px;border:1px solid #ddd; text-align:center\">Asistencia</th></tr></thead><tbody>${items}</tbody></table>`;
-    }).join('<hr style=\"margin:16px 0;border:none;border-top:1px solid #eee\"/>');
-    win.document.write(`<!doctype html><html><head><meta charset=\"utf-8\"/><title>${title}</title></head><body style=\"padding:16px\"><h1 style=\"font-family:Arial;margin:0 0 8px\">${title}</h1>${rows}</body></html>`);
+      return `
+        <div class="section">
+          <div class="section-title">Fecha: ${h.date}</div>
+          <table class="tbl">
+            <thead>
+              <tr>
+                <th style="text-align:left">Estudiante</th>
+                <th style="text-align:center; width: 160px">Asistencia</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${items}
+            </tbody>
+          </table>
+        </div>
+      `;
+    }).join('<div class="divider"></div>');
+    win.document.write(`<!doctype html>
+      <html>
+        <head>
+          <meta charset="utf-8"/>
+          <title>${title}</title>
+          <style>
+            @page { size: A4; margin: 14mm; }
+            * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+            body { font-family: Arial, Helvetica, sans-serif; color: #111827; }
+            .page { position: relative; min-height: 100vh; }
+            .bg {
+              position: fixed;
+              inset: 0;
+              z-index: 0;
+              background-image: url('${fondoUrl}');
+              background-size: cover;
+              background-position: center;
+              background-repeat: no-repeat;
+              opacity: 0.18;
+            }
+            .content { position: relative; z-index: 1; }
+            .header { display: flex; gap: 14px; align-items: center; border-bottom: 2px solid #e5e7eb; padding-bottom: 10px; margin-bottom: 14px; }
+            .header img { height: 56px; }
+            .header .meta { flex: 1; }
+            .header .meta .inst { font-size: 14px; font-weight: 700; margin: 0; }
+            .header .meta .doc { font-size: 12px; margin: 2px 0 0; color: #374151; }
+            .title { font-size: 18px; font-weight: 800; margin: 0 0 8px; }
+            .subtitle { font-size: 12px; color: #374151; margin: 0 0 14px; }
+            .section { margin: 14px 0; }
+            .section-title { font-size: 12px; font-weight: 700; margin: 0 0 8px; }
+            .tbl { border-collapse: collapse; width: 100%; font-size: 12px; background: white; }
+            .tbl th { background: #f3f4f6; color: #111827; padding: 8px 10px; border: 1px solid #e5e7eb; }
+            .tbl td { padding: 7px 10px; border: 1px solid #e5e7eb; }
+            .divider { margin: 14px 0; border-top: 1px solid #e5e7eb; }
+            .footer { margin-top: 16px; font-size: 10px; color: #6b7280; text-align: right; }
+          </style>
+        </head>
+        <body>
+          <div class="page">
+            <div class="bg"></div>
+            <div class="content">
+              <div class="header">
+                <img src="${logoUrl}" alt="Logo" />
+                <div class="meta">
+                  <p class="inst">Instituto Superior Tecnológico “Los Andes”</p>
+                  <p class="doc">Registro de asistencias</p>
+                </div>
+              </div>
+              <h1 class="title">${title}</h1>
+              <p class="subtitle">Generado: ${new Date().toISOString().slice(0,10)}</p>
+              ${rows}
+              <div class="footer">Sistema de Titulación</div>
+            </div>
+          </div>
+        </body>
+      </html>`);
     win.document.close();
     win.focus();
     win.print();
   }
-
-  // Persistencia de historial ahora desde backend (métodos locales eliminados)
 }

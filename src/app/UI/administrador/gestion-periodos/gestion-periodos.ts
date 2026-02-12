@@ -125,11 +125,30 @@ export class GestionPeriodos {
     const fechaInicioISO = toISO(this.form.fechaInicio);
     const fechaFinISO = toISO(this.form.fechaFin);
 
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const ds = new Date(fechaInicioISO);
+    const de = new Date(fechaFinISO);
+    if (!Number.isFinite(ds.getTime()) || !Number.isFinite(de.getTime())) {
+      this.formError = 'Fechas inválidas';
+      return;
+    }
+    if (ds < today || de < today) {
+      this.formError = 'No se puede crear un período con fechas pasadas';
+      return;
+    }
+
     // Validar duplicado por nombre en FE (case-insensitive)
     const nombreLower = this.form.nombre.trim().toLowerCase();
     const dup = this.periodos.some(p => p.nombre.trim().toLowerCase() === nombreLower);
     if (!this.isEditing && dup) {
       this.formError = 'Ya existe un período con ese nombre';
+      return;
+    }
+
+    const dupFechas = this.periodos.some(p => (p.fechaInicio || '') === fechaInicioISO && (p.fechaFin || '') === fechaFinISO);
+    if (!this.isEditing && dupFechas) {
+      this.formError = 'Ya existe un período con las mismas fechas';
       return;
     }
 
@@ -208,8 +227,21 @@ export class GestionPeriodos {
       this.periodSvc.listInstitutePeriods().subscribe({
         next: (rows) => {
           const periods = Array.isArray(rows) ? rows : [];
+          const norm = (s: any) => String(s || '').trim().toLowerCase().replace(/\s+/g, ' ');
+          const localName = norm(p?.nombre);
+          const allowed = periods.filter(x => norm(x?.name) === localName);
+          if (!allowed.length) {
+            Swal.fire({
+              title: 'No se puede activar',
+              text: 'No existe un período del instituto que coincida con el nombre del período seleccionado.',
+              icon: 'error',
+              confirmButtonText: 'Cerrar',
+              customClass: { confirmButton: 'swal-btn-cancel' }
+            });
+            return;
+          }
           const inputOptions: Record<string, string> = {};
-          periods.forEach((it) => {
+          allowed.forEach((it) => {
             inputOptions[String(it.id)] = `${it.id} - ${it.name}`;
           });
 
@@ -228,6 +260,8 @@ export class GestionPeriodos {
             },
             inputValidator: (value) => {
               if (!value) return 'Debe seleccionar un período del instituto';
+              const picked = allowed.find(x => String(x.id) === String(value));
+              if (!picked) return 'El período seleccionado no coincide con el período local';
               return null;
             }
           }).then((pick) => {

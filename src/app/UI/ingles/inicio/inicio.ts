@@ -2,6 +2,8 @@ import { Component } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { HttpClient } from '@angular/common/http';
 import { NotificationsService } from '../../../services/notifications.service';
+import { PeriodService } from '../../../services/period.service';
+import { Subject, takeUntil } from 'rxjs';
 
 @Component({
   selector: 'app-inicio',
@@ -44,7 +46,9 @@ export class Inicio {
   // Actividad reciente
   recientes: Array<{ estudiante: string; tramite: string; fecha: string; estado: 'completado'|'pendiente' }>= [];
 
-  constructor(private notificationsSvc: NotificationsService, private http: HttpClient) {
+  private destroyed$ = new Subject<void>();
+
+  constructor(private notificationsSvc: NotificationsService, private http: HttpClient, private periodSvc: PeriodService) {
     this.notificationsSvc.listMy().subscribe(list => {
       this.notifications = (list || []).map(n => ({
         id: Number((n as any).id_notification),
@@ -54,6 +58,28 @@ export class Inicio {
       }));
     });
 
+    this.loadData();
+
+    this.periodSvc.activePeriod$
+      .pipe(takeUntil(this.destroyed$))
+      .subscribe(() => {
+        this.resetView();
+        this.loadData();
+      });
+  }
+
+  private resetView() {
+    this.kpis = {
+      elegibles: 0,
+      calificacionesGuardadas: 0,
+      calificacionesValidadas: 0,
+      pendientesValidacion: 0,
+      certificadosEmitidosHoy: 0,
+    };
+    this.recientes = [];
+  }
+
+  private loadData() {
     this.http.get<any>('/api/english/dashboard').subscribe((d) => {
       this.kpis = {
         elegibles: Number(d?.elegibles || 0),
@@ -67,5 +93,10 @@ export class Inicio {
       .subscribe((rows) => {
         if (Array.isArray(rows)) this.recientes = rows.map(r => ({ ...r, fecha: new Date(r.fecha).toLocaleDateString() }));
       });
+  }
+
+  ngOnDestroy() {
+    this.destroyed$.next();
+    this.destroyed$.complete();
   }
 }

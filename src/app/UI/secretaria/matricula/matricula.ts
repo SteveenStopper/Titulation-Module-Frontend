@@ -5,6 +5,8 @@ import { FormsModule } from '@angular/forms';
 import { ToastrService } from 'ngx-toastr';
 import { DocumentsService } from '../../../services/documents.service';
 import { NotificationsService } from '../../../services/notifications.service';
+import { PeriodService } from '../../../services/period.service';
+import { Subject, takeUntil } from 'rxjs';
 
 @Component({
   selector: 'app-secretaria-matricula',
@@ -32,19 +34,53 @@ export class Matricula {
   // Estado visual por documento (en_revision | aprobado | rechazado)
   statuses: Record<number, 'en_revision'|'aprobado'|'rechazado'> = {};
 
+  private destroyed$ = new Subject<void>();
+
   constructor(
     private toast: ToastrService,
     private documents: DocumentsService,
     private notifications: NotificationsService,
     private sanitizer: DomSanitizer,
+    private periodSvc: PeriodService,
   ) {
     this.load();
+
+    this.periodSvc.activePeriod$
+      .pipe(takeUntil(this.destroyed$))
+      .subscribe(() => {
+        this.resetView();
+        this.load();
+      });
+  }
+
+  private resetView() {
+    this.search = '';
+    this.carreraFiltro = '';
+    this.items = [];
+    this.loading = false;
+    this.page = 1;
+    this.pageSize = 10;
+    this.totalPages = 1;
+    this.total = 0;
+    this.processing = new Set<number>();
+    this.decided = new Set<number>();
+    this.statuses = {};
+    this.isPreviewOpen = false;
+    this.previewUrl = null;
+    this.previewSafeUrl = null;
+    this.previewType = 'other';
+    this.previewTitle = 'Documento';
+  }
+
+  ngOnDestroy() {
+    this.destroyed$.next();
+    this.destroyed$.complete();
   }
 
   load() {
     this.loading = true;
     // Solo documentos de matrícula (excluir comprobantes de pagos)
-    this.documents.list({ category: 'matricula', page: this.page, pageSize: this.pageSize }).subscribe({
+    this.documents.list({ category: 'matricula_secretaria', page: this.page, pageSize: this.pageSize }).subscribe({
       next: (res: any) => {
         const allowed = new Set(['solicitud', 'oficio', 'cert_vinculacion', 'cert_practicas', 'cert_ingles']);
         const data = (Array.isArray(res?.data) ? res.data : (Array.isArray(res) ? res : []))
