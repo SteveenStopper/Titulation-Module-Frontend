@@ -31,9 +31,12 @@
         <div *ngIf="selectedTutor" class="mt-1 text-xs text-gray-600">
           Tutor asignado: <span class="font-medium text-gray-800">{{ selectedTutor }}</span>
         </div>
+        <div *ngIf="selectedLectorName" class="mt-1 text-xs text-gray-600">
+          Lector asignado (Integrante 1): <span class="font-medium text-gray-800">{{ selectedLectorName }}</span>
+        </div>
       </div>
       <div class="flex items-end">
-        <button type="button" (click)="addMiembro()" [disabled]="model.miembros.length >= 3"
+        <button type="button" (click)="addMiembro()" [disabled]="!hasStudents || model.miembros.length >= 2"
           class="px-3 py-2 rounded-lg border text-sm hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed">
           <i class="fa fa-plus mr-1"></i> Agregar miembro
         </button>
@@ -85,6 +88,29 @@
       <div *ngFor="let e of errors">• {{ e }}</div>
     </div>
 
+    <!-- Dashboard: Estudiantes UIC sin tribunal asignado -->
+    <div class="mt-6 bg-white rounded-xl border border-gray-200 shadow-sm p-4">
+      <h3 class="font-semibold text-gray-800 mb-3">Estudiantes UIC sin tribunal asignado</h3>
+      <div *ngIf="!estudiantesUIC.length" class="text-sm text-gray-500">Todos los estudiantes tienen tribunal asignado.
+      </div>
+      <div *ngIf="estudiantesUIC.length" class="overflow-x-auto">
+        <table class="min-w-full text-sm border border-gray-200 rounded-lg table-auto">
+          <thead class="bg-gray-50">
+            <tr class="text-gray-700 text-xs uppercase tracking-wider">
+              <th class="px-3 py-2 text-left">Estudiante</th>
+              <th class="px-3 py-2 text-left">Tutor</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-gray-100">
+            <tr *ngFor="let e of estudiantesUIC" class="odd:bg-white even:bg-gray-50">
+              <td class="px-3 py-2">{{ e.nombre }}</td>
+              <td class="px-3 py-2">{{ e.tutor || '—' }}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
     <!-- Tabla: Estudiantes con tribunal asignado (según filtros) -->
     <div class="mt-4 bg-white rounded-xl border border-gray-200 shadow-sm p-3">
       <div class="flex items-center justify-between mb-2">
@@ -101,22 +127,62 @@
               <th class="px-3 py-2">Integrante 1</th>
               <th class="px-3 py-2">Integrante 2</th>
               <th class="px-3 py-2">Integrante 3</th>
+              <th class="px-3 py-2">Acciones</th>
             </tr>
           </thead>
           <tbody>
-            <tr *ngFor="let a of tribunalAsignado" class="border-t">
+            <tr *ngFor="let a of pagedTribunalAsignado" class="border-t">
               <td class="px-3 py-2">{{ a.fullname }}</td>
               <td class="px-3 py-2">{{ a.career_name || a.career_id || '-' }}</td>
-              <td class="px-3 py-2">{{ a.presidente || '—' }}</td>
-              <td class="px-3 py-2">{{ a.secretario || '—' }}</td>
-              <td class="px-3 py-2">{{ a.vocal || '—' }}</td>
+              <td class="px-3 py-2">
+                <div *ngIf="editingStudentId !== a.id_user">{{ a.presidente || '—' }}</div>
+                <div *ngIf="editingStudentId === a.id_user" class="text-xs text-gray-500">Fijo (Lector)</div>
+              </td>
+              <td class="px-3 py-2">
+                <div *ngIf="editingStudentId !== a.id_user">{{ a.secretario || '—' }}</div>
+                <div *ngIf="editingStudentId === a.id_user" class="max-w-xs">
+                  <select [(ngModel)]="editingSecretaryId" class="border border-gray-300 rounded-md px-2 py-1 w-full">
+                    <option [ngValue]="null">Seleccione</option>
+                    <option *ngFor="let d of docentes" [ngValue]="d.id_user">{{ d.fullname }}</option>
+                  </select>
+                </div>
+              </td>
+              <td class="px-3 py-2">
+                <div *ngIf="editingStudentId !== a.id_user">{{ a.vocal || '—' }}</div>
+                <div *ngIf="editingStudentId === a.id_user" class="max-w-xs">
+                  <select [(ngModel)]="editingVocalId" class="border border-gray-300 rounded-md px-2 py-1 w-full">
+                    <option [ngValue]="null">Seleccione</option>
+                    <option *ngFor="let d of docentes" [ngValue]="d.id_user">{{ d.fullname }}</option>
+                  </select>
+                </div>
+              </td>
+              <td class="px-3 py-2">
+                <div class="flex gap-2" *ngIf="editingStudentId !== a.id_user">
+                  <button type="button" (click)="startEditAsignado(a)" class="text-xs px-2 py-1 rounded border hover:bg-gray-50">Editar</button>
+                </div>
+                <div class="flex gap-2" *ngIf="editingStudentId === a.id_user">
+                  <button type="button" (click)="saveEditAsignado(a)" [disabled]="savingEdit || !editingSecretaryId || !editingVocalId"
+                    class="text-xs px-2 py-1 rounded bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-60">Guardar</button>
+                  <button type="button" (click)="cancelEditAsignado()" [disabled]="savingEdit" class="text-xs px-2 py-1 rounded border hover:bg-gray-50 disabled:opacity-60">Cancelar</button>
+                </div>
+              </td>
             </tr>
             <tr *ngIf="tribunalAsignado.length === 0">
-              <td colspan="5" class="px-3 py-4 text-center text-gray-500">No hay tribunales asignados en el filtro
+              <td colspan="6" class="px-3 py-4 text-center text-gray-500">No hay tribunales asignados en el filtro
                 actual.</td>
             </tr>
           </tbody>
         </table>
+      </div>
+
+      <div class="mt-2 flex items-center justify-between" *ngIf="(tribunalAsignado || []).length > pageSizeAsig">
+        <div class="text-xs text-gray-500">Página {{ pageAsig }} de {{ totalPagesAsig }}</div>
+        <div class="flex items-center gap-2">
+          <button type="button" (click)="setPageAsig(pageAsig - 1)" [disabled]="pageAsig <= 1"
+            class="px-2 py-1 rounded border text-xs hover:bg-gray-50 disabled:opacity-50">Anterior</button>
+          <button type="button" (click)="setPageAsig(pageAsig + 1)" [disabled]="pageAsig >= totalPagesAsig"
+            class="px-2 py-1 rounded border text-xs hover:bg-gray-50 disabled:opacity-50">Siguiente</button>
+        </div>
       </div>
     </div>
 
@@ -125,29 +191,6 @@
         class="px-3 py-2 rounded-lg bg-blue-600 text-white text-sm hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed">
         <i class="fa fa-save mr-1"></i> Guardar
       </button>
-    </div>
-  </div>
-
-  <!-- Dashboard: Estudiantes UIC sin tribunal asignado -->
-  <div class="bg-white rounded-xl border border-gray-200 shadow-sm p-4">
-    <h3 class="font-semibold text-gray-800 mb-3">Estudiantes UIC sin tribunal asignado</h3>
-    <div *ngIf="!estudiantesUIC.length" class="text-sm text-gray-500">Todos los estudiantes tienen tribunal asignado.
-    </div>
-    <div *ngIf="estudiantesUIC.length" class="overflow-x-auto">
-      <table class="min-w-full text-sm border border-gray-200 rounded-lg table-auto">
-        <thead class="bg-gray-50">
-          <tr class="text-gray-700 text-xs uppercase tracking-wider">
-            <th class="px-3 py-2 text-left">Estudiante</th>
-            <th class="px-3 py-2 text-left">Tutor</th>
-          </tr>
-        </thead>
-        <tbody class="divide-y divide-gray-100">
-          <tr *ngFor="let e of estudiantesUIC" class="odd:bg-white even:bg-gray-50">
-            <td class="px-3 py-2">{{ e.nombre }}</td>
-            <td class="px-3 py-2">{{ e.tutor || '—' }}</td>
-          </tr>
-        </tbody>
-      </table>
     </div>
   </div>
 </section>

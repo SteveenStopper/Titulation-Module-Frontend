@@ -52,6 +52,7 @@ export class Reportes {
 
   limpiar() {
     this.reportType = '';
+    this.selectedCareerId = null;
     this.previewInfo = null;
     this.previewMaterias = [];
     this.previewDocentes = [];
@@ -64,12 +65,13 @@ export class Reportes {
   }
 
   private formatLongDate(d: Date) {
-    return d.toLocaleDateString('es-EC', {
+    const base = d.toLocaleDateString('es-EC', {
       weekday: 'long',
       year: 'numeric',
       month: 'long',
       day: 'numeric',
     });
+    return `Santo Domingo, ${base}`;
   }
 
   private escapeHtml(s: string) {
@@ -199,7 +201,6 @@ export class Reportes {
             <div class="title">REPORTE DE MATERIAS ASIGNADAS PARA EXAMEN<br/>COMPLEXIVO</div>
             <div class="meta"><strong>PERIODO ACADEMICO:</strong> ${this.escapeHtml(info.periodLabel)}</div>
             <div class="meta"><strong>CARRERA:</strong> ${this.escapeHtml(info.careerLabel || 'Todas')}</div>
-            <div class="section">LISTADO DE MATERIAS</div>
             <table>
               <thead>
                 <tr>
@@ -287,7 +288,6 @@ export class Reportes {
             <div class="title">REPORTE DE DOCENTES ASIGNADOS A EXAMEN<br/>COMPLEXIVO</div>
             <div class="meta"><strong>PERIODO ACADEMICO:</strong> ${this.escapeHtml(info.periodLabel)}</div>
             <div class="meta"><strong>CARRERA:</strong> ${this.escapeHtml(info.careerLabel || 'Todas')}</div>
-            <div class="section">LISTADO DE DOCENTES</div>
             <table>
               <thead>
                 <tr>

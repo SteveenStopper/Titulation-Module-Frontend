@@ -106,16 +106,25 @@ export class PeriodService {
   // List all academic periods from backend
   listAll() {
     this.loadingListSubject.next(true);
-    return this.http.get<Array<{ id_academic_periods: number; name: string; date_start?: string|null; date_end?: string|null; status?: string }>>('/api/settings/periods')
+    return this.http.get<Array<{ id_academic_periods: number; name: string; date_start?: string|null; date_end?: string|null; status?: string; used?: boolean; external_period_id?: number|null }>>('/api/settings/periods')
       .pipe(
-        catchError((_err) => of([] as Array<{ id_academic_periods: number; name: string; date_start?: string|null; date_end?: string|null; status?: string }>)),
+        catchError((_err) => of([] as Array<{ id_academic_periods: number; name: string; date_start?: string|null; date_end?: string|null; status?: string; used?: boolean; external_period_id?: number|null }>)),
         finalize(() => this.loadingListSubject.next(false))
       );
   }
 
   // List academic periods from institute DB (for selection)
   listInstitutePeriods() {
-    return this.http.get<Array<{ id: number; name: string; status?: string }>>('/api/settings/institute-periods');
+    return this.http.get<Array<{ id: number; name: string; status?: string; date_start?: string|null; date_end?: string|null }>>('/api/settings/institute-periods');
+  }
+
+  // Save mapping from local period to institute period
+  setExternalPeriodMap(id: number, external_period_id: number) {
+    return this.http.put<any>(`/api/settings/periods/${id}/external-map`, { external_period_id });
+  }
+
+  deletePeriod(id: number) {
+    return this.http.delete<any>(`/api/settings/periods/${id}`);
   }
 
   // Limpiar manualmente el estado en memoria

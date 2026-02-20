@@ -4,48 +4,55 @@
     <div class="h-full px-4 py-5 bg-white border-r border-gray-200 flex flex-col">
       <div class="flex-1 overflow-y-auto">
         <a routerLink="/secretaria/inicio" class="flex items-center ps-2.5 mb-5">
-          <img src="assets/Logo.png" class="h-16 md:h-20 me-3 object-contain drop-shadow-md select-none" alt="Instituto Superior Tecnológico Los Andes" />
+          <img src="assets/Logo.png" class="h-16 md:h-20 me-3 object-contain drop-shadow-md select-none"
+            alt="Instituto Superior Tecnológico Los Andes" />
         </a>
         <ul class="space-y-2 font-medium">
           <!-- Inicio -->
           <li>
-            <a routerLink="/secretaria/inicio" routerLinkActive="bg-gray-200 text-gray-900" class="flex items-center p-2 text-gray-700 rounded-lg hover:bg-gray-100">
+            <a routerLink="/secretaria/inicio" routerLinkActive="bg-gray-200 text-gray-900"
+              class="flex items-center p-2 text-gray-700 rounded-lg hover:bg-gray-100">
               <i class="fa-solid fa-house w-5 h-5 me-3"></i>
               <span>Inicio</span>
             </a>
           </li>
           <!-- Nota de estudiantes -->
           <li>
-            <a routerLink="/secretaria/nota-estudiantes" routerLinkActive="bg-gray-200 text-gray-900" class="flex items-center p-2 text-gray-700 rounded-lg hover:bg-gray-100">
+            <a routerLink="/secretaria/nota-estudiantes" routerLinkActive="bg-gray-200 text-gray-900"
+              class="flex items-center p-2 text-gray-700 rounded-lg hover:bg-gray-100">
               <i class="fa-solid fa-clipboard-list w-5 h-5 me-3"></i>
               <span>Nota de estudiantes</span>
             </a>
           </li>
           <!-- Matricula -->
           <li>
-            <a routerLink="/secretaria/matricula" routerLinkActive="bg-gray-200 text-gray-900" class="flex items-center p-2 text-gray-700 rounded-lg hover:bg-gray-100">
+            <a routerLink="/secretaria/matricula" routerLinkActive="bg-gray-200 text-gray-900"
+              class="flex items-center p-2 text-gray-700 rounded-lg hover:bg-gray-100">
               <i class="fa-solid fa-id-card w-5 h-5 me-3"></i>
               <span>Matricula</span>
             </a>
           </li>
           <!-- Acta de Grado -->
           <li>
-            <a routerLink="/secretaria/acta-grado" routerLinkActive="bg-gray-200 text-gray-900" class="flex items-center p-2 text-gray-700 rounded-lg hover:bg-gray-100">
+            <a routerLink="/secretaria/acta-grado" routerLinkActive="bg-gray-200 text-gray-900"
+              class="flex items-center p-2 text-gray-700 rounded-lg hover:bg-gray-100">
               <i class="fa-solid fa-scroll w-5 h-5 me-3"></i>
               <span>Acta de Grado</span>
             </a>
           </li>
           <!-- Reportes -->
           <li>
-            <a routerLink="/secretaria/reportes" routerLinkActive="bg-gray-200 text-gray-900" class="flex items-center p-2 text-gray-700 rounded-lg hover:bg-gray-100">
+            <a routerLink="/secretaria/reportes" routerLinkActive="bg-gray-200 text-gray-900"
+              class="flex items-center p-2 text-gray-700 rounded-lg hover:bg-gray-100">
               <i class="fa-solid fa-chart-column w-5 h-5 me-3"></i>
               <span>Reportes</span>
             </a>
           </li>
           <!-- Administrador -->
           <li *ngIf="isAdmin">
-            <a routerLink="/administrador/inicio" class="flex items-center p-2 text-gray-700 rounded-lg hover:bg-gray-100">
-              <i class="fa-solid fa-user-gear w-5 h-5 me-3"></i>
+            <a routerLink="/administrador/inicio"
+              class="flex items-center p-2 rounded-lg border border-emerald-200 bg-emerald-50 text-emerald-800 hover:bg-emerald-100">
+              <i class="fa-solid fa-user-gear w-5 h-5 me-3 text-emerald-700"></i>
               <span>Administrador</span>
             </a>
           </li>
@@ -55,8 +62,10 @@
       <!-- Footer: Perfil / Cerrar sesión -->
       <div class="mt-4 border-t pt-4">
         <div class="relative">
-          <button type="button" (click)="toggleProfile()" class="w-full flex items-center gap-3 p-2 rounded-lg hover:bg-gray-100">
-            <span class="inline-flex h-9 w-9 items-center justify-center rounded-full bg-emerald-600 text-white font-semibold">
+          <button type="button" (click)="toggleProfile()"
+            class="w-full flex items-center gap-3 p-2 rounded-lg hover:bg-gray-100">
+            <span
+              class="inline-flex h-9 w-9 items-center justify-center rounded-full bg-emerald-600 text-white font-semibold">
               {{ userInitials }}
             </span>
             <div class="text-left">
@@ -65,7 +74,8 @@
             </div>
             <i class="fa-solid fa-ellipsis-vertical ml-auto text-gray-500"></i>
           </button>
-          <div *ngIf="isProfileOpen" class="absolute left-0 right-0 bottom-12 z-50 bg-white border border-gray-200 rounded-lg shadow-md">
+          <div *ngIf="isProfileOpen"
+            class="absolute left-0 right-0 bottom-12 z-50 bg-white border border-gray-200 rounded-lg shadow-md">
             <button type="button" (click)="logout()" class="w-full text-left px-4 py-2 text-sm hover:bg-gray-50">
               <i class="fa-solid fa-right-from-bracket mr-2"></i> Cerrar sesión
             </button>
@@ -92,7 +102,8 @@
               <span class="text-xs px-2 py-1 rounded-full bg-blue-50 text-blue-600">Cargando...</span>
             </ng-container>
             <ng-template #periodVal>
-              <span class="text-xs px-2 py-1 rounded-full bg-blue-100 text-blue-700">{{ activePeriod || 'Sin período' }}</span>
+              <span class="text-xs px-2 py-1 rounded-full bg-blue-100 text-blue-700">{{ activePeriod || 'Sin período'
+                }}</span>
             </ng-template>
           </div>
         </div>

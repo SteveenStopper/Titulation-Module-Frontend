@@ -19,6 +19,7 @@ export class Pagos {
   pagoArchivo: File | null = null;
   pagoArchivoNombre = '';
   pagoEstado: 'enviado' | 'aprobado' | 'rechazado' | '' = '';
+  dragOver = false;
 
   // Validaciones (gating)
   validationsLoading = false;
@@ -84,11 +85,61 @@ export class Pagos {
     });
   }
 
+  private isAllowedVoucherFile(file: File): boolean {
+    const ext = (file.name.split('.').pop() || '').toLowerCase();
+    const mime = (file.type || '').toLowerCase();
+    const allowedExt = ['pdf', 'png', 'jpg', 'jpeg'];
+    const allowedMime = ['application/pdf', 'image/png', 'image/jpeg'];
+    return allowedExt.includes(ext) && allowedMime.includes(mime);
+  }
+
+  setPagoFile(file: File | null) {
+    if (!file) {
+      this.pagoArchivo = null;
+      this.pagoArchivoNombre = '';
+      return;
+    }
+    if (!this.isAllowedVoucherFile(file)) {
+      this.toastr.error('Solo se permiten PDF o imágenes (png, jpg, jpeg)');
+      this.pagoArchivo = null;
+      this.pagoArchivoNombre = '';
+      try { if (this.voucherFile?.nativeElement) this.voucherFile.nativeElement.value = ''; } catch {}
+      return;
+    }
+    if (file.size > 20 * 1024 * 1024) {
+      this.toastr.error('El archivo excede el límite de 20MB');
+      this.pagoArchivo = null;
+      this.pagoArchivoNombre = '';
+      try { if (this.voucherFile?.nativeElement) this.voucherFile.nativeElement.value = ''; } catch {}
+      return;
+    }
+    this.pagoArchivo = file;
+    this.pagoArchivoNombre = file.name;
+  }
+
   onPagoFile(e: Event) {
     const input = e.target as HTMLInputElement;
     const file = input.files && input.files[0];
-    this.pagoArchivo = file || null;
-    this.pagoArchivoNombre = file ? file.name : '';
+    this.setPagoFile(file || null);
+  }
+
+  onVoucherDragOver(e: DragEvent) {
+    e.preventDefault();
+    if (this.validationsLoading || !this.canProceed) return;
+    this.dragOver = true;
+  }
+
+  onVoucherDragLeave(e: DragEvent) {
+    e.preventDefault();
+    this.dragOver = false;
+  }
+
+  onVoucherDrop(e: DragEvent) {
+    e.preventDefault();
+    this.dragOver = false;
+    if (this.validationsLoading || !this.canProceed) return;
+    const file = e.dataTransfer?.files && e.dataTransfer.files[0];
+    this.setPagoFile(file || null);
   }
 
   submitPago() {

@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { Router, ActivatedRoute, NavigationEnd, RouterModule } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { HttpClient } from '@angular/common/http';
+import Swal from 'sweetalert2';
 
 @Component({
   selector: 'app-docente-complexivo',
@@ -73,6 +74,18 @@ export class DocenteComplexivo {
   estudiantesMateria: Array<{ id: string; nombre: string; presente: boolean }> = [];
   attendanceHistory: Array<{ date: string; items: Array<{ id: string; nombre: string; presente: boolean }> }> = [];
 
+  private toast(message: string, type: 'success' | 'error' | 'warning' = 'success') {
+    return Swal.fire({
+      toast: true,
+      position: 'top-end',
+      icon: type,
+      title: message,
+      showConfirmButton: false,
+      timer: 3500,
+      timerProgressBar: true,
+    });
+  }
+
   get historyExceptToday() {
     return this.attendanceHistory.filter(h => h.date !== this.fechaHoy);
   }
@@ -127,8 +140,8 @@ export class DocenteComplexivo {
         const record = { date: this.fechaHoy, items: this.estudiantesMateria.map(x => ({ id: x.id, nombre: x.nombre, presente: x.presente })) };
         const history = this.attendanceHistory.filter(h => h.date !== this.fechaHoy);
         this.attendanceHistory = [record, ...history];
-        alert('Asistencia guardada.');
-      }, () => alert('No se pudo guardar asistencia.'));
+        this.toast('Asistencia guardada.', 'success');
+      }, () => this.toast('No se pudo guardar asistencia.', 'error'));
   }
 
   exportarAsistenciaPdf() {
@@ -206,7 +219,7 @@ export class DocenteComplexivo {
                 </div>
               </div>
               <h1 class="title">${title}</h1>
-              <p class="subtitle">Generado: ${new Date().toISOString().slice(0,10)}</p>
+              <p class="subtitle">Generado: Santo Domingo, ${new Date().toISOString().slice(0,10)}</p>
               ${rows}
               <div class="footer">Sistema de Titulación</div>
             </div>

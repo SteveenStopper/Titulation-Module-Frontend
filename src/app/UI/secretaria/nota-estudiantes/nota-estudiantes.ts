@@ -57,23 +57,20 @@ export class NotaEstudiantes {
   }
 
   get mostrarS5(): boolean {
-    return this.filtered.some(e => typeof (e as any).s5 === 'number');
+    return false;
   }
 
   get mostrarS4(): boolean {
-    return this.filtered.some(e => typeof (e as any).s4 === 'number');
+    return false;
   }
 
   private semestresDe(e: any): number {
-    const carrera = String(e?.carrera || '').trim();
-    if (carrera === 'TECNOLOGÍA EN EDUCACIÓN BÁSICA') return 4;
     return 3;
   }
 
   private valoresDe(e: any): Array<number | null> {
-    const n = this.semestresDe(e);
-    const arr = [e.s1, e.s2, e.s3, e.s4, null];
-    return arr.slice(0, n);
+    const arr = [e.s1, e.s2, e.s3];
+    return arr.slice(0, this.semestresDe(e));
   }
 
   promedio(e: any) {

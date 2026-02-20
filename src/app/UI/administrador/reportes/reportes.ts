@@ -19,10 +19,9 @@ export class Reportes {
 
   filtersOpen = true;
   selectedPeriodId: number | null = null;
-  reportType: 'PERIODOS' | 'USUARIOS' | 'GENERAL' | '' = '';
+  reportType: 'PERIODOS' | 'GENERAL' | '' = '';
 
   previewPeriodos: Array<{ nro: number; nombre: string; fecha_inicio: string; fecha_fin: string; estado: string }> = [];
-  previewUsuarios: Array<{ nro: number; usuario: string; rol: string | null; estado: string }> = [];
   previewGeneral: { estudiantes_en_proceso: number; modalidad_uic: number; modalidad_examen_complexivo: number } | null = null;
 
   previewInfo: { periodLabel: string } | null = null;
@@ -48,7 +47,6 @@ export class Reportes {
   limpiar() {
     this.reportType = '';
     this.previewPeriodos = [];
-    this.previewUsuarios = [];
     this.previewGeneral = null;
     this.previewInfo = null;
   }
@@ -60,12 +58,13 @@ export class Reportes {
   }
 
   private formatLongDate(d: Date) {
-    return d.toLocaleDateString('es-EC', {
+    const base = d.toLocaleDateString('es-EC', {
       weekday: 'long',
       year: 'numeric',
       month: 'long',
       day: 'numeric',
     });
+    return `Santo Domingo, ${base}`;
   }
 
   private async openPrintTab(html: string) {
@@ -137,20 +136,6 @@ export class Reportes {
         fecha_fin: this.fmtDateCell(r?.fecha_fin),
         estado: String(r?.estado || ''),
       }));
-      this.previewUsuarios = [];
-      this.previewGeneral = null;
-      return;
-    }
-
-    if (this.reportType === 'USUARIOS') {
-      const list = await firstValueFrom(this.http.get<any[]>(`/api/uic/admin/reportes/admin/usuarios`).pipe(catchError(() => of([] as any[]))));
-      this.previewUsuarios = (Array.isArray(list) ? list : []).map((r, idx) => ({
-        nro: idx + 1,
-        usuario: String(r?.usuario || ''),
-        rol: r?.rol != null ? String(r.rol) : null,
-        estado: String(r?.estado || ''),
-      }));
-      this.previewPeriodos = [];
       this.previewGeneral = null;
       return;
     }
@@ -164,13 +149,11 @@ export class Reportes {
       modalidad_examen_complexivo: Number(gen?.modalidad_examen_complexivo || 0),
     } : { estudiantes_en_proceso: 0, modalidad_uic: 0, modalidad_examen_complexivo: 0 };
     this.previewPeriodos = [];
-    this.previewUsuarios = [];
   }
 
   generarPdf() {
     if (!this.previewInfo || !this.reportType) return;
     if (this.reportType === 'PERIODOS') return void this.printPdfPeriodos(this.previewInfo, this.previewPeriodos);
-    if (this.reportType === 'USUARIOS') return void this.printPdfUsuarios(this.previewInfo, this.previewUsuarios);
     return void this.printPdfGeneral(this.previewInfo, this.previewGeneral);
   }
 
@@ -213,7 +196,6 @@ export class Reportes {
         <img class="logo" src="${origin}/assets/Logo.png" />
         <div class="content">
           <div class="title">REPORTE DE PERIODOS ACADÉMICOS REGISTRADOS</div>
-          <div class="section">LISTADO DE PERIODOS</div>
           <table>
             <thead>
               <tr>
@@ -269,7 +251,7 @@ export class Reportes {
           <img class="bg" src="${origin}/assets/Fondo_doc.jpg" />
           <img class="logo" src="${origin}/assets/Logo.png" />
           <div class="content" style="${isFirst ? '' : 'padding-top: 18mm;'}">
-            ${isFirst ? `<div class="title">REPORTE DE USUARIOS DEL SISTEMA</div><div class="section">LISTADO DE USUARIOS</div>` : `<div style="height:18mm;"></div>`}
+            ${isFirst ? `<div class="title">REPORTE DE USUARIOS DEL SISTEMA</div>` : `<div style="height:18mm;"></div>`}
             <table>
               <thead>
                 <tr>
@@ -340,12 +322,14 @@ export class Reportes {
         <img class="bg" src="${origin}/assets/Fondo_doc.jpg" />
         <img class="logo" src="${origin}/assets/Logo.png" />
         <div class="content">
-          <div class="title">REPORTE GENERAL DEL SISTEMA DE TITULACIÓN</div>
-          <div class="lead">El presente reporte muestra información general del proceso de titulación registrada en el sistema institucional, correspondiente al periodo académico seleccionado.</div>
+          <div class="title">REPORTE GENERAL DEL SISTEMA</div>
           <div class="meta">PERIODO ACADÉMICO: <span style="font-weight:500;">${this.escapeHtml(info.periodLabel || '')}</span></div>
           <table>
             <thead>
-              <tr><th>Indicador</th><th style="width:28%;text-align:center;">Total</th></tr>
+              <tr>
+                <th>Indicador</th>
+                <th style="width:28%;text-align:center;">Total</th>
+              </tr>
             </thead>
             <tbody>
               <tr><td>Estudiantes en proceso de titulación</td><td style="text-align:center;">${Number(g.estudiantes_en_proceso || 0)}</td></tr>

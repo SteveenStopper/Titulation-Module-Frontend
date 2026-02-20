@@ -14,18 +14,23 @@ import Swal from 'sweetalert2';
 export class GestionPeriodos {
   private storageKey = 'admin_periodos';
 
+  minStartDate = '';
+
   periodos: Array<{
     id: string;
     nombre: string;
     fechaInicio: string; // ISO yyyy-mm-dd
     fechaFin: string;    // ISO yyyy-mm-dd
     estado: 'borrador' | 'activo' | 'cerrado';
+    used?: boolean;
+    external_period_id?: number | null;
   }> = [];
 
   // Modal state
   isModalOpen = false;
   isEditing = false;
-  institutePeriods: Array<{ id: number; name: string; status?: string }> = [];
+  institutePeriods: Array<{ id: number; name: string; status?: string; date_start?: string | null; date_end?: string | null }> = [];
+  selectedInstitutePeriodId: number | null = null;
   form = {
     id: '',
     nombre: '',
@@ -36,17 +41,50 @@ export class GestionPeriodos {
   filtro = '';
 
   constructor(private periodSvc: PeriodService) {
+    const t = new Date();
+    t.setHours(0, 0, 0, 0);
+    this.minStartDate = t.toISOString().slice(0, 10);
+
     this.cargar();
     // Cargar lista desde backend y reflejar en UI
     this.periodSvc.listAll().subscribe((rows) => {
       if (Array.isArray(rows)) {
-        this.periodos = rows.map(r => ({
-          id: String(r.id_academic_periods),
-          nombre: r.name,
-          fechaInicio: r.date_start || '',
-          fechaFin: r.date_end || '',
-          estado: (r.status === 'activo' ? 'activo' : (r.status === 'cerrado' || r.status === 'inactivo') ? 'cerrado' : 'borrador')
-        }));
+        this.periodos = rows.map(r => {
+          const fechaFin = r.date_end || '';
+          const baseEstado = (r.status === 'activo' ? 'activo' : (r.status === 'cerrado') ? 'cerrado' : 'borrador');
+          const estado = (baseEstado !== 'activo' && this.isPastPeriod({ fechaFin })) ? 'cerrado' : baseEstado;
+          return {
+            id: String(r.id_academic_periods),
+            nombre: r.name,
+            fechaInicio: r.date_start || '',
+            fechaFin,
+            estado,
+            used: (r as any).used === true,
+            external_period_id: (r as any).external_period_id ?? null,
+          };
+        });
+      }
+    });
+  }
+
+  private refreshList() {
+    this.periodSvc.listAll().subscribe((rows) => {
+      if (Array.isArray(rows)) {
+        this.periodos = rows.map(r => {
+          const fechaFin = r.date_end || '';
+          const baseEstado = (r.status === 'activo' ? 'activo' : (r.status === 'cerrado') ? 'cerrado' : 'borrador');
+          const estado = (baseEstado !== 'activo' && this.isPastPeriod({ fechaFin })) ? 'cerrado' : baseEstado;
+          return {
+            id: String(r.id_academic_periods),
+            nombre: r.name,
+            fechaInicio: r.date_start || '',
+            fechaFin,
+            estado,
+            used: (r as any).used === true,
+            external_period_id: (r as any).external_period_id ?? null,
+          };
+        });
+        this.guardar();
       }
     });
   }
@@ -66,6 +104,7 @@ export class GestionPeriodos {
     this.form = { id: this.uuid(), nombre: '', fechaInicio: '', fechaFin: '' };
     this.formError = '';
     this.institutePeriods = [];
+    this.selectedInstitutePeriodId = null;
     this.periodSvc.listInstitutePeriods().subscribe({
       next: (rows) => {
         this.institutePeriods = Array.isArray(rows) ? rows : [];
@@ -79,14 +118,63 @@ export class GestionPeriodos {
     this.isModalOpen = true;
   }
 
+  onInstitutePeriodChange(id: any) {
+    const num = id == null ? null : Number(id);
+    this.selectedInstitutePeriodId = Number.isFinite(Number(num)) ? Number(num) : null;
+    const found = this.institutePeriods.find(x => Number(x.id) === Number(this.selectedInstitutePeriodId));
+    if (!found) return;
+    this.form.nombre = found.name;
+  }
+
+  onFechaInicioChange() {
+    if (!this.form.fechaInicio) return;
+    if (this.form.fechaFin && this.form.fechaFin < this.form.fechaInicio) {
+      this.form.fechaFin = '';
+    }
+  }
+
+  private isPastPeriod(p: { fechaFin: string }) {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const end = new Date(String(p?.fechaFin || ''));
+    if (!Number.isFinite(end.getTime())) return false;
+    return end < today;
+  }
+
+  canEdit(p: any) {
+    if (!p) return false;
+    if (p.estado === 'cerrado') return false;
+    if (this.isPastPeriod(p)) return false;
+    return true;
+  }
+
+  canActivate(p: any) {
+    if (!p) return false;
+    if (p.estado !== 'borrador') return false;
+    if (this.isPastPeriod(p)) return false;
+    return Number.isFinite(Number(p.external_period_id));
+  }
+
+  canDelete(p: any) {
+    if (!p) return false;
+    if (p.used) return false;
+    if (p.estado === 'activo') return false;
+    return p.estado === 'borrador' || p.estado === 'cerrado';
+  }
+
   abrirEditar(p: any) {
+    if (!this.canEdit(p)) return;
     this.isEditing = true;
     this.form = { id: p.id, nombre: p.nombre, fechaInicio: p.fechaInicio, fechaFin: p.fechaFin };
     this.formError = '';
     this.institutePeriods = [];
+    this.selectedInstitutePeriodId = (p.external_period_id != null ? Number(p.external_period_id) : null);
     this.periodSvc.listInstitutePeriods().subscribe({
       next: (rows) => {
         this.institutePeriods = Array.isArray(rows) ? rows : [];
+        if (this.selectedInstitutePeriodId) {
+          this.onInstitutePeriodChange(this.selectedInstitutePeriodId);
+        }
       },
       error: (err) => {
         const msg = err?.error?.message || err?.message || 'No se pudo cargar los períodos del instituto';
@@ -101,6 +189,10 @@ export class GestionPeriodos {
     this.formError = '';
     if (!this.form.nombre.trim()) {
       this.formError = 'El nombre es obligatorio';
+      return;
+    }
+    if (!this.selectedInstitutePeriodId) {
+      this.formError = 'Debe seleccionar un período del instituto';
       return;
     }
     if (!this.form.fechaInicio || !this.form.fechaFin) {
@@ -133,15 +225,22 @@ export class GestionPeriodos {
       this.formError = 'Fechas inválidas';
       return;
     }
-    if (ds < today || de < today) {
-      this.formError = 'No se puede crear un período con fechas pasadas';
-      return;
+    if (!this.isEditing) {
+      if (ds < today || de < today) {
+        this.formError = 'No se puede crear un período con fechas pasadas';
+        return;
+      }
+    } else {
+      if (de < today) {
+        this.formError = 'No se puede establecer una fecha fin pasada';
+        return;
+      }
     }
 
     // Validar duplicado por nombre en FE (case-insensitive)
     const nombreLower = this.form.nombre.trim().toLowerCase();
-    const dup = this.periodos.some(p => p.nombre.trim().toLowerCase() === nombreLower);
-    if (!this.isEditing && dup) {
+    const dup = this.periodos.some(p => p.nombre.trim().toLowerCase() === nombreLower && String(p.id) !== String(this.form.id));
+    if (dup) {
       this.formError = 'Ya existe un período con ese nombre';
       return;
     }
@@ -160,19 +259,16 @@ export class GestionPeriodos {
         date_end: fechaFinISO,
       }).subscribe({
         next: () => {
-          this.periodSvc.listAll().subscribe((rows) => {
-            if (Array.isArray(rows)) {
-              this.periodos = rows.map(r => ({
-                id: String(r.id_academic_periods),
-                nombre: r.name,
-                fechaInicio: r.date_start || '',
-                fechaFin: r.date_end || '',
-                estado: (r.status === 'activo' ? 'activo' : (r.status === 'cerrado' || r.status === 'inactivo') ? 'cerrado' : 'borrador')
-              }));
-              this.guardar();
+          // guardar mapeo externo
+          this.periodSvc.setExternalPeriodMap(Number(this.form.id), Number(this.selectedInstitutePeriodId)).subscribe({
+            next: () => {
+              this.refreshList();
+              this.isModalOpen = false;
+            },
+            error: (err2) => {
+              this.formError = String(err2?.error?.message || err2?.message || 'No se pudo guardar el mapeo con el instituto');
             }
           });
-          this.isModalOpen = false;
         },
         error: (err) => {
           this.formError = String(err?.error?.message || err?.message || 'No se pudo actualizar el período en el servidor');
@@ -187,15 +283,16 @@ export class GestionPeriodos {
         date_end: fechaFinISO
       }).subscribe({
         next: (created) => {
-          this.periodos.push({
-            id: String(created.id_academic_periods),
-            nombre: created.name,
-            fechaInicio: fechaInicioISO,
-            fechaFin: fechaFinISO,
-            estado: 'borrador'
+          const newId = Number(created.id_academic_periods);
+          this.periodSvc.setExternalPeriodMap(newId, Number(this.selectedInstitutePeriodId)).subscribe({
+            next: () => {
+              this.refreshList();
+              this.isModalOpen = false;
+            },
+            error: (err2) => {
+              this.formError = String(err2?.error?.message || err2?.message || 'Se creó el período pero no se pudo guardar el mapeo con el instituto');
+            }
           });
-          this.guardar();
-          this.isModalOpen = false;
         },
         error: (err) => {
           const msg = err?.error?.message || err?.message || 'No se pudo guardar el período en el servidor';
@@ -223,103 +320,70 @@ export class GestionPeriodos {
     }).then((result) => {
       if (!result.isConfirmed) return;
 
-      // Elegir período externo (instituto) y guardar mapping external_period_for_<id_local>
-      this.periodSvc.listInstitutePeriods().subscribe({
-        next: (rows) => {
-          const periods = Array.isArray(rows) ? rows : [];
-          const norm = (s: any) => String(s || '').trim().toLowerCase().replace(/\s+/g, ' ');
-          const localName = norm(p?.nombre);
-          const allowed = periods.filter(x => norm(x?.name) === localName);
-          if (!allowed.length) {
-            Swal.fire({
-              title: 'No se puede activar',
-              text: 'No existe un período del instituto que coincida con el nombre del período seleccionado.',
-              icon: 'error',
-              confirmButtonText: 'Cerrar',
-              customClass: { confirmButton: 'swal-btn-cancel' }
-            });
-            return;
-          }
-          const inputOptions: Record<string, string> = {};
-          allowed.forEach((it) => {
-            inputOptions[String(it.id)] = `${it.id} - ${it.name}`;
-          });
+      const externalId = Number(p.external_period_id);
+      if (!Number.isFinite(externalId)) {
+        Swal.fire({
+          title: 'No se puede activar',
+          text: 'Debe mapear primero este período con un período del instituto (selección en Nuevo/Editar período).',
+          icon: 'error',
+          confirmButtonText: 'Cerrar',
+          customClass: { confirmButton: 'swal-btn-cancel' }
+        });
+        return;
+      }
 
+      this.periodSvc.setActivePeriodBackend(Number(p.id), p.nombre, externalId).subscribe({
+        next: () => {
+          this.refreshList();
+          this.periodSvc.fetchAndSetFromBackend().subscribe();
           Swal.fire({
-            title: 'Selecciona período del instituto',
-            text: 'Este ID se usará para mapear estudiantes/notas/aranceles del período activo.',
-            input: 'select',
-            inputOptions,
-            inputPlaceholder: 'Seleccione un período',
-            showCancelButton: true,
-            confirmButtonText: 'Activar',
-            cancelButtonText: 'Cancelar',
-            customClass: {
-              confirmButton: 'swal-btn-confirm',
-              cancelButton: 'swal-btn-cancel'
-            },
-            inputValidator: (value) => {
-              if (!value) return 'Debe seleccionar un período del instituto';
-              const picked = allowed.find(x => String(x.id) === String(value));
-              if (!picked) return 'El período seleccionado no coincide con el período local';
-              return null;
-            }
-          }).then((pick) => {
-            if (!pick.isConfirmed) return;
-            const externalId = Number(pick.value);
-            if (!Number.isFinite(externalId)) {
-              Swal.fire({
-                title: 'Selección inválida',
-                text: 'El período seleccionado no es válido.',
-                icon: 'error',
-                confirmButtonText: 'Cerrar',
-                customClass: { confirmButton: 'swal-btn-cancel' }
-              });
-              return;
-            }
-
-            // Persistir en backend y refrescar lista
-            this.periodSvc.setActivePeriodBackend(Number(p.id), p.nombre, externalId).subscribe({
-              next: () => {
-                this.periodSvc.listAll().subscribe((rows2) => {
-                  if (Array.isArray(rows2)) {
-                    this.periodos = rows2.map(r => ({
-                      id: String(r.id_academic_periods),
-                      nombre: r.name,
-                      fechaInicio: r.date_start || '',
-                      fechaFin: r.date_end || '',
-                      estado: (r.status === 'activo' ? 'activo' : (r.status === 'cerrado' || r.status === 'inactivo') ? 'cerrado' : 'borrador')
-                    }));
-                    this.guardar();
-                  }
-                });
-                this.periodSvc.fetchAndSetFromBackend().subscribe();
-                Swal.fire({
-                  title: 'Activado',
-                  text: `Período activado y mapeado al período del instituto ${externalId}.`,
-                  icon: 'success',
-                  confirmButtonText: 'Aceptar',
-                  customClass: { confirmButton: 'swal-btn-confirm' }
-                });
-              },
-              error: (err) => {
-                const msg = err?.error?.message || err?.message || 'Error';
-                Swal.fire({
-                  title: 'No se pudo activar',
-                  text: 'No se pudo activar en el servidor: ' + msg,
-                  icon: 'error',
-                  confirmButtonText: 'Cerrar',
-                  customClass: { confirmButton: 'swal-btn-cancel' }
-                });
-              }
-            });
+            title: 'Activado',
+            text: `Período activado correctamente.`,
+            icon: 'success',
+            confirmButtonText: 'Aceptar',
+            customClass: { confirmButton: 'swal-btn-confirm' }
           });
         },
         error: (err) => {
-          const msg = err?.error?.message || err?.message || 'No se pudo cargar los períodos del instituto';
+          const msg = err?.error?.message || err?.message || 'Error';
           Swal.fire({
             title: 'No se pudo activar',
-            text: String(msg),
+            text: 'No se pudo activar en el servidor: ' + msg,
+            icon: 'error',
+            confirmButtonText: 'Cerrar',
+            customClass: { confirmButton: 'swal-btn-cancel' }
+          });
+        }
+      });
+    });
+  }
+
+  eliminar(p: any) {
+    Swal.fire({
+      title: '¿Eliminar período?',
+      text: `¿Eliminar el período "${p.nombre}"? Esta acción no se puede deshacer.`,
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonText: 'Sí, eliminar',
+      cancelButtonText: 'Cancelar',
+      customClass: { confirmButton: 'swal-btn-confirm', cancelButton: 'swal-btn-cancel' }
+    }).then((r) => {
+      if (!r.isConfirmed) return;
+      this.periodSvc.deletePeriod(Number(p.id)).subscribe({
+        next: () => {
+          this.refreshList();
+          Swal.fire({
+            title: 'Eliminado',
+            text: 'Período eliminado correctamente.',
+            icon: 'success',
+            confirmButtonText: 'Aceptar',
+            customClass: { confirmButton: 'swal-btn-confirm' }
+          });
+        },
+        error: (err) => {
+          Swal.fire({
+            title: 'No se pudo eliminar',
+            text: String(err?.error?.message || err?.message || 'Error'),
             icon: 'error',
             confirmButtonText: 'Cerrar',
             customClass: { confirmButton: 'swal-btn-cancel' }
@@ -346,18 +410,7 @@ export class GestionPeriodos {
 
       this.periodSvc.closePeriod(Number(p.id)).subscribe({
         next: () => {
-          this.periodSvc.listAll().subscribe((rows) => {
-            if (Array.isArray(rows)) {
-              this.periodos = rows.map(r => ({
-                id: String(r.id_academic_periods),
-                nombre: r.name,
-                fechaInicio: r.date_start || '',
-                fechaFin: r.date_end || '',
-                estado: (r.status === 'activo' ? 'activo' : (r.status === 'cerrado' || r.status === 'inactivo') ? 'cerrado' : 'borrador')
-              }));
-              this.guardar();
-            }
-          });
+          this.refreshList();
           // limpiar período activo en FE porque pudo ser el activo
           this.periodSvc.fetchAndSetFromBackend().subscribe();
 

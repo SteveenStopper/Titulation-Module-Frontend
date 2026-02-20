@@ -2,6 +2,7 @@ import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { HttpClient } from '@angular/common/http';
+import Swal from 'sweetalert2';
 
 @Component({
   selector: 'app-comision-asignar-lector',
@@ -30,7 +31,94 @@ export class ComisionAsignarLectorComponent implements OnInit {
   message: string | null = null;
   error: string | null = null;
 
+  editingStudentId: number | null = null;
+  editingLectorId: number | null = null;
+  savingEdit = false;
+
+  // Paginación (client-side)
+  pageEst = 1;
+  pageAsig = 1;
+  pageSize = 10;
+
+  get totalPagesEst(): number {
+    const total = (this.estudiantes || []).length;
+    return Math.max(1, Math.ceil(total / this.pageSize));
+  }
+
+  get totalPagesAsig(): number {
+    const total = (this.asignados || []).length;
+    return Math.max(1, Math.ceil(total / this.pageSize));
+  }
+
+  get pagedEstudiantes() {
+    const start = (this.pageEst - 1) * this.pageSize;
+    return (this.estudiantes || []).slice(start, start + this.pageSize);
+  }
+
+  get pagedAsignados() {
+    const start = (this.pageAsig - 1) * this.pageSize;
+    return (this.asignados || []).slice(start, start + this.pageSize);
+  }
+
+  setPageEst(p: number) {
+    const n = Math.max(1, Math.min(this.totalPagesEst, Math.trunc(Number(p))));
+    this.pageEst = n;
+  }
+
+  setPageAsig(p: number) {
+    const n = Math.max(1, Math.min(this.totalPagesAsig, Math.trunc(Number(p))));
+    this.pageAsig = n;
+  }
+
   constructor(private http: HttpClient) { }
+
+  private swalToastError(msg: string) {
+    return Swal.fire({
+      toast: true,
+      position: 'top-end',
+      icon: 'error',
+      title: msg,
+      showConfirmButton: false,
+      timer: 3500,
+      timerProgressBar: true,
+    });
+  }
+
+  private toTitleCase(name: string): string {
+    const s = String(name || '').trim();
+    if (!s) return '';
+    return s
+      .toLowerCase()
+      .split(' ')
+      .filter(Boolean)
+      .map(p => p.length ? (p[0].toUpperCase() + p.slice(1)) : p)
+      .join(' ');
+  }
+
+  private normalizeText(s: string): string {
+    return String(s || '')
+      .trim()
+      .toUpperCase()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .replace(/\s+/g, ' ');
+  }
+
+  private onlyTecnologiaAndUniqueCarreras(list: Array<{ id: number; nombre: string }>): Array<{ id: number; nombre: string }> {
+    const seen = new Set<string>();
+    const out: Array<{ id: number; nombre: string }> = [];
+    for (const c of Array.isArray(list) ? list : []) {
+      const id = Number((c as any)?.id);
+      const nombre = String((c as any)?.nombre || '');
+      if (!Number.isFinite(id) || !nombre.trim()) continue;
+      const keyName = this.normalizeText(nombre);
+      if (!keyName.includes('TECNOLOGIA')) continue;
+      if (seen.has(keyName)) continue;
+      seen.add(keyName);
+      out.push({ id, nombre });
+    }
+    return out.sort((a, b) => a.nombre.localeCompare(b.nombre));
+  }
 
   private toValidId(v: unknown): number | null {
     const n = Number(v);
@@ -93,13 +181,18 @@ export class ComisionAsignarLectorComponent implements OnInit {
 
   cargarCarreras() {
     this.http.get<any[]>('/api/uic/admin/carreras').subscribe(rows => {
-      this.carreras = Array.isArray(rows) ? rows : [];
+      this.carreras = this.onlyTecnologiaAndUniqueCarreras(Array.isArray(rows) ? rows : []);
     });
   }
 
   cargarDocentes() {
     this.http.get<any[]>('/api/uic/admin/docentes').subscribe(rows => {
-      this.docentes = Array.isArray(rows) ? rows : [];
+      const list = Array.isArray(rows) ? rows : [];
+      this.docentes = list.map((d: any) => ({
+        ...d,
+        id_user: Number(d?.id_user),
+        fullname: this.toTitleCase(String(d?.fullname || '')),
+      })).filter((d: any) => Number.isFinite(Number(d.id_user)) && d.fullname);
     });
   }
 
@@ -115,6 +208,7 @@ export class ComisionAsignarLectorComponent implements OnInit {
     params.academicPeriodId = periodoId;
     this.http.get<any[]>('/api/uic/admin/estudiantes-sin-lector', { params }).subscribe(rows => {
       this.estudiantes = Array.isArray(rows) ? rows : [];
+      this.setPageEst(1);
     });
   }
 
@@ -129,7 +223,53 @@ export class ComisionAsignarLectorComponent implements OnInit {
     if (carreraId) params.careerId = carreraId;
     params.academicPeriodId = periodoId;
     this.http.get<any[]>('/api/uic/admin/asignaciones/lector', { params }).subscribe(rows => {
-      this.asignados = Array.isArray(rows) ? rows : [];
+      const list = Array.isArray(rows) ? rows : [];
+      this.asignados = list.map((a: any) => ({
+        ...a,
+        tutor_name: a?.tutor_name != null ? this.toTitleCase(String(a.tutor_name)) : a?.tutor_name,
+        lector_name: a?.lector_name != null ? this.toTitleCase(String(a.lector_name)) : a?.lector_name,
+        fullname: a?.fullname != null ? this.toTitleCase(String(a.fullname)) : a?.fullname,
+      }));
+      this.setPageAsig(1);
+    });
+  }
+
+  startEdit(a: any) {
+    this.message = null;
+    this.error = null;
+    this.editingStudentId = Number(a?.id_user);
+    this.editingLectorId = a?.lector_id != null ? Number(a.lector_id) : null;
+  }
+
+  cancelEdit() {
+    this.editingStudentId = null;
+    this.editingLectorId = null;
+  }
+
+  saveEdit(a: any) {
+    this.message = null;
+    this.error = null;
+    const pid = this.toValidId(this.periodoId);
+    const id_user_student = Number(a?.id_user);
+    const lector_usuario_id = Number(this.editingLectorId);
+    if (!pid) { this.error = 'Seleccione un período.'; return; }
+    if (!Number.isFinite(id_user_student) || !Number.isFinite(lector_usuario_id)) { this.error = 'Seleccione un lector válido.'; return; }
+    this.savingEdit = true;
+    const body: any = { id_user_student, lector_usuario_id, academicPeriodId: Number(pid) };
+    this.http.put('/api/uic/admin/asignaciones/lector', body).subscribe({
+      next: () => {
+        this.message = 'Lector actualizado correctamente';
+        this.cancelEdit();
+        this.cargarAsignados();
+      },
+      error: (err) => {
+        const msg = err?.error?.message || 'No se pudo actualizar el lector';
+        this.error = msg;
+        this.savingEdit = false;
+        this.cancelEdit();
+        this.swalToastError(msg);
+      },
+      complete: () => { this.savingEdit = false; }
     });
   }
 

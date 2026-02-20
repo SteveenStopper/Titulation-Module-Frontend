@@ -8,6 +8,8 @@ import { ModalityService } from '../../../services/modality.service';
 import { ActivatedRoute } from '@angular/router';
 import { HttpClient } from '@angular/common/http';
 import { DocumentsService } from '../../../services/documents.service';
+import { VouchersService } from '../../../services/vouchers.service';
+import { AuthService } from '../../../services/auth.service';
 
 @Component({
   selector: 'app-gestion-modalidad',
@@ -42,6 +44,12 @@ export class GestionModalidad {
   carreras: Array<{ id: number; nombre: string }> = [];
   selectedCareerId: number | null = null;
 
+  careerLoading = false;
+  careerLocked = true;
+
+  assignedTutorId: number | null = null;
+  assignedTutorNombre: string | null = null;
+
   // Estado del formulario UIC persistido
   uicTopicLoading = false;
   uicTopicId: number | null = null;
@@ -62,11 +70,26 @@ export class GestionModalidad {
   }
 
   get canSubmitUIC(): boolean {
+    const temaOk = this.isTemaValido(this.uic.tema);
     return !!(
-      this.uic.tema?.trim() &&
+      temaOk &&
       Number.isFinite(Number(this.selectedCareerId)) &&
       Number.isFinite(Number(this.selectedTutorId))
     );
+  }
+
+  private isTemaValido(v: string): boolean {
+    const tema = String(v || '').trim();
+    if (!tema) return false;
+    // Debe tener al menos una letra
+    const hasLetter = /[A-Za-zÁÉÍÓÚÜÑáéíóúüñ]/.test(tema);
+    if (!hasLetter) return false;
+    // Permitir letras, números, espacios y puntuación común en títulos
+    const allowed = /^[A-Za-zÁÉÍÓÚÜÑáéíóúüñ0-9 ,.;:()¿?¡!"'“”\-–—/]+$/.test(tema);
+    if (!allowed) return false;
+    // Evitar temas demasiado cortos
+    if (tema.length < 8) return false;
+    return true;
   }
 
   constructor(
@@ -77,41 +100,80 @@ export class GestionModalidad {
     private route: ActivatedRoute,
     private http: HttpClient,
     private documents: DocumentsService,
-  ) {}
+    private vouchers: VouchersService,
+    private auth: AuthService,
+  ) { }
 
   ngOnInit() {
     const bypass = String(this.route.snapshot.queryParamMap.get('bypassValidations') || '').toLowerCase();
     this.bypassValidations = bypass === '1' || bypass === 'true' || bypass === 'yes';
 
-    // 1) Validaciones (Requisitos aprobados) => gating
+    // 0) Cargar carrera del estudiante (solo lectura)
+    this.careerLoading = true;
+    this.http.get<{ career_id: number | null; career_name: string | null }>('/api/enrollments/career').subscribe({
+      next: (row) => {
+        const cid = Number(row?.career_id);
+        const cname = row?.career_name != null ? String(row.career_name) : '';
+        if (Number.isFinite(cid)) this.selectedCareerId = cid;
+        if (cname) this.uic.carrera = cname;
+      },
+      error: () => { /* no bloquear */ },
+      complete: () => { this.careerLoading = false; }
+    });
+
+    // 1) Validaciones (Pagos aprobados + Requisitos aprobados) => gating
     if (this.bypassValidations) {
       this.validationsLoading = false;
       this.canChooseModality = true;
       this.validationsMsg = '';
     } else {
       this.validationsLoading = true;
-      this.documents.list({ category: 'matricula', page: 1, pageSize: 200 }).subscribe({
-        next: (res: any) => {
-          const raw = Array.isArray(res?.data) ? res.data : (Array.isArray(res) ? res : []);
-          const docs = raw.map((d: any) => ({
-            ...d,
-            estado: d?.status ?? d?.estado ?? 'en_revision',
-          }));
+      const user = this.auth.currentUserValue;
+      const id_user = user?.id_user;
+      if (!id_user) {
+        this.canChooseModality = false;
+        this.validationsMsg = 'No se pudo verificar tu usuario. Intenta nuevamente.';
+        this.validationsLoading = false;
+      } else {
+        // A) Pagos aprobados
+        this.vouchers.list({ id_user: Number(id_user), status: 'aprobado', page: 1, pageSize: 1 }).subscribe({
+          next: (vres: any) => {
+            const vdata = Array.isArray(vres?.data) ? vres.data : (Array.isArray(vres) ? vres : []);
+            const pagosAprobados = vdata.length > 0;
 
-          const hasAny = docs.length > 0;
-          const allApproved = hasAny && docs.every((d: any) => String(d.estado || '').toLowerCase() === 'aprobado');
+            // B) Requisitos de matrícula aprobados
+            this.documents.list({ category: 'matricula', page: 1, pageSize: 200 }).subscribe({
+              next: (res: any) => {
+                const raw = Array.isArray(res?.data) ? res.data : (Array.isArray(res) ? res : []);
+                const docs = raw.map((d: any) => ({
+                  ...d,
+                  estado: d?.status ?? d?.estado ?? 'en_revision',
+                }));
+                const hasAny = docs.length > 0;
+                const requisitosAprobados = hasAny && docs.every((d: any) => String(d.estado || '').toLowerCase() === 'aprobado');
 
-          this.canChooseModality = allApproved;
-          this.validationsMsg = allApproved
-            ? ''
-            : 'Debes tener aprobados los requisitos de Matrícula para elegir tu modalidad.';
-        },
-        error: () => {
-          this.canChooseModality = false;
-          this.validationsMsg = 'No se pudo verificar tus requisitos. Intenta nuevamente.';
-        },
-        complete: () => { this.validationsLoading = false; },
-      });
+                const ok = pagosAprobados && requisitosAprobados;
+                this.canChooseModality = ok;
+                this.validationsMsg = ok
+                  ? ''
+                  : (!pagosAprobados
+                      ? 'Debes tener aprobados tus pagos para habilitar Gestión de Modalidad.'
+                      : 'Debes tener aprobados los requisitos de Matrícula para elegir tu modalidad.');
+              },
+              error: () => {
+                this.canChooseModality = false;
+                this.validationsMsg = 'No se pudo verificar tus requisitos. Intenta nuevamente.';
+              },
+              complete: () => { this.validationsLoading = false; },
+            });
+          },
+          error: () => {
+            this.canChooseModality = false;
+            this.validationsMsg = 'No se pudo verificar el estado de tus pagos. Intenta nuevamente.';
+            this.validationsLoading = false;
+          },
+        });
+      }
     }
 
     // 2) Cargar selección actual
@@ -145,9 +207,16 @@ export class GestionModalidad {
         this.carreras = list.map(r => ({ id: Number(r.id), nombre: String(r.nombre) }))
           .filter(r => Number.isFinite(Number(r.id)) && !!r.nombre);
 
+        // Si no se pudo resolver por /enrollments/career, intentar mapear por nombre desde topic
         if (!Number.isFinite(Number(this.selectedCareerId)) && this.uic.carrera) {
           const match = this.carreras.find(c => String(c.nombre) === String(this.uic.carrera));
           this.selectedCareerId = match ? Number(match.id) : null;
+        }
+
+        // Si se resolvió id pero no nombre, resolver nombre del catálogo
+        if (Number.isFinite(Number(this.selectedCareerId)) && !this.uic.carrera) {
+          const name = this.carreras.find(c => Number(c.id) === Number(this.selectedCareerId))?.nombre;
+          if (name) this.uic.carrera = name;
         }
       },
       error: () => { this.carreras = []; }
@@ -174,10 +243,35 @@ export class GestionModalidad {
       complete: () => { this.uicTopicLoading = false; },
       error: () => { this.uicTopicLoading = false; }
     });
+
+    // 5) Si ya está en UIC, usar el tutor asignado (si difiere del elegido en el topic)
+    // Nota: este endpoint está protegido por requireModality('UIC')
+    this.studentApi.getActivePeriodId$().subscribe((id) => {
+      this.enroll.current(id || undefined).subscribe({
+        next: (res) => {
+          const mod = (res as EnrollmentCurrent)?.modality as Modality | undefined;
+          if (mod !== 'UIC') return;
+          this.http.get<any>('/api/uic/estudiante/avance').subscribe({
+            next: (av) => {
+              const tid = Number(av?.tutorId);
+              const tname = av?.tutorNombre != null ? String(av.tutorNombre) : null;
+              if (Number.isFinite(tid)) {
+                this.assignedTutorId = tid;
+                this.assignedTutorNombre = tname;
+                this.selectedTutorId = tid;
+              }
+            },
+            error: () => { /* ignore */ }
+          });
+        },
+        error: () => { /* ignore */ }
+      });
+    });
   }
 
   submitUIC() {
     this.uicAttempted = true;
+    if (!this.isTemaValido(this.uic.tema)) return;
     if (!this.canSubmitUIC) return;
     if (!this.canChooseModality) {
       this.toastMsg = this.validationsMsg || 'No puedes elegir modalidad aún.';

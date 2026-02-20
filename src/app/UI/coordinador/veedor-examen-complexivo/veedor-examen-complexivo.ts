@@ -13,6 +13,7 @@ import { forkJoin, of, Observable } from 'rxjs';
   styleUrl: './veedor-examen-complexivo.scss'
 })
 export class VeedorExamenComplexivo {
+
   periodOptions: Array<{ id_academic_periods: number; name: string }> = [];
   carrerasDisponibles: Array<{ id: number; nombre: string }> = [];
   veedoresDisponibles: Array<{ id_user: number; fullname: string }> = [];
@@ -20,6 +21,8 @@ export class VeedorExamenComplexivo {
 
   // Veedores ya asignados en el período (cualquier carrera) para excluirlos al crear nuevas filas
   private veedoresAsignadosPeriodo = new Set<number>();
+
+  private editBackup = new Map<number, { carreraId?: number; veedor1Id?: number; veedor2Id?: number }>();
 
   activePeriodId: number | null = null;
 
@@ -39,25 +42,97 @@ export class VeedorExamenComplexivo {
   message: string | null = null;
   error: string | null = null;
 
+  // Paginación (client-side)
+  page = 1;
+  pageSize = 6;
+
+  get totalPages(): number {
+    const total = (this.model.materias || []).length;
+    return Math.max(1, Math.ceil(total / this.pageSize));
+  }
+
+  get pagedMaterias() {
+    const start = (this.page - 1) * this.pageSize;
+    return (this.model.materias || []).slice(start, start + this.pageSize);
+  }
+
+  setPage(p: number) {
+    const n = Math.max(1, Math.min(this.totalPages, Math.trunc(Number(p))));
+    this.page = n;
+  }
+
   addCarrera() {
-    if (this.model.materias.length >= 4) return;
     this.model.materias.push({ locked: false });
+    this.setPage(this.totalPages);
     this.onChange();
   }
 
   removeCarrera(i: number) {
+    const m = this.model.materias[i];
+    if (!m) return;
+
+    // Si la fila está bloqueada, significa que viene de BD. Al quitar, debe borrarse en BD.
+    const isLocked = !!m.locked;
+    const careerId = Number(m.carreraId);
+    const academicPeriodId = Number(this.model.periodoId);
+
+    // Remover del UI inmediatamente
     this.model.materias.splice(i, 1);
+    // Reajustar página si quedó fuera de rango
+    if (this.page > this.totalPages) this.setPage(this.totalPages);
     this.onChange();
+
+    if (isLocked && Number.isFinite(careerId) && Number.isFinite(academicPeriodId)) {
+      this.loading = true;
+      this.http.put('/api/complexivo/veedores/set', { careerId, teacherIds: [], academicPeriodId }).subscribe({
+        next: () => {
+          this.message = 'Asignación eliminada correctamente.';
+          this.cargarAsignaciones();
+        },
+        error: (err) => {
+          this.error = err?.error?.message || 'No se pudo eliminar la asignación.';
+          this.cargarAsignaciones();
+        },
+        complete: () => { this.loading = false; }
+      });
+    }
   }
 
   hasEditableRows(): boolean {
     return (this.model.materias || []).some((m) => !m?.locked);
   }
 
-  private getSelectedIdsForRow(rowIndex: number): number[] {
-    const m = this.model.materias[rowIndex];
-    const ids = [Number(m?.veedor1Id), Number(m?.veedor2Id)].filter((v) => Number.isFinite(v));
-    return Array.from(new Set(ids));
+  startEditRow(i: number) {
+    const m = this.model.materias[i];
+    if (!m || !m.locked) return;
+    this.editBackup.set(i, { carreraId: m.carreraId, veedor1Id: m.veedor1Id, veedor2Id: m.veedor2Id });
+    m.locked = false;
+    this.onChange();
+  }
+
+  cancelEditRow(i: number) {
+    const m = this.model.materias[i];
+    if (!m) return;
+    const b = this.editBackup.get(i);
+    if (b) {
+      m.carreraId = b.carreraId;
+      m.veedor1Id = b.veedor1Id;
+      m.veedor2Id = b.veedor2Id;
+    }
+    m.locked = true;
+    this.editBackup.delete(i);
+    this.onChange();
+  }
+
+  private toTitleCase(name: string): string {
+    const s = String(name || '').trim();
+    if (!s) return '';
+    return s
+      .toLowerCase()
+      .split(' ')
+      .filter(Boolean)
+      .map(p => p.length ? (p[0].toUpperCase() + p.slice(1)) : p)
+      .join(' ');
   }
 
   onChangeVeedores(rowIndex: number) {
@@ -69,6 +144,7 @@ export class VeedorExamenComplexivo {
 
     if (Number.isFinite(v1) && Number.isFinite(v2) && v1 === v2) {
       m.veedor2Id = undefined;
+      this.errors = Array.from(new Set([...(this.errors || []), `Fila ${rowIndex + 1}: Los veedores no pueden ser el mismo.`]));
     }
 
     this.onChange();
@@ -87,6 +163,13 @@ export class VeedorExamenComplexivo {
     this.onChange();
   }
 
+  private getSelectedIdsForRow(rowIndex: number): number[] {
+    const m = this.model.materias[rowIndex];
+    if (!m) return [];
+    const ids = [Number(m.veedor1Id), Number(m.veedor2Id)].filter((v) => Number.isFinite(v));
+    return ids.map(Number);
+  }
+
   getAvailableVeedores(rowIndex: number, slot: 1 | 2) {
     const currentSelected = new Set<number>(this.getSelectedIdsForRow(rowIndex));
 
@@ -100,26 +183,56 @@ export class VeedorExamenComplexivo {
     });
 
     const current = this.model.materias[rowIndex];
-    const otherInSameRow = slot === 1 ? Number(current?.veedor2Id) : Number(current?.veedor1Id);
+    const selectedThisSlot = slot === 1 ? Number(current?.veedor1Id) : Number(current?.veedor2Id);
+    const selectedOtherSlot = slot === 1 ? Number(current?.veedor2Id) : Number(current?.veedor1Id);
 
     // Disponibles = todos - asignados en el período - usados en otras filas + (los que ya están seleccionados en esta fila)
     return (this.veedoresDisponibles || []).filter(v => {
       const id = Number(v.id_user);
       if (!Number.isFinite(id)) return false;
-      if (currentSelected.has(id)) return true;
-      if (Number.isFinite(otherInSameRow) && id === otherInSameRow) return false;
+
+      // Mantener visible lo que ya está seleccionado en ESTE slot
+      if (Number.isFinite(selectedThisSlot) && id === selectedThisSlot) return true;
+      // Bloquear repetir el mismo docente en el OTRO slot
+      if (Number.isFinite(selectedOtherSlot) && id === selectedOtherSlot) return false;
+
       if (usedElsewhere.has(id)) return false;
       // excluir si ya está asignado en otra carrera del período
       return !this.veedoresAsignadosPeriodo.has(id);
     });
   }
 
+  private normalizeText(s: string): string {
+    return String(s || '')
+      .trim()
+      .toUpperCase()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .replace(/\s+/g, ' ');
+  }
+
+  private onlyTecnologiaAndUniqueCarreras(list: Array<{ id: number; nombre: string }>): Array<{ id: number; nombre: string }> {
+    const seen = new Set<string>();
+    const out: Array<{ id: number; nombre: string }> = [];
+    for (const c of Array.isArray(list) ? list : []) {
+      const id = Number((c as any)?.id);
+      const nombre = String((c as any)?.nombre || '');
+      if (!Number.isFinite(id) || !nombre.trim()) continue;
+      const keyName = this.normalizeText(nombre);
+      if (!keyName.includes('TECNOLOGIA')) continue;
+      if (seen.has(keyName)) continue;
+      seen.add(keyName);
+      out.push({ id, nombre });
+    }
+    return out.sort((a, b) => a.nombre.localeCompare(b.nombre));
+  }
+
   private validate(): boolean {
     const errs: string[] = [];
     if (!Number.isFinite(Number(this.model.periodoId))) errs.push('El período es requerido.');
     if (this.model.materias.length === 0) errs.push('Agregue al menos una carrera.');
-    if (this.model.materias.length > 4) errs.push('No puede asignar más de 4 carreras para el examen complexivo.');
     const nombres = new Set<string>();
+
     this.model.materias.forEach((m, idx) => {
       if (!m.carreraId) errs.push(`Fila ${idx + 1}: La carrera evaluada es requerida.`);
       if (Number.isFinite(Number(m.carreraId))) {
@@ -160,13 +273,14 @@ export class VeedorExamenComplexivo {
           if (!arr.includes(uid)) arr.push(uid);
         }
         this.veedoresAsignadosPeriodo = assigned;
-        const materias = Array.from(grouped.entries()).slice(0, 4).map(([carreraId, veedores]) => ({
+        const materias = Array.from(grouped.entries()).map(([carreraId, veedores]) => ({
           carreraId,
           veedor1Id: veedores?.[0],
           veedor2Id: veedores?.[1],
           locked: true,
         }));
         this.model.materias = materias;
+        this.setPage(1);
         this.onChange();
       },
       error: (_err) => {
@@ -196,7 +310,7 @@ export class VeedorExamenComplexivo {
 
     // Cargar carreras desde BE
     this.http.get<Array<{ id: number; nombre: string }>>('/api/uic/admin/carreras').subscribe(data => {
-      this.carrerasDisponibles = Array.isArray(data) ? data : [];
+      this.carrerasDisponibles = this.onlyTecnologiaAndUniqueCarreras(Array.isArray(data) ? data : []);
     });
 
     this.loadVeedores();
@@ -208,7 +322,7 @@ export class VeedorExamenComplexivo {
     const normalize = (list: any) => {
       const arr = Array.isArray(list) ? list : [];
       return arr
-        .map((x: any) => ({ id_user: Number(x?.id_user), fullname: String(x?.fullname || '').trim() }))
+        .map((x: any) => ({ id_user: Number(x?.id_user), fullname: this.toTitleCase(String(x?.fullname || '').trim()) }))
         .filter((x: any) => Number.isFinite(Number(x.id_user)) && x.fullname);
     };
 
@@ -261,6 +375,7 @@ export class VeedorExamenComplexivo {
         if (!Number.isFinite(careerId)) return null;
         const teacherIds = [Number(m.veedor1Id), Number(m.veedor2Id)]
           .filter((v) => Number.isFinite(v));
+        if (!teacherIds.length) return null;
         return this.http.put('/api/complexivo/veedores/set', { careerId, teacherIds, academicPeriodId });
       })
       .filter((x): x is Observable<unknown> => x != null);

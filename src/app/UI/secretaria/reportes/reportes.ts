@@ -56,12 +56,13 @@ export class Reportes {
   }
 
   private formatLongDate(d: Date) {
-    return d.toLocaleDateString('es-EC', {
+    const base = d.toLocaleDateString('es-EC', {
       weekday: 'long',
       year: 'numeric',
       month: 'long',
       day: 'numeric',
     });
+    return `Santo Domingo, ${base}`;
   }
 
   private escapeHtml(s: string) {
@@ -226,7 +227,6 @@ export class Reportes {
           <img class="logo" src="${origin}/assets/Logo.png" />
           <div class="content">
             <div class="title">REPORTE DE ESTUDIANTES CON MALLA ACADÉMICA<br/>APROBADA</div>
-            <div class="section">LISTADO DE ESTUDIANTES</div>
             <table>
               <thead>
                 <tr>
@@ -312,7 +312,6 @@ export class Reportes {
           <img class="logo" src="${origin}/assets/Logo.png" />
           <div class="content">
             <div class="title">REPORTE DE DOCUMENTOS DE REQUISITOS DEL<br/>ESTUDIANTE</div>
-            <div class="section">LISTADO DE ESTUDIANTES</div>
             <table>
               <thead>
                 <tr>

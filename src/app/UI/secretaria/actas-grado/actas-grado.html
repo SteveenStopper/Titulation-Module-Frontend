@@ -41,22 +41,30 @@
               [(ngModel)]="it.calificacionTribunal" min="0" max="10" step="0.1" [ngClass]="{
                      'border-gray-300': !isCalificacionValida(it),
                      'border-green-400': isCalificacionValida(it)
-                   }" placeholder="0 - 10" />
+                   }" placeholder="0 - 10" [disabled]="!it.hojaDocumentoId" />
           </td>
           <td class="px-3 py-2">
             <div class="flex items-center justify-center gap-2">
               <input type="file" accept="application/pdf" class="hidden" #fileInp
                 (change)="onFileSelected($event, it.id)" />
               <button type="button" (click)="fileInp.click()"
-                class="px-3 py-1.5 text-xs rounded-md bg-amber-600 text-white hover:bg-amber-700 disabled:opacity-50 disabled:cursor-not-allowed">
+                class="px-2.5 py-1.5 text-xs rounded-md bg-amber-600 text-white hover:bg-amber-700 disabled:opacity-50 disabled:cursor-not-allowed">
                 <i class="fa fa-upload mr-1"></i> Cargar hoja de tribunal
               </button>
+              <button type="button" (click)="verHoja(it.id)" [disabled]="!it.hojaDocumentoId"
+                class="px-2.5 py-1.5 text-xs rounded-md bg-slate-600 text-white hover:bg-slate-700 disabled:opacity-50 disabled:cursor-not-allowed">
+                <i class="fa fa-eye mr-1"></i> Ver
+              </button>
+              <button type="button" (click)="borrarHoja(it.id)" [disabled]="!it.hojaDocumentoId"
+                class="px-2.5 py-1.5 text-xs rounded-md bg-rose-600 text-white hover:bg-rose-700 disabled:opacity-50 disabled:cursor-not-allowed">
+                <i class="fa fa-trash mr-1"></i> Borrar
+              </button>
               <button type="button" (click)="generarHoja(it.id)" [disabled]="!canGenerarActaUIC(it)"
-                class="px-3 py-1.5 text-xs rounded-md bg-indigo-600 text-white hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed">
+                class="px-2.5 py-1.5 text-xs rounded-md bg-indigo-600 text-white hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed">
                 <i class="fa fa-file-lines mr-1"></i> Generar Acta de Grado
               </button>
               <button type="button" (click)="guardar(it.id)" [disabled]="!canGuardarUIC(it)"
-                class="px-3 py-1.5 text-xs rounded-md bg-green-600 text-white hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed">
+                class="px-2.5 py-1.5 text-xs rounded-md bg-green-600 text-white hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed">
                 <i class="fa fa-floppy-disk mr-1"></i> Guardar
               </button>
             </div>
@@ -89,16 +97,31 @@
               [(ngModel)]="it.calificacionComplexivo" min="0" max="10" step="0.1" [ngClass]="{
                      'border-gray-300': !isCalificacionComplexivoValida(it),
                      'border-green-400': isCalificacionComplexivoValida(it)
-                   }" placeholder="0 - 10" />
+                   }" placeholder="0 - 10" [disabled]="!it.actaDocumentoId" />
           </td>
           <td class="px-3 py-2">
             <div class="flex items-center justify-center gap-2">
+              <input type="file" accept="application/pdf" class="hidden" #fileActa
+                (change)="onFileSelectedComplexivo($event, it.id)" />
+              <button type="button" (click)="fileActa.click()"
+                [disabled]="!canUploadActaComplexivo(it)"
+                class="px-2.5 py-1.5 text-xs rounded-md bg-amber-600 text-white hover:bg-amber-700 disabled:opacity-50 disabled:cursor-not-allowed">
+                <i class="fa fa-upload mr-1"></i> Subir
+              </button>
+              <button type="button" (click)="verActaComplexivo(it.id)" [disabled]="!it.actaDocumentoId"
+                class="px-2.5 py-1.5 text-xs rounded-md bg-slate-600 text-white hover:bg-slate-700 disabled:opacity-50 disabled:cursor-not-allowed">
+                <i class="fa fa-eye mr-1"></i> Ver
+              </button>
+              <button type="button" (click)="borrarActaComplexivo(it.id)" [disabled]="!it.actaDocumentoId"
+                class="px-2.5 py-1.5 text-xs rounded-md bg-rose-600 text-white hover:bg-rose-700 disabled:opacity-50 disabled:cursor-not-allowed">
+                <i class="fa fa-trash mr-1"></i> Borrar
+              </button>
               <button type="button" (click)="guardarComplexivo(it.id)" [disabled]="!canGuardarComplexivo(it)"
-                class="px-3 py-1.5 text-xs rounded-md bg-green-600 text-white hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed">
+                class="px-2.5 py-1.5 text-xs rounded-md bg-green-600 text-white hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed">
                 <i class="fa fa-floppy-disk mr-1"></i> Guardar
               </button>
               <button type="button" (click)="generarActaComplexivo(it.id)" [disabled]="!canGenerarActaComplexivo(it)"
-                class="px-3 py-1.5 text-xs rounded-md bg-indigo-600 text-white hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed">
+                class="px-2.5 py-1.5 text-xs rounded-md bg-indigo-600 text-white hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed">
                 <i class="fa fa-file-lines mr-1"></i> Generar Acta de Grado
               </button>
             </div>

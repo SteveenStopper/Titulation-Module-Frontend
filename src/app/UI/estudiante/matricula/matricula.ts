@@ -2,6 +2,7 @@ import { Component } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ToastrService } from 'ngx-toastr';
+import Swal from 'sweetalert2';
 import { DocumentsService } from '../../../services/documents.service';
 import { MeService } from '../../../services/me.service';
 import { AuthService } from '../../../services/auth.service';
@@ -34,10 +35,18 @@ export class Matricula {
   reqTipos: { solicitud?: string; oficio?: string; otro?: string } = {};
   solicitudTipos = ['Solicitud'];
   oficioTipos = ['Oficio'];
-  otroTipos = ['Certificado de vinculación', 'Certificado de prácticas pre profesionales', 'Certificado de inglés'];
+  otroTipos = [
+    'Certificado de vinculación',
+    'Certificado de prácticas pre profesionales',
+    'Certificado de inglés',
+    'Certificado de no adeudar',
+    'Certificado de aprobación malla',
+  ];
   // Para 'Otro documento' múltiple con tipo por archivo
   reqOtros: Array<{ file: File; nombre: string; tipo: string | '' }> = [];
   reqEstado: 'enviado' | 'aprobado' | 'rechazado' | '' = '';
+
+  dragOverReq: { solicitud: boolean; oficio: boolean; otro: boolean } = { solicitud: false, oficio: false, otro: false };
 
   get hasOtrosSinTipo(): boolean {
     return this.reqOtros.some(o => !o.tipo);
@@ -68,6 +77,30 @@ export class Matricula {
     private auth: AuthService,
     private vouchers: VouchersService,
   ) {}
+
+  private swalError(msg: string) {
+    return Swal.fire({
+      toast: true,
+      position: 'top-end',
+      icon: 'error',
+      title: msg,
+      showConfirmButton: false,
+      timer: 3500,
+      timerProgressBar: true,
+    });
+  }
+
+  private swalWarn(msg: string) {
+    return Swal.fire({
+      toast: true,
+      position: 'top-end',
+      icon: 'warning',
+      title: msg,
+      showConfirmButton: false,
+      timer: 3500,
+      timerProgressBar: true,
+    });
+  }
 
   ngOnInit() {
     this.validationsLoading = true;
@@ -146,12 +179,28 @@ export class Matricula {
     const input = e.target as HTMLInputElement;
     if (tipo === 'otro') {
       const files = (input.files ? Array.from(input.files) : []) as File[];
+      for (const f of files) {
+        if (String(f.type || '').toLowerCase().startsWith('image/')) {
+          this.swalError('Imágenes no permitidas. Solo se permiten archivos PDF');
+          continue;
+        }
+        const isPdf = f.type === 'application/pdf' && f.name.toLowerCase().endsWith('.pdf');
+        if (!isPdf) {
+          this.swalError('Solo se permiten archivos PDF');
+          continue;
+        }
+      }
       // Agregar sin duplicar por nombre+tamaño
       for (const f of files) {
-        const exists = this.reqOtros.some(o => o.nombre === f.name && o.file.size === f.size);
-        if (!exists) {
-          this.reqOtros.push({ file: f, nombre: f.name, tipo: '' });
+        if (String(f.type || '').toLowerCase().startsWith('image/')) continue;
+        const isPdf = f.type === 'application/pdf' && f.name.toLowerCase().endsWith('.pdf');
+        if (!isPdf) continue;
+        const existsSameName = this.reqOtros.some(o => o.nombre === f.name);
+        if (existsSameName) {
+          this.swalWarn('No puedes subir documentos con el mismo nombre');
+          continue;
         }
+        this.reqOtros.push({ file: f, nombre: f.name, tipo: '' });
       }
       // Limpiar legacy single state para 'otro'
       delete this.reqArchivos.otro;
@@ -161,6 +210,23 @@ export class Matricula {
     } else {
       const file = input.files && input.files[0];
       if (file) {
+        if (String(file.type || '').toLowerCase().startsWith('image/')) {
+          this.swalError('Imágenes no permitidas. Solo se permiten archivos PDF');
+          input.value = '';
+          return;
+        }
+        const isPdf = file.type === 'application/pdf' && file.name.toLowerCase().endsWith('.pdf');
+        if (!isPdf) {
+          this.swalError('Solo se permiten archivos PDF');
+          input.value = '';
+          return;
+        }
+        const existingName = this.reqNombres[tipo];
+        if (existingName && existingName === file.name) {
+          this.swalWarn('No puedes subir documentos con el mismo nombre');
+          input.value = '';
+          return;
+        }
         this.reqArchivos[tipo] = file;
         this.reqNombres[tipo] = file.name;
       } else {
@@ -170,12 +236,101 @@ export class Matricula {
     }
   }
 
+  onReqDragOver(e: DragEvent, tipo: 'solicitud'|'oficio'|'otro') {
+    e.preventDefault();
+    if (!this.requisitosHabilitados) return;
+    this.dragOverReq[tipo] = true;
+  }
+
+  onReqDragLeave(e: DragEvent, tipo: 'solicitud'|'oficio'|'otro') {
+    e.preventDefault();
+    this.dragOverReq[tipo] = false;
+  }
+
+  onReqDrop(e: DragEvent, tipo: 'solicitud'|'oficio'|'otro') {
+    e.preventDefault();
+    this.dragOverReq[tipo] = false;
+    if (!this.requisitosHabilitados) {
+      this.toast.warning(this.validationsMsg || 'No puedes continuar aún.');
+      return;
+    }
+    const files = e.dataTransfer?.files ? Array.from(e.dataTransfer.files) : [];
+    if (!files.length) return;
+
+    if (tipo === 'otro') {
+      for (const f of files) {
+        if (String(f.type || '').toLowerCase().startsWith('image/')) {
+          this.swalError('Imágenes no permitidas. Solo se permiten archivos PDF');
+          continue;
+        }
+        const isPdf = f.type === 'application/pdf' && f.name.toLowerCase().endsWith('.pdf');
+        if (!isPdf) {
+          this.swalError('Solo se permiten archivos PDF');
+          continue;
+        }
+        const existsSameName = this.reqOtros.some(o => o.nombre === f.name);
+        if (existsSameName) {
+          this.swalWarn('No puedes subir documentos con el mismo nombre');
+          continue;
+        }
+        this.reqOtros.push({ file: f, nombre: f.name, tipo: '' });
+      }
+      return;
+    }
+
+    const f = files[0];
+    if (String(f?.type || '').toLowerCase().startsWith('image/')) {
+      this.swalError('Imágenes no permitidas. Solo se permiten archivos PDF');
+      return;
+    }
+    const isPdf = f.type === 'application/pdf' && f.name.toLowerCase().endsWith('.pdf');
+    if (!isPdf) {
+      this.swalError('Solo se permiten archivos PDF');
+      return;
+    }
+    const existingName = this.reqNombres[tipo];
+    if (existingName && existingName === f.name) {
+      this.swalWarn('No puedes subir documentos con el mismo nombre');
+      return;
+    }
+    this.reqArchivos[tipo] = f;
+    this.reqNombres[tipo] = f.name;
+  }
+
   removeOtro(index: number) {
     if (!this.requisitosHabilitados) {
       this.toast.warning(this.validationsMsg || 'No puedes continuar aún.');
       return;
     }
     this.reqOtros.splice(index, 1);
+  }
+
+  isOtroTipoDisabled(tipoLabel: string, currentIndex: number): boolean {
+    const labelToCode = (t: string): string => {
+      const key = String(t || '').toLowerCase();
+      if (key.includes('vincul')) return 'cert_vinculacion';
+      if (key.includes('prácticas') || key.includes('practicas')) return 'cert_practicas';
+      if (key.includes('inglés') || key.includes('ingles')) return 'cert_ingles';
+      if (key.includes('no adeud')) return 'cert_no_adeudar';
+      if (key.includes('aprobación malla') || key.includes('aprobacion malla')) return 'cert_aprobacion_malla';
+      return '';
+    };
+
+    const current = this.reqOtros[currentIndex];
+    if (current && String(current.tipo || '') === String(tipoLabel || '')) return false;
+
+    // 1) No repetir dentro de la selección actual
+    const alreadySelected = this.reqOtros.some((o, idx) => idx !== currentIndex && String(o.tipo || '') === String(tipoLabel || ''));
+    if (alreadySelected) return true;
+
+    // 2) Si ya fue aprobado en checklist, bloquear para evitar resubidas
+    const code = labelToCode(tipoLabel);
+    if (!code) return false;
+    const alreadyApproved = (this.docsList || []).some((d: any) =>
+      String(d?.tipo || '').toLowerCase() === String(code).toLowerCase() &&
+      String(d?.estado || '').toLowerCase() === 'aprobado'
+    );
+    return alreadyApproved;
   }
 
   submitRequisitos() {
@@ -190,6 +345,8 @@ export class Matricula {
       if (key.includes('vincul')) return 'cert_vinculacion';
       if (key.includes('prácticas') || key.includes('practicas')) return 'cert_practicas';
       if (key.includes('inglés') || key.includes('ingles')) return 'cert_ingles';
+      if (key.includes('no adeud')) return 'cert_no_adeudar';
+      if (key.includes('aprobación malla') || key.includes('aprobacion malla')) return 'cert_aprobacion_malla';
       return 'solicitud';
     };
 
@@ -234,7 +391,8 @@ export class Matricula {
         this.loadChecklist();
       })
       .catch((err: any) => {
-        this.toast.error(err?.error?.message || 'No se pudieron subir los documentos');
+        const msg = err?.error?.message || err?.error?.error || err?.message || 'No se pudieron subir los documentos';
+        this.swalError(String(msg));
       })
       .finally(() => { this.loading = false; });
   }
@@ -285,6 +443,8 @@ export class Matricula {
       case 'cert_vinculacion': return 'Cert. de vinculación';
       case 'cert_practicas': return 'Cert. de prácticas';
       case 'cert_ingles': return 'Cert. de inglés';
+      case 'cert_no_adeudar': return 'Certificado de no adeudar';
+      case 'cert_aprobacion_malla': return 'Certificado de aprobación malla';
       // Si por alguna razón aparecieran comprobantes (no debería en estudiante), se distinguen claramente
       case 'comprobante_certificados': return 'Comprobante de certificados';
       case 'comprobante_titulacion': return 'Comprobante de titulación';

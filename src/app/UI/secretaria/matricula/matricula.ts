@@ -82,7 +82,15 @@ export class Matricula {
     // Solo documentos de matrícula (excluir comprobantes de pagos)
     this.documents.list({ category: 'matricula_secretaria', page: this.page, pageSize: this.pageSize }).subscribe({
       next: (res: any) => {
-        const allowed = new Set(['solicitud', 'oficio', 'cert_vinculacion', 'cert_practicas', 'cert_ingles']);
+        const allowed = new Set([
+          'solicitud',
+          'oficio',
+          'cert_vinculacion',
+          'cert_practicas',
+          'cert_ingles',
+          'cert_no_adeudar',
+          'cert_aprobacion_malla',
+        ]);
         const data = (Array.isArray(res?.data) ? res.data : (Array.isArray(res) ? res : []))
           .filter((d: any) => {
             const t = String(d?.tipo || '').toLowerCase();
@@ -308,6 +316,8 @@ export class Matricula {
       case 'cert_vinculacion': return 'Cert. Vinculación';
       case 'cert_practicas': return 'Cert. Prácticas';
       case 'cert_ingles': return 'Cert. Inglés';
+      case 'cert_no_adeudar': return 'Certificado de no adeudar';
+      case 'cert_aprobacion_malla': return 'Certificado de aprobación malla';
       default: return 'Documento';
     }
   }

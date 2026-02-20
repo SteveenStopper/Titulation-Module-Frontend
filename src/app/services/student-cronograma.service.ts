@@ -20,6 +20,7 @@ export interface CronogramaView {
 }
 
 export interface AvanceView {
+  tutorId?: number | null;
   tutorNombre: string | null;
   p1: number | null;
   p2: number | null;
@@ -62,7 +63,7 @@ export class StudentCronogramaService {
 
   getAvanceUIC(): Observable<AvanceView> {
     return this.http.get<AvanceView>('/api/uic/estudiante/avance')
-      .pipe(catchError(() => of({ tutorNombre: null, p1: null, p2: null, p3: null })));
+      .pipe(catchError(() => of({ tutorId: null, tutorNombre: null, p1: null, p2: null, p3: null })));
   }
 
   sendInformeFinal(): Observable<any> {

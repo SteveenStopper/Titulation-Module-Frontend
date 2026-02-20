@@ -40,16 +40,38 @@
         {{ informeFinalEntregado ? 'Entregado' : (puedeSubirInforme ? 'Habilitado' : 'Pendiente de Parcial 2') }}
       </span>
     </div>
-    <p class="text-sm text-gray-600 mb-3">Podrás subir tu informe final cuando se registre la calificación del
+    <p class="text-sm text-gray-600 mb-3" *ngIf="!informeFinalEntregado">Podrás subir tu informe final cuando se registre la calificación del
       <strong>Parcial 2</strong>.</p>
 
     <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
       <div>
-        <label class="block text-sm font-medium text-gray-700 mb-1">Archivo (PDF)</label>
-        <input type="file" accept="application/pdf" (change)="onInformeChange($event)"
-          [disabled]="!puedeSubirInforme || informeFinalEntregado"
-          class="block w-full text-sm text-gray-700 disabled:opacity-60 file:mr-3 file:py-2 file:px-3 file:rounded-md file:border-0 file:text-sm file:font-medium file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100" />
-        <div class="text-xs text-gray-500 mt-1" *ngIf="informeNombre">Archivo: {{ informeNombre }}</div>
+        <label class="block text-sm font-medium text-gray-700 mb-1">Archivo (PDF o Word)</label>
+
+        <div class="student-dropzone" [class.is-dragover]="dragOverInforme" (dragover)="onInformeDragOver($event)"
+          (dragleave)="onInformeDragLeave($event)" (drop)="onInformeDrop($event)" [class.opacity-60]="!puedeSubirInforme || informeFinalEntregado"
+          [class.pointer-events-none]="!puedeSubirInforme || informeFinalEntregado" (click)="infInp.click()">
+          <div class="flex items-center gap-3">
+            <div class="student-dropzone__icon"><i class="fa-solid fa-cloud-arrow-up"></i></div>
+            <div class="flex-1">
+              <div class="student-dropzone__title">Arrastra y suelta tu informe aquí</div>
+              <div class="student-dropzone__subtitle">o haz clic para seleccionarlo</div>
+              <div class="student-dropzone__hint">Permitidos: PDF, DOC, DOCX</div>
+            </div>
+            <button type="button" class="student-dropzone__btn" [disabled]="!puedeSubirInforme || informeFinalEntregado">Seleccionar</button>
+          </div>
+
+          <div class="mt-3" *ngIf="informeNombre">
+            <div class="student-filepill">
+              <i class="fa-solid fa-file mr-2"></i>
+              <span class="truncate">{{ informeNombre }}</span>
+              <button type="button" class="ml-auto text-xs px-2 py-1 rounded bg-white border hover:bg-gray-50"
+                (click)="$event.stopPropagation(); setInformeFile(null)">Quitar</button>
+            </div>
+          </div>
+        </div>
+
+        <input #infInp type="file" accept="application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document" class="hidden"
+          (change)="onInformeChange($event)" [disabled]="!puedeSubirInforme || informeFinalEntregado" />
       </div>
       <div class="flex items-end">
         <button type="button" (click)="enviarInforme()" [disabled]="!canEnviarInforme || informeFinalEntregado"

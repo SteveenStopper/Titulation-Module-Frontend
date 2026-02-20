@@ -54,11 +54,14 @@
             </td>
             <td class="px-6 py-4">
               <div class="flex items-center justify-end gap-2">
-                <button class="px-2 py-1 text-sm border rounded hover:bg-gray-50"
-                  (click)="abrirEditar(p)">Editar</button>
-                <button class="px-2 py-1 text-sm border rounded hover:bg-gray-50 disabled:opacity-50"
-                  [disabled]="p.estado==='activo'" (click)="activar(p)">Activar</button>
-                <button class="px-2 py-1 text-sm border rounded hover:bg-gray-50" (click)="cerrar(p)">Cerrar</button>
+                <button class="px-2 py-1 text-sm rounded bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                  [disabled]="!canEdit(p)" (click)="abrirEditar(p)">Editar</button>
+                <button class="px-2 py-1 text-sm rounded bg-emerald-600 text-white hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                  [disabled]="!canActivate(p)" (click)="activar(p)">Activar</button>
+                <button class="px-2 py-1 text-sm rounded bg-amber-600 text-white hover:bg-amber-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                  [disabled]="p.estado!=='activo'" (click)="cerrar(p)">Cerrar</button>
+                <button class="px-2 py-1 text-sm rounded bg-rose-600 text-white hover:bg-rose-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                  [disabled]="!canDelete(p)" (click)="eliminar(p)">Eliminar</button>
               </div>
             </td>
           </tr>
@@ -83,19 +86,21 @@
       <div class="space-y-3">
         <div>
           <label class="block text-sm text-gray-700 mb-1">Nombre</label>
-          <select [(ngModel)]="form.nombre" class="w-full px-3 py-2 border rounded">
+          <select [(ngModel)]="selectedInstitutePeriodId" (ngModelChange)="onInstitutePeriodChange($event)" class="w-full px-3 py-2 border rounded">
             <option value="" disabled>Seleccione un período</option>
-            <option *ngFor="let p of institutePeriods" [ngValue]="p.name">{{ p.name }}</option>
+            <option *ngFor="let p of institutePeriods" [ngValue]="p.id">{{ p.name }}</option>
           </select>
         </div>
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div>
             <label class="block text-sm text-gray-700 mb-1">Fecha inicio</label>
-            <input type="date" [(ngModel)]="form.fechaInicio" class="w-full px-3 py-2 border rounded" />
+            <input type="date" [(ngModel)]="form.fechaInicio" (ngModelChange)="onFechaInicioChange()" [min]="minStartDate"
+              class="w-full px-3 py-2 border rounded" />
           </div>
           <div>
             <label class="block text-sm text-gray-700 mb-1">Fecha fin</label>
-            <input type="date" [(ngModel)]="form.fechaFin" class="w-full px-3 py-2 border rounded" />
+            <input type="date" [(ngModel)]="form.fechaFin" [min]="form.fechaInicio || minStartDate"
+              class="w-full px-3 py-2 border rounded" />
           </div>
         </div>
 

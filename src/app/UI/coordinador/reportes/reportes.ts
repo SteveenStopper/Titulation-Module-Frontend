@@ -41,7 +41,29 @@ export class Reportes {
       shareReplay(1)
     );
 
+    const normalizeText = (s: string) => String(s || '')
+      .trim()
+      .toUpperCase()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .replace(/\s+/g, ' ');
+
     this.careers$ = this.http.get<Array<{ id: number; nombre: string }>>('/api/uic/admin/carreras').pipe(
+      map((arr) => {
+        const seen = new Set<string>();
+        const out: Array<{ id: number; nombre: string }> = [];
+        for (const c of Array.isArray(arr) ? arr : []) {
+          const id = Number((c as any)?.id);
+          const nombre = String((c as any)?.nombre || '');
+          if (!Number.isFinite(id) || !nombre.trim()) continue;
+          const keyName = normalizeText(nombre);
+          if (!keyName.includes('TECNOLOGIA')) continue;
+          if (seen.has(keyName)) continue;
+          seen.add(keyName);
+          out.push({ id, nombre });
+        }
+        return out.sort((a, b) => a.nombre.localeCompare(b.nombre));
+      }),
       catchError(() => of([] as Array<{ id: number; nombre: string }>)),
       shareReplay(1)
     );
@@ -195,12 +217,13 @@ export class Reportes {
   }
 
   private formatLongDate(d: Date) {
-    return d.toLocaleDateString('es-EC', {
+    const base = d.toLocaleDateString('es-EC', {
       weekday: 'long',
       year: 'numeric',
       month: 'long',
       day: 'numeric',
     });
+    return `Santo Domingo, ${base}`;
   }
 
   private async openPrintTab(html: string) {
@@ -282,7 +305,6 @@ export class Reportes {
         <div class="content">
           <div class="title">REPORTE DE ESTUDIANTES EN PROCESO DE TITULACIÓN</div>
           <div class="meta">PERIODO ACADÉMICO: <span style="font-weight:500;">${this.escapeHtml(info.periodLabel || '')}</span></div>
-          <div class="section">LISTADO DE ESTUDIANTES</div>
           <table>
             <thead>
               <tr>
@@ -383,7 +405,6 @@ export class Reportes {
         <div class="content">
           <div class="title">${titulo}</div>
           <div class="meta">PERIODO ACADÉMICO: <span style="font-weight:500;">${this.escapeHtml(info.periodLabel || '')}</span></div>
-          <div class="section">LISTADO DE ESTUDIANTES</div>
           <table>
             <thead>${headCols}</thead>
             <tbody>${bodyRows || `<tr><td colspan="${colSpan}" style="text-align:center;">Sin registros</td></tr>`}</tbody>

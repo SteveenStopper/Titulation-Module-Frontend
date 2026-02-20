@@ -129,6 +129,16 @@ export class Calificacion {
   generarCertificado(id: number) {
     const it = this.items.find(x => x.id === id);
     if (!it) return;
+    if (!it.guardado) {
+      Swal.fire({
+        title: 'Primero guarde la nota',
+        text: 'Para generar el certificado, primero debe guardar la calificación.',
+        icon: 'warning',
+        confirmButtonText: 'Aceptar',
+        customClass: { confirmButton: 'swal-btn-confirm' }
+      });
+      return;
+    }
     const body = this.adminIngles ? { target_user_id: Number(it.id) } : {};
     this.http.post('/api/english/certificate', body, { responseType: 'blob', observe: 'response' }).subscribe({
       next: (resp) => {

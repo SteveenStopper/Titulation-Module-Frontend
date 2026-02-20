@@ -47,8 +47,29 @@ export class Reportes {
       catchError(() => of([] as Array<{ id: number; name: string }>)),
       shareReplay(1)
     );
-    this.careers$ = this.http.get<any[]>('/api/uic/admin/carreras').pipe(
-      map((arr: any[]) => (arr || []).map((c: any) => ({ id: Number(c.id), nombre: String(c.nombre) }))),
+    const normalizeText = (s: string) => String(s || '')
+      .trim()
+      .toUpperCase()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .replace(/\s+/g, ' ');
+
+    this.careers$ = this.http.get<any[]>('/api/tesoreria/carreras').pipe(
+      map((arr: any[]) => {
+        const seen = new Set<string>();
+        const out: Array<{ id: number; nombre: string }> = [];
+        for (const c of Array.isArray(arr) ? arr : []) {
+          const id = Number((c as any)?.id);
+          const nombre = String((c as any)?.nombre || '');
+          if (!Number.isFinite(id) || !nombre.trim()) continue;
+          const keyName = normalizeText(nombre);
+          if (!keyName.includes('TECNOLOGIA')) continue;
+          if (seen.has(keyName)) continue;
+          seen.add(keyName);
+          out.push({ id, nombre });
+        }
+        return out.sort((a, b) => a.nombre.localeCompare(b.nombre));
+      }),
       catchError(() => of([] as Array<{ id: number; nombre: string }>)),
       shareReplay(1)
     );
@@ -66,6 +87,7 @@ export class Reportes {
 
   limpiar() {
     this.reportType = '';
+    this.selectedCareerId = null;
     this.previewInfo = null;
     this.previewComprobantes = [];
     this.previewAranceles = [];
@@ -78,12 +100,13 @@ export class Reportes {
   }
 
   private formatLongDate(d: Date) {
-    return d.toLocaleDateString('es-EC', {
+    const base = d.toLocaleDateString('es-EC', {
       weekday: 'long',
       year: 'numeric',
       month: 'long',
       day: 'numeric',
     });
+    return `Santo Domingo, ${base}`;
   }
 
   private escapeHtml(s: string) {
@@ -237,7 +260,6 @@ export class Reportes {
           <div class="content">
             <div class="title">REPORTE DE ESTADO DE ARANCELES DE ESTUDIANTES</div>
             <div class="meta"><strong>PERIODO ACADEMICO:</strong> ${this.escapeHtml(info.periodLabel)}</div>
-            <div class="section">LISTADO DE ESTUDIANTES</div>
             <table>
               <thead>
                 <tr>
@@ -328,7 +350,6 @@ export class Reportes {
             <div class="title">REPORTE DE COMPROBANTES DE PAGO</div>
             <div class="meta"><strong>PERIODO ACADÉMICO:</strong> ${this.escapeHtml(info.periodLabel)}</div>
             <div class="meta"><strong>CARRERA:</strong> ${this.escapeHtml(info.careerLabel || 'Todas')}</div>
-            <div class="section">LISTADO DE ESTUDIANTES</div>
             <table>
               <thead>
                 <tr>

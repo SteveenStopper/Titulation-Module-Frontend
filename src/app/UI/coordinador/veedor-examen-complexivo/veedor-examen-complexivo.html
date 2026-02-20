@@ -12,7 +12,7 @@
         </select>
       </div>
       <div class="flex items-end">
-        <button type="button" (click)="addCarrera()" class="px-3 py-2 rounded-lg border text-sm hover:bg-gray-50">
+        <button type="button" (click)="addCarrera()" class="px-2.5 py-1.5 rounded-lg border text-xs hover:bg-gray-50">
           <i class="fa fa-plus mr-1"></i> Agregar carrera
         </button>
       </div>
@@ -34,7 +34,7 @@
           </tr>
         </thead>
         <tbody class="divide-y divide-gray-100">
-          <tr *ngFor="let m of model.materias; let i = index" class="odd:bg-white even:bg-gray-50 align-top">
+          <tr *ngFor="let m of pagedMaterias; let i = index" class="odd:bg-white even:bg-gray-50 align-top">
             <td class="px-3 py-2 w-64">
               <select class="border border-gray-300 rounded-md px-2 py-1 w-full" [(ngModel)]="m.carreraId"
                 (ngModelChange)="onChange()" [disabled]="!!m.locked">
@@ -47,31 +47,53 @@
                 <div>
                   <label class="block text-xs text-gray-600 mb-1">Veedor 1</label>
                   <select class="border border-gray-300 rounded-md px-2 py-1 w-full" [(ngModel)]="m.veedor1Id"
-                    (ngModelChange)="onChangeVeedores(i)" [disabled]="!!m.locked">
+                    (ngModelChange)="onChangeVeedores((page - 1) * pageSize + i)" [disabled]="!!m.locked">
                     <option [ngValue]="undefined">Seleccione</option>
-                    <option *ngFor="let v of getAvailableVeedores(i, 1)" [ngValue]="v.id_user">{{ v.fullname }}</option>
+                    <option *ngFor="let v of getAvailableVeedores((page - 1) * pageSize + i, 1)" [ngValue]="v.id_user">{{ v.fullname }}</option>
                   </select>
                 </div>
 
                 <div>
                   <label class="block text-xs text-gray-600 mb-1">Veedor 2</label>
                   <select class="border border-gray-300 rounded-md px-2 py-1 w-full" [(ngModel)]="m.veedor2Id"
-                    (ngModelChange)="onChangeVeedores(i)" [disabled]="!!m.locked">
+                    (ngModelChange)="onChangeVeedores((page - 1) * pageSize + i)" [disabled]="!!m.locked">
                     <option [ngValue]="undefined">Seleccione</option>
-                    <option *ngFor="let v of getAvailableVeedores(i, 2)" [ngValue]="v.id_user">{{ v.fullname }}</option>
+                    <option *ngFor="let v of getAvailableVeedores((page - 1) * pageSize + i, 2)" [ngValue]="v.id_user">{{ v.fullname }}</option>
                   </select>
                 </div>
               </div>
             </td>
             <td class="px-3 py-2 w-40">
-              <button type="button" (click)="removeCarrera(i)" [disabled]="!!m.locked"
-                class="px-2 py-1 rounded border text-xs hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed">
-                <i class="fa fa-trash mr-1"></i> Quitar
-              </button>
+              <div class="flex flex-col gap-2">
+                <button type="button" (click)="startEditRow((page - 1) * pageSize + i)" *ngIf="!!m.locked"
+                  class="px-2 py-1 rounded text-[11px] bg-amber-50 text-amber-800 border border-amber-200 hover:bg-amber-100">
+                  Editar
+                </button>
+                <button type="button" (click)="cancelEditRow((page - 1) * pageSize + i)" *ngIf="!m.locked"
+                  class="px-2 py-1 rounded text-[11px] bg-slate-100 text-slate-800 border border-slate-200 hover:bg-slate-200">
+                  Cancelar
+                </button>
+                <button type="button" (click)="removeCarrera((page - 1) * pageSize + i)"
+                  class="px-2 py-1 rounded text-[11px] bg-red-50 text-red-700 border border-red-200 hover:bg-red-100 disabled:opacity-50 disabled:cursor-not-allowed">
+                  <i class="fa fa-trash mr-1"></i> Quitar
+                </button>
+              </div>
             </td>
           </tr>
         </tbody>
       </table>
+    </div>
+
+    <div class="flex items-center justify-between" *ngIf="(model.materias || []).length > pageSize">
+      <div class="text-xs text-gray-500">
+        Página {{ page }} de {{ totalPages }}
+      </div>
+      <div class="flex items-center gap-2">
+        <button type="button" (click)="setPage(page - 1)" [disabled]="page <= 1"
+          class="px-2 py-1 rounded border text-xs hover:bg-gray-50 disabled:opacity-50">Anterior</button>
+        <button type="button" (click)="setPage(page + 1)" [disabled]="page >= totalPages"
+          class="px-2 py-1 rounded border text-xs hover:bg-gray-50 disabled:opacity-50">Siguiente</button>
+      </div>
     </div>
 
     <div *ngIf="errors.length" class="text-sm text-red-600 space-y-1">
@@ -80,7 +102,7 @@
 
     <div class="flex gap-2">
       <button type="button" (click)="guardar()" [disabled]="errors.length || loading || !hasEditableRows()"
-        class="px-3 py-2 rounded-lg bg-blue-600 text-white text-sm hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed">
+        class="px-2.5 py-1.5 rounded-lg bg-blue-600 text-white text-xs hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed">
         <i class="fa fa-save mr-1"></i> Guardar
       </button>
     </div>

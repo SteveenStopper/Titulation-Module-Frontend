@@ -57,25 +57,75 @@ export class GestionExamenes {
   toastMsg = '';
   toastOk = true;
 
+  private normalizeText(s: string): string {
+    return String(s || '')
+      .trim()
+      .toUpperCase()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .replace(/\s+/g, ' ');
+  }
+
+  private toTitleCase(name: string): string {
+    const s = String(name || '').trim();
+    if (!s) return '';
+    return s
+      .toLowerCase()
+      .split(' ')
+      .filter(Boolean)
+      .map(p => p.length ? (p[0].toUpperCase() + p.slice(1)) : p)
+      .join(' ');
+  }
+
+  private onlyTecnologiaAndUnique(list: Array<{ id: number; nombre: string }>): Array<{ id: number; nombre: string }> {
+    const seen = new Set<string>();
+    const out: Array<{ id: number; nombre: string }> = [];
+    for (const c of Array.isArray(list) ? list : []) {
+      const id = Number((c as any)?.id);
+      const nombre = String((c as any)?.nombre || '');
+      if (!Number.isFinite(id) || !nombre.trim()) continue;
+      const keyName = this.normalizeText(nombre);
+      if (!keyName.includes('TECNOLOGIA')) continue;
+      if (seen.has(keyName)) continue;
+      seen.add(keyName);
+      out.push({ id, nombre });
+    }
+    return out.sort((a, b) => a.nombre.localeCompare(b.nombre));
+  }
+
+  private uniqueByNombreNormalized(list: Array<{ id: number; nombre: string }>): Array<{ id: number; nombre: string }> {
+    const byName = new Map<string, { id: number; nombre: string }>();
+    for (const it of Array.isArray(list) ? list : []) {
+      const id = Number((it as any)?.id);
+      const nombre = String((it as any)?.nombre || '');
+      if (!Number.isFinite(id) || !nombre.trim()) continue;
+      const key = this.normalizeText(nombre);
+      if (!key) continue;
+      const prev = byName.get(key);
+      if (!prev || id < prev.id) byName.set(key, { id, nombre });
+    }
+    return Array.from(byName.values()).sort((a, b) => a.nombre.localeCompare(b.nombre));
+  }
+
   constructor(private http: HttpClient) {
     this.cargar(); // carga materias ya registradas en nuestro módulo
     // Docentes (Instituto)
     this.http.get<Array<{ id: number; nombre: string }>>('/api/vicerrector/docentes').subscribe(list => {
-      this.docentes = Array.isArray(list) ? list : [];
+      const arr = Array.isArray(list) ? list : [];
+      this.docentes = arr
+        .map((d: any) => ({ id: Number(d?.id), nombre: this.toTitleCase(String(d?.nombre || '')) }))
+        .filter(d => Number.isFinite(Number(d.id)) && !!d.nombre);
     });
     // Carreras (Instituto)
     this.http.get<Array<{ id: number; nombre: string }>>('/api/vicerrector/carreras').subscribe(list => {
-      this.carrerasCat = Array.isArray(list) ? list : [];
+      this.carrerasCat = this.onlyTecnologiaAndUnique(Array.isArray(list) ? list : []);
       this.carreraIdToName = new Map(this.carrerasCat.map(c => [Number(c.id), String(c.nombre)]));
     });
   }
 
   // Carreras del catálogo
   get carreras(): Array<{ id: number; nombre: string }> {
-    return this.carrerasCat
-      .map(c => ({ id: Number(c.id), nombre: String(c.nombre) }))
-      .filter(c => Number.isFinite(c.id))
-      .sort((a, b) => a.nombre.localeCompare(b.nombre));
+    return this.onlyTecnologiaAndUnique(this.carrerasCat);
   }
 
   // Lista filtrada por carrera para la tabla
@@ -109,9 +159,15 @@ export class GestionExamenes {
   get materiasDeCarrera(): Array<{ id: number; nombre: string }> {
     const cid = Number(this.carreraAsignacionId);
     if (!Number.isFinite(cid)) return [];
-    const todas = this.catalogoMaterias[String(cid)] || [];
-    const ya = new Set(this.registros.filter(r => Number(r.carreraId) === cid).map(r => r.id));
-    return todas.filter(m => !ya.has(m.id));
+    return this.catalogoMaterias[String(cid)] || [];
+  }
+
+  isSemestreRegistrado(semesterId: number): boolean {
+    const cid = Number(this.carreraAsignacionId);
+    if (!Number.isFinite(cid)) return false;
+    const sid = Number(semesterId);
+    if (!Number.isFinite(sid)) return false;
+    return this.registros.some(r => Number(r.carreraId) === cid && Number(r.id) === sid);
   }
 
   get asignaturasDeCarreraSemestre(): Array<{ id: number; nombre: string }> {
@@ -153,10 +209,11 @@ export class GestionExamenes {
     const careerId = Number(this.carreraAsignacionId);
     if (!Number.isFinite(careerId)) { this.catalogoMaterias[String(careerId)] = []; this.materiasCat = []; this.materiaAsignacionId = null; this.asignaturasCat = []; return; }
     this.http.get<Array<{ id: number; nombre: string }>>(`/api/vicerrector/semestres-catalogo?careerId=${careerId}`).subscribe(list => {
-      this.materiasCat = Array.isArray(list) ? list : [];
+      this.materiasCat = this.uniqueByNombreNormalized(Array.isArray(list) ? list : []);
       this.catalogoMaterias[String(careerId)] = this.materiasCat;
       const lista = this.materiasDeCarrera;
-      this.materiaAsignacionId = lista.length ? lista[0].id : null;
+      const firstAvailable = lista.find(m => !this.isSemestreRegistrado(m.id)) || null;
+      this.materiaAsignacionId = firstAvailable ? firstAvailable.id : (lista.length ? lista[0].id : null);
       this.onChangeMateriaAsignacion();
     });
   }
@@ -178,7 +235,7 @@ export class GestionExamenes {
       ? `/api/vicerrector/asignaturas-catalogo?careerId=${careerId}&semesterId=${semesterId}`
       : `/api/vicerrector/asignaturas-catalogo?careerId=${careerId}`;
     this.http.get<Array<{ id: number; nombre: string }>>(qs).subscribe(list => {
-      this.asignaturasCat = Array.isArray(list) ? list : [];
+      this.asignaturasCat = this.uniqueByNombreNormalized(Array.isArray(list) ? list : []);
       this.catalogoAsignaturas[key] = this.asignaturasCat;
       this.asignaturaAsignacionId = this.asignaturasCat.length ? this.asignaturasCat[0].id : null;
     });

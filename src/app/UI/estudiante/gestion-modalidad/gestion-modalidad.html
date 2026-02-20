@@ -1,7 +1,8 @@
 <section class="bg-white rounded-xl border border-gray-200 shadow-sm">
   <div class="p-4 border-b border-gray-200" *ngIf="validationsLoading || !canChooseModality">
     <div *ngIf="validationsLoading" class="text-sm text-gray-500">Verificando validaciones...</div>
-    <div *ngIf="!validationsLoading && !canChooseModality" class="p-3 rounded-md bg-amber-50 border border-amber-200 text-amber-800 text-sm">
+    <div *ngIf="!validationsLoading && !canChooseModality"
+      class="p-3 rounded-md bg-amber-50 border border-amber-200 text-amber-800 text-sm">
       {{ validationsMsg }}
     </div>
   </div>
@@ -14,12 +15,13 @@
     </div>
     <div class="flex flex-col md:flex-row gap-3">
       <button type="button" (click)="chooseUIC()" [disabled]="isLoading || validationsLoading || !canChooseModality"
-              class="inline-flex items-center justify-center gap-2 px-4 py-2 rounded-md text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-60 text-sm">
+        class="inline-flex items-center justify-center gap-2 px-4 py-2 rounded-md text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-60 text-sm">
         <i class="fa-solid fa-building-columns"></i>
         Elegir UIC
       </button>
-      <button type="button" (click)="chooseComplexivo()" [disabled]="isLoading || validationsLoading || !canChooseModality"
-              class="inline-flex items-center justify-center gap-2 px-4 py-2 rounded-md text-white bg-indigo-600 hover:bg-indigo-700 disabled:opacity-60 text-sm">
+      <button type="button" (click)="chooseComplexivo()"
+        [disabled]="isLoading || validationsLoading || !canChooseModality"
+        class="inline-flex items-center justify-center gap-2 px-4 py-2 rounded-md text-white bg-indigo-600 hover:bg-indigo-700 disabled:opacity-60 text-sm">
         <i class="fa-solid fa-file-pen"></i>
         Elegir Examen Complexivo
       </button>
@@ -29,16 +31,14 @@
   <!-- Tabs header: visible solo cuando ya hay modalidad seleccionada -->
   <div class="border-b border-gray-200 px-4 pt-4" *ngIf="selectedModality">
     <div class="flex items-center gap-2">
-      <button type="button" (click)="activeTab='uic'"
-              class="px-3 py-2 text-sm rounded-md"
-              [ngClass]="activeTab==='uic' ? 'bg-blue-50 text-blue-700 border border-blue-200' : 'text-gray-600 hover:bg-gray-50'"
-              *ngIf="selectedModality==='UIC'">
+      <button type="button" (click)="activeTab='uic'" class="px-3 py-2 text-sm rounded-md"
+        [ngClass]="activeTab==='uic' ? 'bg-blue-50 text-blue-700 border border-blue-200' : 'text-gray-600 hover:bg-gray-50'"
+        *ngIf="selectedModality==='UIC'">
         <i class="fa-solid fa-building-columns mr-2"></i> UIC
       </button>
-      <button type="button" (click)="activeTab='complexivo'"
-              class="px-3 py-2 text-sm rounded-md"
-              [ngClass]="activeTab==='complexivo' ? 'bg-blue-50 text-blue-700 border border-blue-200' : 'text-gray-600 hover:bg-gray-50'"
-              *ngIf="selectedModality==='EXAMEN_COMPLEXIVO'">
+      <button type="button" (click)="activeTab='complexivo'" class="px-3 py-2 text-sm rounded-md"
+        [ngClass]="activeTab==='complexivo' ? 'bg-blue-50 text-blue-700 border border-blue-200' : 'text-gray-600 hover:bg-gray-50'"
+        *ngIf="selectedModality==='EXAMEN_COMPLEXIVO'">
         <i class="fa-solid fa-file-pen mr-2"></i> Examen Complexivo
       </button>
     </div>
@@ -57,31 +57,45 @@
         <!-- Tema -->
         <div class="md:col-span-2">
           <label class="block text-sm font-medium text-gray-700 mb-1">Tema</label>
-          <input type="text" [(ngModel)]="uic.tema" [disabled]="uicSubmitted" class="w-full rounded-md border-gray-300 focus:border-blue-500 focus:ring-blue-500 text-sm" placeholder="Tema del trabajo"/>
+          <input type="text" [(ngModel)]="uic.tema" [disabled]="uicSubmitted"
+            class="w-full rounded-md border-gray-300 focus:border-blue-500 focus:ring-blue-500 text-sm"
+            placeholder="Tema del trabajo" />
           <div *ngIf="uicAttempted && !uic.tema" class="text-xs text-rose-600 mt-1">Este campo es obligatorio.</div>
+          <div *ngIf="uicAttempted && uic.tema" class="text-xs text-rose-600 mt-1" [class.hidden]="canSubmitUIC">Ingresa
+            un tema válido (no solo números y sin caracteres no permitidos).</div>
         </div>
         <!-- Carrera -->
         <div>
           <label class="block text-sm font-medium text-gray-700 mb-1">Carrera</label>
-          <select [(ngModel)]="selectedCareerId" [disabled]="uicSubmitted || uicTopicLoading" class="w-full rounded-md border-gray-300 focus:border-blue-500 focus:ring-blue-500 text-sm">
-            <option [ngValue]="null">Seleccione carrera</option>
+          <select [(ngModel)]="selectedCareerId" [disabled]="true"
+            class="w-full rounded-md border-gray-300 focus:border-blue-500 focus:ring-blue-500 text-sm">
             <option *ngFor="let c of carreras" [ngValue]="c.id">{{ c.nombre }}</option>
+            <option *ngIf="!carreras.length" [ngValue]="selectedCareerId">{{ uic.carrera || 'Cargando...' }}</option>
           </select>
-          <div *ngIf="uicAttempted && !selectedCareerId" class="text-xs text-rose-600 mt-1">Este campo es obligatorio.</div>
+          <div *ngIf="uicAttempted && !selectedCareerId" class="text-xs text-rose-600 mt-1">Este campo es obligatorio.
+          </div>
         </div>
         <!-- Tutor -->
         <div>
           <label class="block text-sm font-medium text-gray-700 mb-1">Tutor</label>
-          <select [(ngModel)]="selectedTutorId" [disabled]="uicSubmitted || uicTopicLoading" class="w-full rounded-md border-gray-300 focus:border-blue-500 focus:ring-blue-500 text-sm">
+          <select [(ngModel)]="selectedTutorId" [disabled]="uicSubmitted || uicTopicLoading"
+            class="w-full rounded-md border-gray-300 focus:border-blue-500 focus:ring-blue-500 text-sm">
             <option [ngValue]="null">Seleccione tutor</option>
             <option *ngFor="let d of docentes" [ngValue]="d.id_user">{{ d.fullname }}</option>
           </select>
-          <div *ngIf="uicAttempted && !selectedTutorId" class="text-xs text-rose-600 mt-1">Este campo es obligatorio.</div>
+          <div *ngIf="uicAttempted && !selectedTutorId" class="text-xs text-rose-600 mt-1">Este campo es obligatorio.
+          </div>
+          <div *ngIf="assignedTutorNombre && assignedTutorId && selectedTutorId && assignedTutorId !== selectedTutorId"
+            class="text-xs text-amber-700 mt-1">
+            Tutor asignado: <span class="font-medium">{{ assignedTutorNombre }}</span>
+          </div>
         </div>
       </div>
 
       <div class="pt-2">
-        <button type="button" (click)="submitUIC()" [disabled]="!canSubmitUIC || isLoading || (current?.modality && current?.modality !== 'UIC') || uicSubmitted" class="inline-flex items-center gap-2 px-4 py-2 rounded-md text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-60 text-sm">
+        <button type="button" (click)="submitUIC()"
+          [disabled]="!canSubmitUIC || isLoading || (current?.modality && current?.modality !== 'UIC') || uicSubmitted"
+          class="inline-flex items-center gap-2 px-4 py-2 rounded-md text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-60 text-sm">
           <i class="fa-solid" [ngClass]="uicSubmitted ? 'fa-check' : 'fa-paper-plane'"></i>
           {{ uicSubmitted ? 'Seleccionado' : 'Enviar a UIC' }}
         </button>
@@ -97,7 +111,8 @@
         <ul class="list-disc pl-6 text-sm text-gray-700 space-y-1">
           <li>El examen se calificará sobre 10 puntos.</li>
           <li>La nota mínima para aprobar es <strong>7/10</strong>.</li>
-          <li>En caso de no aprobar, el estudiante podrá rendir una segunda oportunidad según el reglamento institucional.</li>
+          <li>En caso de no aprobar, el estudiante podrá rendir una segunda oportunidad según el reglamento
+            institucional.</li>
         </ul>
       </div>
 
@@ -115,8 +130,9 @@
       </div>
 
       <div class="pt-2">
-        <button type="button" (click)="elegirComplexivo()" [disabled]="isLoading || (current?.modality && current?.modality !== 'EXAMEN_COMPLEXIVO') || complexivoSelected"
-                class="inline-flex items-center gap-2 px-4 py-2 rounded-md text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-60 text-sm">
+        <button type="button" (click)="elegirComplexivo()"
+          [disabled]="isLoading || (current?.modality && current?.modality !== 'EXAMEN_COMPLEXIVO') || complexivoSelected"
+          class="inline-flex items-center gap-2 px-4 py-2 rounded-md text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-60 text-sm">
           <i class="fa-solid" [ngClass]="complexivoSelected ? 'fa-check' : 'fa-check'"></i>
           {{ complexivoSelected ? 'Seleccionado' : 'Elegir modalidad de Examen Complexivo' }}
         </button>

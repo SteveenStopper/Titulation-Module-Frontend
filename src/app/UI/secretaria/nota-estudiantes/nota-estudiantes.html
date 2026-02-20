@@ -59,27 +59,27 @@
           </td>
           <td class="px-3 py-2">
             <div class="flex flex-wrap md:flex-nowrap items-center justify-center gap-2">
-              <button (click)="aceptar(e.estudiante_id)" class="px-3 py-1.5 text-xs rounded-md text-white"
+              <button (click)="aceptar(e.estudiante_id)" class="px-2.5 py-1 text-[11px] rounded-md text-white"
                 [ngClass]="e.estado==='pendiente' ? 'bg-green-600 hover:bg-green-700' : 'bg-gray-400 cursor-not-allowed'"
                 [disabled]="e.estado!=='pendiente'">
                 <i class="fa fa-check mr-1"></i> Aceptar
               </button>
               <button (click)="rechazar(e.estudiante_id)"
-                class="px-3 py-1.5 text-xs rounded-md bg-red-600 text-white hover:bg-red-700"
+                class="px-2.5 py-1 text-[11px] rounded-md bg-red-600 text-white hover:bg-red-700"
                 [disabled]="e.estado!=='pendiente'">
                 <i class="fa fa-xmark mr-1"></i> Rechazar
               </button>
               <button *ngIf="e.estado==='rechazado'" (click)="reconsiderar(e.estudiante_id)"
-                class="w-8 h-8 inline-flex items-center justify-center rounded-md bg-amber-500 text-white hover:bg-amber-600"
+                class="w-7 h-7 inline-flex items-center justify-center rounded-md bg-amber-500 text-white hover:bg-amber-600"
                 title="Refrescar">
                 <i class="fa fa-rotate-right"></i>
               </button>
               <button *ngIf="canGenerate(e)" (click)="generarCertificado(e.estudiante_id)"
-                class="px-3 py-1.5 text-xs rounded-md bg-indigo-600 text-white hover:bg-indigo-700">
+                class="px-2.5 py-1 text-[11px] rounded-md bg-indigo-600 text-white hover:bg-indigo-700">
                 <i class="fa fa-file-pdf mr-1"></i> Generar certificado
               </button>
               <button *ngIf="canView(e)" (click)="verCertificado(e.estudiante_id)"
-                class="px-3 py-1.5 text-xs rounded-md bg-sky-600 text-white hover:bg-sky-700">
+                class="px-2.5 py-1 text-[11px] rounded-md bg-sky-600 text-white hover:bg-sky-700">
                 <i class="fa fa-eye mr-1"></i> Ver
               </button>
             </div>
@@ -94,16 +94,17 @@
 
   <!-- Dialogo Rechazo -->
   <p-dialog [(visible)]="showRejectDialog" [modal]="true" [style]="{width: '32rem'}" [draggable]="false"
-    [resizable]="false" header="Rechazar validación">
+    [resizable]="false" header="Rechazar validación" styleClass="reject-dialog">
     <div class="space-y-3">
       <p class="text-sm text-gray-600">Escribe la observación del rechazo. Este texto será enviado al estudiante.</p>
-      <textarea pInputTextarea [(ngModel)]="rejectObs" rows="5" class="w-full p-2 border rounded-md"
+      <textarea pInputTextarea [(ngModel)]="rejectObs" rows="5"
+        class="w-full p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-red-200"
         placeholder="Observación obligatoria"></textarea>
       <div class="flex justify-end gap-2 pt-2">
         <button type="button" (click)="cancelReject()"
-          class="px-3 py-1.5 text-xs rounded-md bg-gray-200 hover:bg-gray-300">Cancelar</button>
+          class="px-4 py-2 text-sm rounded-md bg-gray-100 hover:bg-gray-200">Cancelar</button>
         <button type="button" (click)="confirmReject()"
-          class="px-3 py-1.5 text-xs rounded-md bg-red-600 text-white hover:bg-red-700">Confirmar rechazo</button>
+          class="px-4 py-2 text-sm rounded-md bg-red-600 text-white hover:bg-red-700">Confirmar rechazo</button>
       </div>
     </div>
   </p-dialog>

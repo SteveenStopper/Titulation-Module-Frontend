@@ -1,0 +1,84 @@
+
+.student-dropzone {
+  border: 1px dashed #93c5fd;
+  background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
+  border-radius: 12px;
+  padding: 14px;
+  cursor: pointer;
+  transition: transform 160ms ease, box-shadow 160ms ease, border-color 160ms ease, background 160ms ease;
+  box-shadow: 0 1px 2px rgba(16, 24, 40, 0.04);
+}
+
+.student-dropzone:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 10px 30px rgba(16, 24, 40, 0.08);
+}
+
+.student-dropzone.is-dragover {
+  border-color: #2563eb;
+  background: linear-gradient(180deg, #eff6ff 0%, #ffffff 100%);
+  box-shadow: 0 12px 34px rgba(37, 99, 235, 0.18);
+}
+
+.student-dropzone__icon {
+  width: 42px;
+  height: 42px;
+  border-radius: 10px;
+  background: #eff6ff;
+  color: #2563eb;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  animation: sd-float 2.2s ease-in-out infinite;
+}
+
+.student-dropzone__title {
+  font-weight: 700;
+  color: #111827;
+  font-size: 0.95rem;
+}
+
+.student-dropzone__subtitle {
+  font-size: 0.8rem;
+  color: #6b7280;
+}
+
+.student-dropzone__hint {
+  font-size: 0.75rem;
+  color: #64748b;
+  margin-top: 2px;
+}
+
+.student-dropzone__btn {
+  padding: 8px 12px;
+  border-radius: 10px;
+  background: #2563eb;
+  color: #fff;
+  font-size: 0.8rem;
+  transition: transform 120ms ease, background 120ms ease;
+}
+
+.student-dropzone__btn:hover {
+  background: #1d4ed8;
+}
+
+.student-dropzone__btn:active {
+  transform: scale(0.98);
+}
+
+.student-filepill {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  background: #fff;
+  color: #111827;
+}
+
+@keyframes sd-float {
+  0% { transform: translateY(0); }
+  50% { transform: translateY(-2px); }
+  100% { transform: translateY(0); }
+}

@@ -56,6 +56,7 @@ export class AvanceUic {
   // Informe Final (subida habilitada cuando haya nota de Parcial 2)
   informeArchivo: File | null = null;
   informeNombre = '';
+  dragOverInforme = false;
   // Toast simple
   showToast = false;
   toastMsg = '';
@@ -69,11 +70,69 @@ export class AvanceUic {
     return !!(this.puedeSubirInforme && this.informeArchivo);
   }
 
+  private isAllowedInformeFile(file: File): boolean {
+    const ext = (file.name.split('.').pop() || '').toLowerCase();
+    const mime = (file.type || '').toLowerCase();
+    const allowedExt = ['pdf', 'doc', 'docx'];
+    const allowedMime = [
+      'application/pdf',
+      'application/msword',
+      'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    ];
+    return allowedExt.includes(ext) && (allowedMime.includes(mime) || mime === '');
+  }
+
+  private showInlineToast(msg: string) {
+    this.toastMsg = msg;
+    this.showToast = true;
+    setTimeout(() => { this.showToast = false; }, 4000);
+  }
+
+  setInformeFile(file: File | null) {
+    if (!file) {
+      this.informeArchivo = null;
+      this.informeNombre = '';
+      return;
+    }
+    if (!this.isAllowedInformeFile(file)) {
+      this.showInlineToast('Solo se permiten archivos PDF o Word (doc, docx)');
+      this.informeArchivo = null;
+      this.informeNombre = '';
+      return;
+    }
+    if (file.size > 20 * 1024 * 1024) {
+      this.showInlineToast('El archivo excede el límite de 20MB');
+      this.informeArchivo = null;
+      this.informeNombre = '';
+      return;
+    }
+    this.informeArchivo = file;
+    this.informeNombre = file.name;
+  }
+
   onInformeChange(e: Event) {
     const input = e.target as HTMLInputElement;
     const file = input.files && input.files[0];
-    this.informeArchivo = file || null;
-    this.informeNombre = file ? file.name : '';
+    this.setInformeFile(file || null);
+  }
+
+  onInformeDragOver(e: DragEvent) {
+    e.preventDefault();
+    if (!this.puedeSubirInforme || this.informeFinalEntregado) return;
+    this.dragOverInforme = true;
+  }
+
+  onInformeDragLeave(e: DragEvent) {
+    e.preventDefault();
+    this.dragOverInforme = false;
+  }
+
+  onInformeDrop(e: DragEvent) {
+    e.preventDefault();
+    this.dragOverInforme = false;
+    if (!this.puedeSubirInforme || this.informeFinalEntregado) return;
+    const file = e.dataTransfer?.files && e.dataTransfer.files[0];
+    this.setInformeFile(file || null);
   }
 
   enviarInforme() {

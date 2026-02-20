@@ -89,9 +89,14 @@ export class Inicio {
         certificadosEmitidosHoy: Number(d?.certificadosEmitidosHoy || 0),
       };
     });
-    this.http.get<Array<{ estudiante: string; tramite: string; fecha: string; estado: 'completado'|'pendiente' }>>('/api/english/recientes')
-      .subscribe((rows) => {
-        if (Array.isArray(rows)) this.recientes = rows.map(r => ({ ...r, fecha: new Date(r.fecha).toLocaleDateString() }));
+    const qs = new URLSearchParams();
+    qs.set('days', '60');
+    this.http.get<Array<{ estudiante: string; tramite: string; fecha: string; estado: 'completado'|'pendiente' }>>(`/api/english/recientes?${qs.toString()}`)
+      .subscribe({
+        next: (rows) => {
+          if (Array.isArray(rows)) this.recientes = rows.map(r => ({ ...r, fecha: new Date(r.fecha).toLocaleDateString() }));
+        },
+        error: () => { this.recientes = []; }
       });
   }
 

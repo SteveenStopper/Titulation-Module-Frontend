@@ -25,8 +25,7 @@
           <select class="w-full text-sm border border-gray-300 rounded-lg px-3 py-2"
             [(ngModel)]="reportType">
             <option [ngValue]="''">Seleccione...</option>
-            <option [ngValue]="'GENERAL'">Reporte general del sistema</option>
-            <option [ngValue]="'USUARIOS'">Reporte de usuarios del sistema</option>
+            <option [ngValue]="'GENERAL'">Reporte general del proceso</option>
             <option [ngValue]="'PERIODOS'">Reporte de períodos académicos</option>
           </select>
         </div>
@@ -41,7 +40,7 @@
             Previsualizar
           </button>
           <button type="button" (click)="generarPdf()"
-            [disabled]="!previewInfo || (reportType==='PERIODOS' && previewPeriodos.length===0) || (reportType==='USUARIOS' && previewUsuarios.length===0) || (reportType==='GENERAL' && !previewGeneral)"
+            [disabled]="!previewInfo || (reportType==='PERIODOS' && previewPeriodos.length===0) || (reportType==='GENERAL' && !previewGeneral)"
             class="w-full text-sm px-3 py-2 rounded-lg bg-rose-600 text-white hover:bg-rose-700 disabled:opacity-50 disabled:cursor-not-allowed">
             Generar PDF
           </button>
@@ -58,7 +57,6 @@
         <div class="text-xs text-gray-500" *ngIf="!previewInfo">Seleccione filtros y presione Previsualizar</div>
       </div>
       <div class="text-xs text-gray-500" *ngIf="previewInfo && reportType==='PERIODOS'">Registros: {{ previewPeriodos.length }}</div>
-      <div class="text-xs text-gray-500" *ngIf="previewInfo && reportType==='USUARIOS'">Registros: {{ previewUsuarios.length }}</div>
     </div>
 
     <div *ngIf="reportType==='GENERAL'">
@@ -105,28 +103,5 @@
       </div>
     </div>
 
-    <div *ngIf="reportType==='USUARIOS'">
-      <div *ngIf="previewUsuarios.length===0" class="text-sm text-gray-500">No hay registros.</div>
-      <div *ngIf="previewUsuarios.length>0" class="overflow-x-auto">
-        <table class="min-w-full text-sm border border-gray-200 rounded-lg overflow-hidden">
-          <thead class="bg-gray-50">
-            <tr>
-              <th class="text-left px-3 py-2 border-b" style="width:56px;">N°</th>
-              <th class="text-left px-3 py-2 border-b">Usuario</th>
-              <th class="text-left px-3 py-2 border-b" style="width:260px;">Rol</th>
-              <th class="text-left px-3 py-2 border-b" style="width:140px;">Estado</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr *ngFor="let r of previewUsuarios" class="hover:bg-gray-50">
-              <td class="px-3 py-2 border-b">{{ r.nro }}</td>
-              <td class="px-3 py-2 border-b">{{ r.usuario }}</td>
-              <td class="px-3 py-2 border-b">{{ r.rol }}</td>
-              <td class="px-3 py-2 border-b">{{ r.estado }}</td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-    </div>
   </div>
 </div>
