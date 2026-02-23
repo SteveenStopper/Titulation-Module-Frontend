@@ -2,11 +2,12 @@ import { Component } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { HttpClient } from '@angular/common/http';
+import { SearchableSelectComponent } from '../../../core/components/searchable-select.component';
 
 @Component({
   selector: 'app-gestion-examenes',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, SearchableSelectComponent],
   templateUrl: './gestion-examenes.html',
   styleUrl: './gestion-examenes.scss'
 })
@@ -47,6 +48,7 @@ export class GestionExamenes {
     carrera: string | null;
     carreraId: number | null;
     tutorId: number | null;
+    tutorSearch?: string;
     seleccionarTutorId?: number | null;
     editing?: boolean;
     publicado?: boolean;
@@ -102,7 +104,7 @@ export class GestionExamenes {
       const key = this.normalizeText(nombre);
       if (!key) continue;
       const prev = byName.get(key);
-      if (!prev || id < prev.id) byName.set(key, { id, nombre });
+      if (!prev || id < prev.id) byName.set(key, { id, nombre: this.toTitleCase(nombre) });
     }
     return Array.from(byName.values()).sort((a, b) => a.nombre.localeCompare(b.nombre));
   }
@@ -114,7 +116,8 @@ export class GestionExamenes {
       const arr = Array.isArray(list) ? list : [];
       this.docentes = arr
         .map((d: any) => ({ id: Number(d?.id), nombre: this.toTitleCase(String(d?.nombre || '')) }))
-        .filter(d => Number.isFinite(Number(d.id)) && !!d.nombre);
+        .filter(d => Number.isFinite(Number(d.id)) && !!d.nombre)
+        .filter(d => !/^usuario\b/i.test(String(d.nombre).trim()));
     });
     // Carreras (Instituto)
     this.http.get<Array<{ id: number; nombre: string }>>('/api/vicerrector/carreras').subscribe(list => {

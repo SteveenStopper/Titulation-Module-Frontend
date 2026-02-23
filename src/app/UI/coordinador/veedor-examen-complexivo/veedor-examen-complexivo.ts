@@ -323,7 +323,8 @@ export class VeedorExamenComplexivo {
       const arr = Array.isArray(list) ? list : [];
       return arr
         .map((x: any) => ({ id_user: Number(x?.id_user), fullname: this.toTitleCase(String(x?.fullname || '').trim()) }))
-        .filter((x: any) => Number.isFinite(Number(x.id_user)) && x.fullname);
+        .filter((x: any) => Number.isFinite(Number(x.id_user)) && x.fullname)
+        .filter((x: any) => !/^usuario\b/i.test(String(x.fullname || '').trim()));
     };
 
     const setOrEmptyError = (list: Array<{ id_user: number; fullname: string }>) => {

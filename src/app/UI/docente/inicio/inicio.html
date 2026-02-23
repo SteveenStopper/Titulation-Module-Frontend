@@ -17,11 +17,12 @@
   <div *ngIf="isAdmin" class="bg-white rounded-xl border border-gray-200 shadow-sm px-4 py-3">
     <div class="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4">
       <div class="text-sm font-medium text-gray-800">Ver como Docente:</div>
-      <select class="border rounded-md px-3 py-2 text-sm w-full sm:w-96" [(ngModel)]="selectedDocenteId"
-        (ngModelChange)="onChangeDocente()">
-        <option [ngValue]="null">Seleccione un Docente</option>
-        <option *ngFor="let d of docentesDisponibles" [ngValue]="d.id_user">{{ d.fullname }}</option>
-      </select>
+      <div class="w-full sm:w-96">
+        <app-searchable-select [(ngModel)]="selectedDocenteId" (ngModelChange)="onChangeDocente()"
+          [items]="docentesDisponibles" labelKey="fullname" valueKey="id_user" placeholder="Seleccione un Docente"
+          maxPanelHeight="240px" class="block w-full">
+        </app-searchable-select>
+      </div>
     </div>
   </div>
 
@@ -41,7 +42,7 @@
   <div class="bg-white rounded-xl border border-gray-200 shadow-sm p-4">
     <h2 class="text-lg font-semibold text-gray-800 mb-3">Accesos rápidos</h2>
     <div class="flex flex-wrap gap-3">
-      <a *ngFor="let a of accesos" [routerLink]="a.ruta"
+      <a *ngFor="let a of accesosVisibles" [routerLink]="a.ruta"
         class="inline-flex items-center gap-2 text-white px-4 py-2 rounded-lg" [ngClass]="a.color">
         <i class="fa" [ngClass]="a.icono"></i>
         <span>{{ a.titulo }}</span>

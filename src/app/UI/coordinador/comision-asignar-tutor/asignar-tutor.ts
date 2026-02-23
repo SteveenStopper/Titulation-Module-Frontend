@@ -3,11 +3,12 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { HttpClient } from '@angular/common/http';
 import Swal from 'sweetalert2';
+import { SearchableSelectComponent } from '../../../core/components/searchable-select.component';
 
 @Component({
   selector: 'app-comision-asignar-tutor',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, SearchableSelectComponent],
   templateUrl: './asignar-tutor.html'
 })
 export class ComisionAsignarTutorComponent implements OnInit {
@@ -33,6 +34,13 @@ export class ComisionAsignarTutorComponent implements OnInit {
   editingStudentId: number | null = null;
   editingTutorId: number | null = null;
   savingEdit = false;
+
+  get isReadOnly(): boolean {
+    const sel = Number(this.periodoId);
+    const act = Number(this.activePeriodId);
+    if (!Number.isFinite(sel) || !Number.isFinite(act)) return false;
+    return sel !== act;
+  }
 
   // Paginación (client-side)
   pageEst = 1;
@@ -120,7 +128,6 @@ export class ComisionAsignarTutorComponent implements OnInit {
   }
 
   ngOnInit(): void {
-    this.cargarCarreras();
     this.cargarPeriodos();
     this.cargarPeriodoActivo();
     this.cargarDocentes();
@@ -157,7 +164,9 @@ export class ComisionAsignarTutorComponent implements OnInit {
         ...d,
         id_user: Number(d?.id_user),
         fullname: this.toTitleCase(String(d?.fullname || '')),
-      })).filter((d: any) => Number.isFinite(Number(d.id_user)) && d.fullname);
+      }))
+        .filter((d: any) => Number.isFinite(Number(d.id_user)) && d.fullname)
+        .filter((d: any) => !/^usuario\b/i.test(String(d.fullname || '').trim()));
     });
   }
 
@@ -198,13 +207,11 @@ export class ComisionAsignarTutorComponent implements OnInit {
 
   cargarEstudiantes() {
     const pid = this.toValidId(this.periodoId);
-    const cid = this.toValidId(this.carreraId);
     if (!Number.isFinite(Number(pid))) {
       this.estudiantes = [];
       return;
     }
     const params: any = {};
-    if (Number.isFinite(Number(cid))) params.careerId = Number(cid);
     params.academicPeriodId = Number(pid);
     this.http.get<any[]>('/api/uic/admin/estudiantes-sin-tutor', { params }).subscribe(rows => {
       this.estudiantes = Array.isArray(rows) ? rows : [];
@@ -214,13 +221,11 @@ export class ComisionAsignarTutorComponent implements OnInit {
 
   cargarAsignados() {
     const pid = this.toValidId(this.periodoId);
-    const cid = this.toValidId(this.carreraId);
     if (!Number.isFinite(Number(pid))) {
       this.asignados = [];
       return;
     }
     const params: any = {};
-    if (Number.isFinite(Number(cid))) params.careerId = Number(cid);
     params.academicPeriodId = Number(pid);
     this.http.get<any[]>('/api/uic/admin/asignaciones/tutor', { params }).subscribe(rows => {
       const list = Array.isArray(rows) ? rows : [];
@@ -234,6 +239,7 @@ export class ComisionAsignarTutorComponent implements OnInit {
   }
 
   startEdit(a: any) {
+    if (this.isReadOnly) return;
     this.message = null;
     this.error = null;
     this.editingStudentId = Number(a?.id_user);
@@ -246,6 +252,10 @@ export class ComisionAsignarTutorComponent implements OnInit {
   }
 
   saveEdit(a: any) {
+    if (this.isReadOnly) {
+      this.error = 'Solo se puede editar en el período activo.';
+      return;
+    }
     this.message = null;
     this.error = null;
     const pid = this.toValidId(this.periodoId);
@@ -275,15 +285,8 @@ export class ComisionAsignarTutorComponent implements OnInit {
     });
   }
 
-  onChangeCarrera() {
-    this.estudianteId = null;
-    this.cargarEstudiantes();
-    this.cargarAsignados();
-  }
-
   onChangePeriodo() {
     this.estudianteId = null;
-    this.carreraId = this.carreraId; // no-op to preserve current filter
     this.cargarEstudiantes();
     this.cargarAsignados();
   }
@@ -293,6 +296,10 @@ export class ComisionAsignarTutorComponent implements OnInit {
   }
 
   asignar() {
+    if (this.isReadOnly) {
+      this.error = 'Solo se puede asignar en el período activo.';
+      return;
+    }
     this.message = null; this.error = null;
     if (!Number.isFinite(Number(this.periodoId))) {
       this.error = 'Seleccione un período.';

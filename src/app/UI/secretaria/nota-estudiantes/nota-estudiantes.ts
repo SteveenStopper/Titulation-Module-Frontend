@@ -33,6 +33,8 @@ export class NotaEstudiantes {
   loading = false;
   page = 1;
   pageSize = 20;
+  totalPages = 1;
+  total = 0;
 
   // Lista de carreras (únicas) derivada de los datos
   get carreras(): string[] {
@@ -123,6 +125,9 @@ export class NotaEstudiantes {
       .subscribe({
         next: (resp) => {
           this.items = resp?.data || [];
+          const pag: any = (resp as any)?.pagination || {};
+          this.total = Number(pag.total || 0);
+          this.totalPages = Math.max(1, Number(pag.totalPages || pag.pages || 1));
           this.loading = false;
         },
         error: (err) => {
@@ -130,6 +135,15 @@ export class NotaEstudiantes {
           this.toast.error(err?.error?.message || 'No se pudo cargar promedios');
         }
       });
+  }
+
+  setPage(p: number) {
+    const next = Number(p);
+    if (!Number.isFinite(next)) return;
+    if (next < 1 || next > this.totalPages) return;
+    if (next === this.page) return;
+    this.page = next;
+    this.loadPromedios();
   }
 
   generarCertificado(estudiante_id: number) {
@@ -236,6 +250,7 @@ export class NotaEstudiantes {
       next: () => {
         const e = this.items.find(x => x.estudiante_id === estudiante_id);
         if (e) (e as any).estado = 'rechazado';
+        this.toast.success('Rechazado correctamente');
         this.notifications.create({
           id_user: estudiante_id,
           type: 'secretaria_rechazo',
@@ -244,7 +259,7 @@ export class NotaEstudiantes {
           entity_type: 'secretaria',
           entity_id: estudiante_id,
         }).subscribe({
-          next: () => this.toast.info('Rechazado y notificado'),
+          next: () => this.toast.info('Notificación enviada'),
           error: () => this.toast.error('No se pudo enviar la notificación'),
         });
         this.showRejectDialog = false;

@@ -85,21 +85,49 @@
     </div>
   </div>
 
+  <div class="flex items-center justify-between" *ngIf="totalPages > 1">
+    <div class="text-xs text-gray-500">Página {{ page }} de {{ totalPages }}</div>
+    <div class="flex items-center gap-2">
+      <button type="button" (click)="setPage(page - 1)" [disabled]="page <= 1"
+        class="px-2 py-1 rounded border text-xs hover:bg-gray-50 disabled:opacity-50">Anterior</button>
+      <button type="button" (click)="setPage(page + 1)" [disabled]="page >= totalPages"
+        class="px-2 py-1 rounded border text-xs hover:bg-gray-50 disabled:opacity-50">Siguiente</button>
+    </div>
+  </div>
+
   <div *ngIf="loading" class="text-sm text-gray-500">Cargando...</div>
 
   <!-- Dialogo Rechazo -->
   <p-dialog [(visible)]="showRejectDialog" [modal]="true" [style]="{width: '32rem'}" [draggable]="false"
     [resizable]="false" header="Rechazar validación de aranceles" styleClass="reject-dialog">
-    <div class="space-y-3">
-      <p class="text-sm text-gray-600">Escribe la observación del rechazo. Este texto será enviado al estudiante.</p>
-      <textarea [(ngModel)]="rejectObs" rows="5"
-        class="w-full p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-red-200"
-        placeholder="Observación obligatoria"></textarea>
-      <div class="flex justify-end gap-2 pt-2">
+    <div class="space-y-4">
+      <div class="flex flex-col items-center gap-2">
+        <div class="h-11 w-11 rounded-full bg-red-50 text-red-600 flex items-center justify-center">
+          <i class="fa-solid fa-triangle-exclamation"></i>
+        </div>
+        <p class="text-sm text-gray-600 text-center max-w-sm">
+          Escribe la observación del rechazo. Este texto será enviado al estudiante.
+        </p>
+      </div>
+
+      <div class="space-y-1">
+        <label class="block text-sm font-medium text-gray-700">Observación</label>
+        <textarea [(ngModel)]="rejectObs" rows="5"
+          class="w-full p-3 border border-gray-200 rounded-lg bg-gray-50 focus:bg-white focus:outline-none focus:ring-4 focus:ring-red-100 focus:border-red-300 transition"
+          placeholder="Observación obligatoria"></textarea>
+        <div class="text-xs text-gray-500">La observación es obligatoria para confirmar el rechazo.</div>
+      </div>
+
+      <div class="flex justify-end gap-2 pt-1">
         <button type="button" (click)="cancelReject()"
-          class="px-4 py-2 text-sm rounded-md bg-gray-100 hover:bg-gray-200">Cancelar</button>
-        <button type="button" (click)="confirmReject()"
-          class="px-4 py-2 text-sm rounded-md bg-red-600 text-white hover:bg-red-700">Confirmar rechazo</button>
+          class="px-4 py-2 text-sm rounded-md bg-sky-600 text-white hover:bg-sky-700 transition-all active:scale-[0.98]">
+          Cancelar
+        </button>
+        <button type="button" (click)="confirmReject()" [disabled]="!(rejectObs || '').trim()"
+          class="px-4 py-2 text-sm rounded-md transition-all active:scale-[0.98]"
+          [ngClass]="(rejectObs || '').trim() ? 'bg-red-600 text-white hover:bg-red-700 shadow-sm hover:shadow' : 'bg-gray-200 text-gray-400 cursor-not-allowed'">
+          Confirmar rechazo
+        </button>
       </div>
     </div>
   </p-dialog>

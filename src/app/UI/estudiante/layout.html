@@ -4,33 +4,42 @@
     <div class="h-full px-4 py-5 bg-white border-r border-gray-200 flex flex-col">
       <div class="flex-1 overflow-y-auto">
         <a routerLink="/estudiante/inicio" class="flex items-center ps-2.5 mb-5">
-          <img src="assets/Logo.png" class="h-16 md:h-20 me-3 object-contain drop-shadow-md select-none" alt="Instituto Superior Tecnológico Los Andes" />
+          <img src="assets/Logo.png" class="h-16 md:h-20 me-3 object-contain drop-shadow-md select-none"
+            alt="Instituto Superior Tecnológico Los Andes" />
         </a>
         <ul class="space-y-2 font-medium">
           <!-- Inicio -->
           <li>
-            <a routerLink="/estudiante/inicio" routerLinkActive="bg-gray-200 text-gray-900" class="flex items-center p-2 text-gray-700 rounded-lg hover:bg-gray-100">
+            <a routerLink="/estudiante/inicio"
+              routerLinkActive="bg-blue-50 text-blue-800 border-l-4 border-blue-500 font-semibold"
+              class="flex items-center p-2 text-gray-700 rounded-lg hover:bg-gray-100 border-l-4 border-transparent">
               <i class="fa-solid fa-house w-5 h-5 me-3"></i>
               <span>Inicio</span>
             </a>
           </li>
           <!-- Pagos -->
           <li>
-            <a routerLink="/estudiante/pagos" routerLinkActive="bg-gray-200 text-gray-900" class="flex items-center p-2 text-gray-700 rounded-lg hover:bg-gray-100">
+            <a routerLink="/estudiante/pagos"
+              routerLinkActive="bg-blue-50 text-blue-800 border-l-4 border-blue-500 font-semibold"
+              class="flex items-center p-2 text-gray-700 rounded-lg hover:bg-gray-100 border-l-4 border-transparent">
               <i class="fa-solid fa-receipt w-5 h-5 me-3"></i>
               <span>Pagos</span>
             </a>
           </li>
           <!-- Matriculación -->
           <li>
-            <a routerLink="/estudiante/matriculacion" routerLinkActive="bg-gray-200 text-gray-900" class="flex items-center p-2 text-gray-700 rounded-lg hover:bg-gray-100">
+            <a routerLink="/estudiante/matriculacion"
+              routerLinkActive="bg-blue-50 text-blue-800 border-l-4 border-blue-500 font-semibold"
+              class="flex items-center p-2 text-gray-700 rounded-lg hover:bg-gray-100 border-l-4 border-transparent">
               <i class="fa-solid fa-id-card w-5 h-5 me-3"></i>
               <span>Matricula</span>
             </a>
           </li>
           <!-- Gestión Modalidad -->
           <li>
-            <a routerLink="/estudiante/gestion-modalidad" routerLinkActive="bg-gray-200 text-gray-900" class="flex items-center p-2 text-gray-700 rounded-lg hover:bg-gray-100">
+            <a routerLink="/estudiante/gestion-modalidad"
+              routerLinkActive="bg-blue-50 text-blue-800 border-l-4 border-blue-500 font-semibold"
+              class="flex items-center p-2 text-gray-700 rounded-lg hover:bg-gray-100 border-l-4 border-transparent">
               <i class="fa-solid fa-folder-open w-5 h-5 me-3"></i>
               <span>Gestión Modalidad</span>
             </a>
@@ -38,20 +47,23 @@
 
           <!-- Grupo: UIC (habilitado siempre) -->
           <li *ngIf="modality === 'UIC'">
-            <button type="button" (click)="toggleUIC()" class="w-full flex items-center p-2 text-gray-700 rounded-lg hover:bg-gray-100">
+            <button type="button" (click)="toggleUIC()"
+              class="w-full flex items-center p-2 text-gray-700 rounded-lg hover:bg-gray-100">
               <i class="fa-solid fa-building-columns w-5 h-5 me-3"></i>
               <span class="flex-1 text-left">Unidad Integracion Curricular / UIC</span>
               <i class="fa-solid" [ngClass]="uicOpen ? 'fa-chevron-down' : 'fa-chevron-right'"></i>
             </button>
             <ul *ngIf="uicOpen" class="mt-1 ms-8 space-y-1">
               <li>
-                <a routerLink="/estudiante/cronograma-uic" routerLinkActive="text-blue-700" class="flex items-center p-2 text-gray-600 rounded hover:bg-gray-50">
+                <a routerLink="/estudiante/cronograma-uic" routerLinkActive="text-blue-700"
+                  class="flex items-center p-2 text-gray-600 rounded hover:bg-gray-50">
                   <i class="fa-regular fa-calendar me-2"></i>
                   <span>Cronograma UIC</span>
                 </a>
               </li>
               <li>
-                <a routerLink="/estudiante/avance" routerLinkActive="text-blue-700" class="flex items-center p-2 text-gray-600 rounded hover:bg-gray-50">
+                <a routerLink="/estudiante/avance" routerLinkActive="text-blue-700"
+                  class="flex items-center p-2 text-gray-600 rounded hover:bg-gray-50">
                   <i class="fa-solid fa-chart-line me-2"></i>
                   <span>Avance</span>
                 </a>
@@ -61,20 +73,23 @@
 
           <!-- Grupo: Examen Complexivo (habilitado siempre) -->
           <li *ngIf="modality === 'EXAMEN_COMPLEXIVO'">
-            <button type="button" (click)="toggleComplexivo()" class="w-full flex items-center p-2 text-gray-700 rounded-lg hover:bg-gray-100">
+            <button type="button" (click)="toggleComplexivo()"
+              class="w-full flex items-center p-2 text-gray-700 rounded-lg hover:bg-gray-100">
               <i class="fa-solid fa-file-pen w-5 h-5 me-3"></i>
               <span class="flex-1 text-left">Examen Complexivo</span>
               <i class="fa-solid" [ngClass]="complexivoOpen ? 'fa-chevron-down' : 'fa-chevron-right'"></i>
             </button>
             <ul *ngIf="complexivoOpen" class="mt-1 ms-8 space-y-1">
               <li>
-                <a routerLink="/estudiante/cronograma-complexivo" routerLinkActive="text-blue-700" class="flex items-center p-2 text-gray-600 rounded hover:bg-gray-50">
+                <a routerLink="/estudiante/cronograma-complexivo" routerLinkActive="text-blue-700"
+                  class="flex items-center p-2 text-gray-600 rounded hover:bg-gray-50">
                   <i class="fa-regular fa-calendar-check me-2"></i>
                   <span>Cronograma Examen Complexivo</span>
                 </a>
               </li>
               <li>
-                <a routerLink="/estudiante/tutorias" routerLinkActive="text-blue-700" class="flex items-center p-2 text-gray-600 rounded hover:bg-gray-50">
+                <a routerLink="/estudiante/tutorias" routerLinkActive="text-blue-700"
+                  class="flex items-center p-2 text-gray-600 rounded hover:bg-gray-50">
                   <i class="fa-solid fa-chalkboard-user me-2"></i>
                   <span>Tutorías</span>
                 </a>
@@ -82,13 +97,15 @@
             </ul>
           </li>
         </ul>
-       </div>
+      </div>
 
       <!-- Footer: Perfil / Cerrar sesión -->
       <div class="mt-4 border-t pt-4">
         <div class="relative">
-          <button type="button" (click)="toggleProfile()" class="w-full flex items-center gap-3 p-2 rounded-lg hover:bg-gray-100">
-            <span class="inline-flex h-9 w-9 items-center justify-center rounded-full bg-blue-600 text-white font-semibold">
+          <button type="button" (click)="toggleProfile()"
+            class="w-full flex items-center gap-3 p-2 rounded-lg hover:bg-gray-100">
+            <span
+              class="inline-flex h-9 w-9 items-center justify-center rounded-full bg-blue-600 text-white font-semibold">
               {{ userInitials }}
             </span>
             <div class="text-left">
@@ -98,7 +115,8 @@
             <i class="fa-solid fa-ellipsis-vertical ml-auto text-gray-500"></i>
           </button>
           <!-- Dropdown placed upwards to avoid overflow at sidebar bottom -->
-          <div *ngIf="isProfileOpen" class="absolute left-0 right-0 bottom-12 z-50 bg-white border border-gray-200 rounded-lg shadow-md">
+          <div *ngIf="isProfileOpen"
+            class="absolute left-0 right-0 bottom-12 z-50 bg-white border border-gray-200 rounded-lg shadow-md">
             <button type="button" (click)="logout()" class="w-full text-left px-4 py-2 text-sm hover:bg-gray-50">
               <i class="fa-solid fa-right-from-bracket mr-2"></i> Cerrar sesión
             </button>
@@ -125,7 +143,8 @@
               <span class="text-xs px-2 py-1 rounded-full bg-blue-50 text-blue-600">Cargando...</span>
             </ng-container>
             <ng-template #estPeriodVal>
-              <span class="text-xs px-2 py-1 rounded-full bg-blue-100 text-blue-700">{{ activePeriod || 'Sin período' }}</span>
+              <span class="text-xs px-2 py-1 rounded-full bg-blue-100 text-blue-700">{{ activePeriod || 'Sin período'
+                }}</span>
             </ng-template>
           </div>
         </div>

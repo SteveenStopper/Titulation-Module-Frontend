@@ -1,7 +1,7 @@
 <section class="space-y-6">
   <div class="bg-white rounded-xl border border-gray-200 shadow-sm p-4">
     <h2 class="font-semibold text-gray-800 mb-4">Asignación de Tribunal Evaluador UIC</h2>
-    <div class="grid grid-cols-1 md:grid-cols-4 gap-3">
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
       <div>
         <label class="block text-sm text-gray-600 mb-1">Período</label>
         <select
@@ -12,19 +12,10 @@
         </select>
       </div>
       <div>
-        <label class="block text-sm text-gray-600 mb-1">Carrera</label>
-        <select
-          class="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-          [(ngModel)]="model.carrera" (ngModelChange)="onChange()">
-          <option [ngValue]="undefined" disabled>Seleccione una carrera</option>
-          <option *ngFor="let c of carreraOptions" [ngValue]="c.id">{{ c.nombre }}</option>
-        </select>
-      </div>
-      <div>
         <label class="block text-sm text-gray-600 mb-1">Estudiante (UIC)</label>
         <select
           class="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-          [(ngModel)]="model.estudianteId" (ngModelChange)="onChange()">
+          [(ngModel)]="model.estudianteId" (ngModelChange)="onChange()" [disabled]="isReadOnly">
           <option [ngValue]="undefined" disabled>Seleccione un estudiante</option>
           <option *ngFor="let e of estudiantesUIC" [ngValue]="e.id">{{ e.nombre }}</option>
         </select>
@@ -36,7 +27,7 @@
         </div>
       </div>
       <div class="flex items-end">
-        <button type="button" (click)="addMiembro()" [disabled]="!hasStudents || model.miembros.length >= 2"
+        <button type="button" (click)="addMiembro()" [disabled]="isReadOnly || !hasStudents || model.miembros.length >= 2"
           class="px-3 py-2 rounded-lg border text-sm hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed">
           <i class="fa fa-plus mr-1"></i> Agregar miembro
         </button>
@@ -57,24 +48,21 @@
         <tbody class="divide-y divide-gray-100">
           <tr *ngFor="let m of model.miembros; let i = index" class="odd:bg-white even:bg-gray-50">
             <td class="px-3 py-2">
-              <select class="border border-gray-300 rounded-md px-2 py-1 w-full" [(ngModel)]="m.rol"
+              <select class="border border-gray-300 rounded-md px-2 py-1 w-full" [(ngModel)]="m.rol" [disabled]="isReadOnly"
                 (ngModelChange)="onChange()">
                 <option [ngValue]="undefined" disabled>Seleccione</option>
                 <option *ngFor="let r of roles" [ngValue]="r">{{ r }}</option>
               </select>
             </td>
             <td class="px-3 py-2">
-              <select class="border border-gray-300 rounded-md px-2 py-1 w-full" [(ngModel)]="m.docente"
-                (ngModelChange)="onChange()">
-                <option [ngValue]="undefined" disabled>Seleccione</option>
-                <option *ngFor="let d of docentes" [disabled]="selectedTutor === d.fullname" [ngValue]="d.id_user">
-                  {{ d.fullname }}
-                  <span *ngIf="selectedTutor === d.fullname">(Tutor)</span>
-                </option>
-              </select>
+              <app-searchable-select [(ngModel)]="m.docente" (ngModelChange)="onChange()" [items]="docentes" [disabled]="isReadOnly"
+                labelKey="fullname" valueKey="id_user" placeholder="Seleccione" maxPanelHeight="240px"
+                class="block w-full">
+              </app-searchable-select>
             </td>
             <td class="px-3 py-2">
               <button type="button" (click)="removeMiembro(i)"
+                [disabled]="isReadOnly"
                 class="px-2 py-1 rounded border text-xs hover:bg-gray-50">
                 <i class="fa fa-trash mr-1"></i> Quitar
               </button>
@@ -141,29 +129,34 @@
               <td class="px-3 py-2">
                 <div *ngIf="editingStudentId !== a.id_user">{{ a.secretario || '—' }}</div>
                 <div *ngIf="editingStudentId === a.id_user" class="max-w-xs">
-                  <select [(ngModel)]="editingSecretaryId" class="border border-gray-300 rounded-md px-2 py-1 w-full">
-                    <option [ngValue]="null">Seleccione</option>
-                    <option *ngFor="let d of docentes" [ngValue]="d.id_user">{{ d.fullname }}</option>
-                  </select>
+                  <app-searchable-select [(ngModel)]="editingSecretaryId" (ngModelChange)="onChange()"
+                    [items]="docentes" [disabled]="isReadOnly" labelKey="fullname" valueKey="id_user" placeholder="Seleccione"
+                    maxPanelHeight="240px" class="block w-full">
+                  </app-searchable-select>
                 </div>
               </td>
               <td class="px-3 py-2">
                 <div *ngIf="editingStudentId !== a.id_user">{{ a.vocal || '—' }}</div>
                 <div *ngIf="editingStudentId === a.id_user" class="max-w-xs">
-                  <select [(ngModel)]="editingVocalId" class="border border-gray-300 rounded-md px-2 py-1 w-full">
-                    <option [ngValue]="null">Seleccione</option>
-                    <option *ngFor="let d of docentes" [ngValue]="d.id_user">{{ d.fullname }}</option>
-                  </select>
+                  <app-searchable-select [(ngModel)]="editingVocalId" (ngModelChange)="onChange()" [items]="docentes"
+                    [disabled]="isReadOnly"
+                    labelKey="fullname" valueKey="id_user" placeholder="Seleccione" maxPanelHeight="240px"
+                    class="block w-full">
+                  </app-searchable-select>
                 </div>
               </td>
               <td class="px-3 py-2">
                 <div class="flex gap-2" *ngIf="editingStudentId !== a.id_user">
-                  <button type="button" (click)="startEditAsignado(a)" class="text-xs px-2 py-1 rounded border hover:bg-gray-50">Editar</button>
+                  <button type="button" (click)="startEditAsignado(a)"
+                    [disabled]="isReadOnly"
+                    class="text-xs px-2 py-1 rounded border hover:bg-gray-50">Editar</button>
                 </div>
                 <div class="flex gap-2" *ngIf="editingStudentId === a.id_user">
-                  <button type="button" (click)="saveEditAsignado(a)" [disabled]="savingEdit || !editingSecretaryId || !editingVocalId"
+                  <button type="button" (click)="saveEditAsignado(a)"
+                    [disabled]="isReadOnly || savingEdit || !editingSecretaryId || !editingVocalId"
                     class="text-xs px-2 py-1 rounded bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-60">Guardar</button>
-                  <button type="button" (click)="cancelEditAsignado()" [disabled]="savingEdit" class="text-xs px-2 py-1 rounded border hover:bg-gray-50 disabled:opacity-60">Cancelar</button>
+                  <button type="button" (click)="cancelEditAsignado()" [disabled]="savingEdit"
+                    class="text-xs px-2 py-1 rounded border hover:bg-gray-50 disabled:opacity-60">Cancelar</button>
                 </div>
               </td>
             </tr>
@@ -187,10 +180,11 @@
     </div>
 
     <div class="mt-4 flex gap-2">
-      <button type="button" (click)="guardar()" [disabled]="errors.length || !canGuardar"
+      <button type="button" (click)="guardar()" [disabled]="isReadOnly || errors.length || !canGuardar"
         class="px-3 py-2 rounded-lg bg-blue-600 text-white text-sm hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed">
         <i class="fa fa-save mr-1"></i> Guardar
       </button>
     </div>
   </div>
+
 </section>

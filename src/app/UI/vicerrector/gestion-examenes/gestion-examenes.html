@@ -32,7 +32,8 @@
             class="px-3 py-2 border border-gray-300 rounded-md text-sm w-60 focus:outline-none focus:ring-2 focus:ring-indigo-500 disabled:bg-gray-100 disabled:text-gray-500"
             [disabled]="!carreraAsignacionId || carreraAsignacionId === 0 || limiteAlcanzado">
             <option [ngValue]="null">Seleccione semestre</option>
-            <option *ngFor="let m of materiasDeCarrera" [ngValue]="m.id" [disabled]="isSemestreRegistrado(m.id)">{{ m.nombre }}</option>
+            <option *ngFor="let m of materiasDeCarrera" [ngValue]="m.id" [disabled]="isSemestreRegistrado(m.id)">{{
+              m.nombre }}</option>
           </select>
         </div>
 
@@ -48,12 +49,16 @@
 
         <div>
           <label class="block text-xs text-gray-500 mb-1">Tutor</label>
-          <select [(ngModel)]="tutorAsignacionId"
-            class="px-3 py-2 border border-gray-300 rounded-md text-sm w-64 focus:outline-none focus:ring-2 focus:ring-indigo-500 disabled:bg-gray-100 disabled:text-gray-500"
-            [disabled]="asignaturaAsignacionId === null || limiteAlcanzado">
-            <option [ngValue]="null">Seleccione tutor</option>
-            <option *ngFor="let d of opcionesDocentesTop()" [ngValue]="d.id">{{ d.nombre }}</option>
-          </select>
+          <app-searchable-select
+            [(ngModel)]="tutorAsignacionId"
+            [items]="docentes"
+            labelKey="nombre"
+            valueKey="id"
+            placeholder="Seleccione tutor"
+            [disabled]="asignaturaAsignacionId === null || limiteAlcanzado"
+            maxPanelHeight="240px"
+            class="block w-64">
+          </app-searchable-select>
         </div>
 
         <div class="ml-auto" *ngIf="carreraAsignacionId">
@@ -108,12 +113,16 @@
             </div>
           </td>
           <td class="px-4 py-3">
-            <select [(ngModel)]="m.seleccionarTutorId"
-              class="px-3 py-2 border border-gray-300 rounded-md text-sm w-64 focus:outline-none focus:ring-2 focus:ring-indigo-500 disabled:bg-gray-100 disabled:text-gray-500"
-              [disabled]="m.tutorId ? !m.editing : false">
-              <option [ngValue]="null">Seleccione tutor</option>
-              <option *ngFor="let d of opcionesDocentesPara(m)" [ngValue]="d.id">{{ d.nombre }}</option>
-            </select>
+            <app-searchable-select
+              [(ngModel)]="m.seleccionarTutorId"
+              [items]="opcionesDocentesPara(m)"
+              labelKey="nombre"
+              valueKey="id"
+              placeholder="Seleccione tutor"
+              [disabled]="m.tutorId ? !m.editing : false"
+              maxPanelHeight="240px"
+              class="block w-64">
+            </app-searchable-select>
           </td>
           <td class="px-4 py-3">
             <div class="flex items-center justify-center gap-2">

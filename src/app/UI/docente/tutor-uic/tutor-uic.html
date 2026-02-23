@@ -1,8 +1,22 @@
 <section class="space-y-4">
   <!-- Header -->
-  <div class="bg-white rounded-xl border border-gray-200 shadow-sm px-4 py-3">
-    <h1 class="text-xl font-bold text-gray-800">Tutor UIC</h1>
-    <p class="text-gray-600 text-sm">Gestión de avance y calificaciones por parciales.</p>
+  <div class="bg-white rounded-xl border border-gray-200 shadow-sm p-4">
+    <div class="flex items-center justify-between mb-4">
+      <div>
+        <h2 class="text-lg font-semibold text-gray-800">Tutor UIC</h2>
+        <p class="text-sm text-gray-500">Gestión de avance y calificaciones por parciales.</p>
+      </div>
+    </div>
+    <div class="flex flex-col sm:flex-row sm:items-end gap-3">
+      <div class="w-full sm:w-72">
+        <label class="block text-sm text-gray-700 mb-1">Carrera</label>
+        <select [(ngModel)]="carreraFiltro" (ngModelChange)="onChangeCarrera()"
+          class="w-full rounded-lg border-gray-300 focus:border-blue-600 focus:ring-blue-600">
+          <option [ngValue]="''">Todas</option>
+          <option *ngFor="let c of carrerasDisponibles" [ngValue]="c">{{ c }}</option>
+        </select>
+      </div>
+    </div>
   </div>
 
   <!-- Avance -->
@@ -12,170 +26,102 @@
       <p class="text-sm text-gray-500">Ingrese las notas sobre 10. El promedio se calcula automáticamente.</p>
     </div>
     <div class="p-4">
-      <div class="space-y-3 md:hidden">
-        <div *ngFor="let e of estudiantes" class="border rounded-lg p-3">
-          <div class="font-medium text-gray-800">{{ e.nombre }}</div>
-
-          <div class="mt-3 grid grid-cols-1 gap-3">
-            <div>
-              <div class="text-xs text-gray-500">P1</div>
-              <div class="mt-1 grid grid-cols-1 gap-2">
-                <input type="number" step="0.1" min="0" max="10" [(ngModel)]="e.p1.nota" (blur)="clampNota(e,'p1')"
-                  [disabled]="!puedeEditar(e,'p1')"
-                  class="w-full px-2 py-1 border rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 disabled:bg-gray-100 disabled:text-gray-500" placeholder="0-10" />
-                <input type="text" [(ngModel)]="e.p1.obs" [disabled]="!puedeEditar(e,'p1')"
-                  class="w-full px-2 py-1 border rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 disabled:bg-gray-100 disabled:text-gray-500" placeholder="Obs. P1" />
+      <div class="space-y-4">
+        <div *ngFor="let e of estudiantes" class="rounded-xl border border-gray-200 bg-white p-4">
+          <div class="grid grid-cols-1 lg:grid-cols-12 gap-4">
+            <!-- Left: name + partial cards -->
+            <div class="lg:col-span-9">
+              <div class="mb-3">
+                <div class="text-base font-semibold text-gray-900">{{ e.nombre }}</div>
+                <div class="text-sm text-gray-500">Carrera: {{ e.carrera || '-' }}</div>
               </div>
-              <div class="mt-2 flex flex-wrap items-center gap-2 text-xs">
-                <button *ngIf="puedeEditar(e,'p1')" (click)="guardar(e,'p1')" class="px-2 py-0.5 rounded bg-emerald-600 text-white hover:bg-emerald-700">Guardar</button>
-                <button *ngIf="puedeMostrarEditar(e,'p1')" (click)="editar(e,'p1')" class="px-2 py-0.5 rounded bg-indigo-600 text-white hover:bg-indigo-700">Editar</button>
-                <button *ngIf="puedePublicar(e,'p1')" (click)="publicarParcial(e,'p1')" class="px-2 py-0.5 rounded bg-gray-900 text-white">Publicar</button>
-              </div>
-            </div>
 
-            <div>
-              <div class="text-xs text-gray-500">P2</div>
-              <div class="mt-1 grid grid-cols-1 gap-2">
-                <input type="number" step="0.1" min="0" max="10" [(ngModel)]="e.p2.nota" (blur)="clampNota(e,'p2')"
-                  [disabled]="!puedeEditar(e,'p2')"
-                  class="w-full px-2 py-1 border rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 disabled:bg-gray-100 disabled:text-gray-500" placeholder="0-10" />
-                <input type="text" [(ngModel)]="e.p2.obs" [disabled]="!puedeEditar(e,'p2')"
-                  class="w-full px-2 py-1 border rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 disabled:bg-gray-100 disabled:text-gray-500" placeholder="Obs. P2" />
-              </div>
-              <div class="mt-2 flex flex-wrap items-center gap-2 text-xs">
-                <button *ngIf="puedeEditar(e,'p2')" (click)="guardar(e,'p2')" class="px-2 py-0.5 rounded bg-emerald-600 text-white hover:bg-emerald-700">Guardar</button>
-                <button *ngIf="puedeMostrarEditar(e,'p2')" (click)="editar(e,'p2')" class="px-2 py-0.5 rounded bg-indigo-600 text-white hover:bg-indigo-700">Editar</button>
-                <button *ngIf="puedePublicar(e,'p2')" (click)="publicarParcial(e,'p2')" class="px-2 py-0.5 rounded bg-gray-900 text-white">Publicar</button>
-              </div>
-            </div>
-
-            <div>
-              <div class="text-xs text-gray-500">P3</div>
-              <div class="mt-1 grid grid-cols-1 gap-2">
-                <input type="number" step="0.1" min="0" max="10" [(ngModel)]="e.p3.nota" (blur)="clampNota(e,'p3')"
-                  [disabled]="!puedeEditar(e,'p3')"
-                  class="w-full px-2 py-1 border rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 disabled:bg-gray-100 disabled:text-gray-500" placeholder="0-10" />
-                <input type="text" [(ngModel)]="e.p3.obs" [disabled]="!puedeEditar(e,'p3')"
-                  class="w-full px-2 py-1 border rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 disabled:bg-gray-100 disabled:text-gray-500" placeholder="Obs. P3" />
-              </div>
-              <div class="mt-2 flex flex-wrap items-center gap-2 text-xs">
-                <button *ngIf="puedeEditar(e,'p3')" (click)="guardar(e,'p3')" class="px-2 py-0.5 rounded bg-emerald-600 text-white hover:bg-emerald-700">Guardar</button>
-                <button *ngIf="puedeMostrarEditar(e,'p3')" (click)="editar(e,'p3')" class="px-2 py-0.5 rounded bg-indigo-600 text-white hover:bg-indigo-700">Editar</button>
-                <button *ngIf="puedePublicar(e,'p3')" (click)="publicarParcial(e,'p3')" class="px-2 py-0.5 rounded bg-gray-900 text-white">Publicar</button>
-              </div>
-            </div>
-          </div>
-
-          <div class="mt-3 flex items-center justify-between gap-3">
-            <span class="inline-flex items-center px-2 py-1 rounded text-xs font-medium"
-              [ngClass]="{
-                'bg-emerald-50 text-emerald-700': (promedio(e) ?? 0) >= 7,
-                'bg-amber-50 text-amber-700': (promedio(e) ?? 0) >= 5 && (promedio(e) ?? 0) < 7,
-                'bg-rose-50 text-rose-700': (promedio(e) ?? 0) > 0 && (promedio(e) ?? 0) < 5
-              }">
-              {{ promedio(e) === null ? '-' : promedio(e) }} / 10
-            </span>
-
-            <button type="button" (click)="verDocumento(e)" [disabled]="!e.documentoId"
-              class="px-3 py-1 rounded bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-60 text-xs">
-              Ver documento
-            </button>
-          </div>
-        </div>
-      </div>
-
-      <div class="hidden md:block overflow-x-auto">
-        <table class="min-w-[980px] w-full text-sm table-auto">
-          <thead class="bg-gray-50 text-gray-700 text-xs uppercase tracking-wide whitespace-nowrap">
-            <tr>
-              <th class="px-3 py-2 text-left">Estudiante</th>
-              <th class="px-3 py-2 text-left">P1</th>
-              <th class="px-3 py-2 text-left">P2</th>
-              <th class="px-3 py-2 text-left">P3</th>
-              <th class="px-3 py-2 text-left">Promedio Final</th>
-              <th class="px-3 py-2 text-left">Documento</th>
-            </tr>
-          </thead>
-          <tbody class="divide-y divide-gray-100">
-            <tr *ngFor="let e of estudiantes" class="odd:bg-white even:bg-gray-50">
-              <td class="px-3 py-2 font-medium text-gray-800">{{ e.nombre }}</td>
-              <td class="px-3 py-2">
-                <div class="flex flex-col sm:flex-row sm:items-start gap-2">
+              <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <!-- P1 -->
+                <div class="rounded-lg border border-gray-200 bg-gray-50 p-3">
+                  <div class="text-sm font-semibold text-gray-800 mb-2">P1</div>
                   <input type="number" step="0.1" min="0" max="10" [(ngModel)]="e.p1.nota" (blur)="clampNota(e,'p1')"
                     [disabled]="!puedeEditar(e,'p1')"
-                    class="w-full sm:w-20 px-2 py-1 border rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 disabled:bg-gray-100 disabled:text-gray-500"
+                    class="w-full px-3 py-2 border rounded-md bg-white disabled:bg-gray-100 disabled:text-gray-500 text-sm"
                     placeholder="0-10" />
                   <input type="text" [(ngModel)]="e.p1.obs" [disabled]="!puedeEditar(e,'p1')"
-                    class="w-full sm:w-44 px-2 py-1 border rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 disabled:bg-gray-100 disabled:text-gray-500"
-                    placeholder="Obs. P1" />
+                    class="w-full mt-2 px-3 py-2 border rounded-md bg-white disabled:bg-gray-100 disabled:text-gray-500 text-sm"
+                    placeholder="Observación P1" />
+                  <div class="mt-2 flex flex-wrap gap-2">
+                    <button *ngIf="puedeMostrarEditar(e,'p1')" (click)="editar(e,'p1')"
+                      class="px-3 py-1 rounded bg-indigo-600 text-white hover:bg-indigo-700 text-xs">Editar</button>
+                    <button *ngIf="puedeEditar(e,'p1')" (click)="guardar(e,'p1')"
+                      class="px-3 py-1 rounded bg-emerald-600 text-white hover:bg-emerald-700 text-xs">Guardar</button>
+                    <button *ngIf="puedePublicar(e,'p1')" (click)="publicarParcial(e,'p1')"
+                      class="px-3 py-1 rounded bg-gray-900 text-white text-xs">Publicar</button>
+                  </div>
                 </div>
-                <div class="mt-1 flex flex-wrap items-center gap-2 text-xs">
-                  <button *ngIf="puedeEditar(e,'p1')" (click)="guardar(e,'p1')"
-                    class="px-2 py-0.5 rounded bg-emerald-600 text-white hover:bg-emerald-700">Guardar</button>
-                  <button *ngIf="puedeMostrarEditar(e,'p1')" (click)="editar(e,'p1')"
-                    class="px-2 py-0.5 rounded bg-indigo-600 text-white hover:bg-indigo-700">Editar</button>
-                  <button *ngIf="puedePublicar(e,'p1')" (click)="publicarParcial(e,'p1')"
-                    class="px-2 py-0.5 rounded bg-gray-900 text-white">Publicar</button>
-                </div>
-              </td>
-              <td class="px-3 py-2">
-                <div class="flex flex-col sm:flex-row sm:items-start gap-2">
+
+                <!-- P2 -->
+                <div class="rounded-lg border border-gray-200 bg-gray-50 p-3">
+                  <div class="text-sm font-semibold text-gray-800 mb-2">P2</div>
                   <input type="number" step="0.1" min="0" max="10" [(ngModel)]="e.p2.nota" (blur)="clampNota(e,'p2')"
                     [disabled]="!puedeEditar(e,'p2')"
-                    class="w-full sm:w-20 px-2 py-1 border rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 disabled:bg-gray-100 disabled:text-gray-500"
+                    class="w-full px-3 py-2 border rounded-md bg-white disabled:bg-gray-100 disabled:text-gray-500 text-sm"
                     placeholder="0-10" />
                   <input type="text" [(ngModel)]="e.p2.obs" [disabled]="!puedeEditar(e,'p2')"
-                    class="w-full sm:w-44 px-2 py-1 border rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 disabled:bg-gray-100 disabled:text-gray-500"
-                    placeholder="Obs. P2" />
+                    class="w-full mt-2 px-3 py-2 border rounded-md bg-white disabled:bg-gray-100 disabled:text-gray-500 text-sm"
+                    placeholder="Observación P2" />
+                  <div class="mt-2 flex flex-wrap gap-2">
+                    <button *ngIf="puedeMostrarEditar(e,'p2')" (click)="editar(e,'p2')"
+                      class="px-3 py-1 rounded bg-indigo-600 text-white hover:bg-indigo-700 text-xs">Editar</button>
+                    <button *ngIf="puedeEditar(e,'p2')" (click)="guardar(e,'p2')"
+                      class="px-3 py-1 rounded bg-emerald-600 text-white hover:bg-emerald-700 text-xs">Guardar</button>
+                    <button *ngIf="puedePublicar(e,'p2')" (click)="publicarParcial(e,'p2')"
+                      class="px-3 py-1 rounded bg-gray-900 text-white text-xs">Publicar</button>
+                  </div>
                 </div>
-                <div class="mt-1 flex flex-wrap items-center gap-2 text-xs">
-                  <button *ngIf="puedeEditar(e,'p2')" (click)="guardar(e,'p2')"
-                    class="px-2 py-0.5 rounded bg-emerald-600 text-white hover:bg-emerald-700">Guardar</button>
-                  <button *ngIf="puedeMostrarEditar(e,'p2')" (click)="editar(e,'p2')"
-                    class="px-2 py-0.5 rounded bg-indigo-600 text-white hover:bg-indigo-700">Editar</button>
-                  <button *ngIf="puedePublicar(e,'p2')" (click)="publicarParcial(e,'p2')"
-                    class="px-2 py-0.5 rounded bg-gray-900 text-white">Publicar</button>
-                </div>
-              </td>
-              <td class="px-3 py-2">
-                <div class="flex flex-col sm:flex-row sm:items-start gap-2">
+
+                <!-- P3 -->
+                <div class="rounded-lg border border-gray-200 bg-gray-50 p-3">
+                  <div class="text-sm font-semibold text-gray-800 mb-2">P3</div>
                   <input type="number" step="0.1" min="0" max="10" [(ngModel)]="e.p3.nota" (blur)="clampNota(e,'p3')"
                     [disabled]="!puedeEditar(e,'p3')"
-                    class="w-full sm:w-20 px-2 py-1 border rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 disabled:bg-gray-100 disabled:text-gray-500"
+                    class="w-full px-3 py-2 border rounded-md bg-white disabled:bg-gray-100 disabled:text-gray-500 text-sm"
                     placeholder="0-10" />
                   <input type="text" [(ngModel)]="e.p3.obs" [disabled]="!puedeEditar(e,'p3')"
-                    class="w-full sm:w-44 px-2 py-1 border rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 disabled:bg-gray-100 disabled:text-gray-500"
-                    placeholder="Obs. P3" />
+                    class="w-full mt-2 px-3 py-2 border rounded-md bg-white disabled:bg-gray-100 disabled:text-gray-500 text-sm"
+                    placeholder="Observación P3" />
+                  <div class="mt-2 flex flex-wrap gap-2">
+                    <button *ngIf="puedeMostrarEditar(e,'p3')" (click)="editar(e,'p3')"
+                      class="px-3 py-1 rounded bg-indigo-600 text-white hover:bg-indigo-700 text-xs">Editar</button>
+                    <button *ngIf="puedeEditar(e,'p3')" (click)="guardar(e,'p3')"
+                      class="px-3 py-1 rounded bg-emerald-600 text-white hover:bg-emerald-700 text-xs">Guardar</button>
+                    <button *ngIf="puedePublicar(e,'p3')" (click)="publicarParcial(e,'p3')"
+                      class="px-3 py-1 rounded bg-gray-900 text-white text-xs">Publicar</button>
+                  </div>
                 </div>
-                <div class="mt-1 flex flex-wrap items-center gap-2 text-xs">
-                  <button *ngIf="puedeEditar(e,'p3')" (click)="guardar(e,'p3')"
-                    class="px-2 py-0.5 rounded bg-emerald-600 text-white hover:bg-emerald-700">Guardar</button>
-                  <button *ngIf="puedeMostrarEditar(e,'p3')" (click)="editar(e,'p3')"
-                    class="px-2 py-0.5 rounded bg-indigo-600 text-white hover:bg-indigo-700">Editar</button>
-                  <button *ngIf="puedePublicar(e,'p3')" (click)="publicarParcial(e,'p3')"
-                    class="px-2 py-0.5 rounded bg-gray-900 text-white">Publicar</button>
-                </div>
-              </td>
-              <td class="px-3 py-2">
-                <span class="inline-flex items-center px-2 py-1 rounded text-xs font-medium" [ngClass]="{
-                        'bg-emerald-50 text-emerald-700': (promedio(e) ?? 0) >= 7,
-                        'bg-amber-50 text-amber-700': (promedio(e) ?? 0) >= 5 && (promedio(e) ?? 0) < 7,
-                        'bg-rose-50 text-rose-700': (promedio(e) ?? 0) > 0 && (promedio(e) ?? 0) < 5
-                      }">
-                  {{ promedio(e) === null ? '-' : promedio(e) }} / 10
-                </span>
-              </td>
+              </div>
+            </div>
 
-              <td class="px-3 py-2">
+            <!-- Right: promedio + view doc -->
+            <div class="lg:col-span-3">
+              <div class="rounded-lg border border-gray-200 bg-gray-50 p-4 h-full flex flex-col justify-between">
+                <div>
+                  <div class="text-xs text-gray-500">PROMEDIO</div>
+                  <div class="mt-1 text-3xl font-bold" [ngClass]="{
+                      'text-emerald-600': (promedio(e) ?? 0) >= 7,
+                      'text-amber-600': (promedio(e) ?? 0) >= 5 && (promedio(e) ?? 0) < 7,
+                      'text-rose-600': (promedio(e) ?? 0) > 0 && (promedio(e) ?? 0) < 5,
+                      'text-gray-400': promedio(e) === null
+                    }">
+                    {{ promedio(e) === null ? '-' : promedio(e) }}
+                  </div>
+                </div>
+
                 <button type="button" (click)="verDocumento(e)" [disabled]="!e.documentoId"
-                  class="px-3 py-1 rounded bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-60 text-xs">
+                  class="mt-4 w-full px-3 py-2 rounded bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-60 text-sm">
                   Ver documento
                 </button>
-              </td>
-
-            </tr>
-          </tbody>
-        </table>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   </div>

@@ -35,16 +35,27 @@ export class EstudianteLayout {
   // Modalidad actual (para visibilidad en sidebar)
   modality: Modality = null;
 
+  private toTitleCase(name: string): string {
+    const s = String(name || '').trim();
+    if (!s) return '';
+    return s
+      .toLowerCase()
+      .split(' ')
+      .filter(Boolean)
+      .map(p => p.length ? (p[0].toUpperCase() + p.slice(1)) : p)
+      .join(' ');
+  }
+
   constructor(private router: Router, private auth: AuthService, private periodSvc: PeriodService, private modalitySvc: ModalityService, private me: MeService) {
     const u = this.auth.currentUserValue;
     if (u) {
-      this.userName = u.name || this.userName;
+      this.userName = this.toTitleCase(u.name || this.userName);
       this.userRole = this.pickDisplayRole(u.roles);
     }
     // Suscribirse para reflejar cambios si cambian en runtime
     this.auth.currentUser$.subscribe((user: any) => {
       if (user) {
-        this.userName = user.name || 'Estudiante';
+        this.userName = this.toTitleCase(user.name || 'Estudiante');
         this.userRole = this.pickDisplayRole(user.roles);
       } else {
         this.userName = 'Estudiante';
@@ -67,7 +78,7 @@ export class EstudianteLayout {
       const u = res?.user;
       if (u) {
         const fullname = [u.firstname, u.lastname].filter(Boolean).join(' ').trim();
-        if (fullname) this.userName = fullname;
+        if (fullname) this.userName = this.toTitleCase(fullname);
       }
       const ap = res?.activePeriod;
       if (!this.periodSvc.getActivePeriod() && ap?.name) {

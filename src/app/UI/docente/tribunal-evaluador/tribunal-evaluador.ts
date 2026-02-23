@@ -1,16 +1,34 @@
 import { Component } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { FormsModule } from '@angular/forms';
 import { HttpClient } from '@angular/common/http';
 
 @Component({
   selector: 'app-tribunal-evaluador-docente',
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, FormsModule],
   templateUrl: './tribunal-evaluador.html',
   styleUrl: './tribunal-evaluador.scss'
 })
 export class TribunalEvaluadorDocente {
   estudiantesAsignados: Array<{ id: string; nombre: string; carrera: string | null; rol?: string; tribunal?: string }> = [];
+
+  carreraFiltro = '';
+
+  get carrerasDisponibles(): string[] {
+    const set = new Set<string>();
+    for (const e of this.estudiantesAsignados || []) {
+      const c = String(e?.carrera || '').trim();
+      if (c) set.add(c);
+    }
+    return Array.from(set).sort((a, b) => a.localeCompare(b));
+  }
+
+  get estudiantesFiltrados() {
+    const c = String(this.carreraFiltro || '').trim();
+    if (!c) return this.estudiantesAsignados;
+    return (this.estudiantesAsignados || []).filter(e => String(e?.carrera || '').trim() === c);
+  }
 
   private mapRolToTribunal(rol?: string): string {
     const r = String(rol || '').toLowerCase();
@@ -31,6 +49,17 @@ export class TribunalEvaluadorDocente {
           const rows = Array.isArray(list) ? list : [];
           this.estudiantesAsignados = rows.map(r => ({
             ...r,
+            carrera: (() => {
+              const raw = (r as any)?.carrera
+                ?? (r as any)?.career_name
+                ?? (r as any)?.career
+                ?? (r as any)?.careerName
+                ?? (r as any)?.carrera_nombre
+                ?? (r as any)?.carreraNombre
+                ?? null;
+              const s = String(raw ?? '').trim();
+              return s ? s : null;
+            })(),
             tribunal: this.mapRolToTribunal(r?.rol)
           }));
         },

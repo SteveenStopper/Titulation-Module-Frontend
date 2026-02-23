@@ -28,16 +28,27 @@ export class VicerrectorLayout {
   get periodLoading$() { return this.periodSvc.loadingActive$; }
   get periodListLoading$() { return this.periodSvc.loadingList$; }
 
+  private toTitleCase(name: string): string {
+    const s = String(name || '').trim();
+    if (!s) return '';
+    return s
+      .toLowerCase()
+      .split(' ')
+      .filter(Boolean)
+      .map(p => p.length ? (p[0].toUpperCase() + p.slice(1)) : p)
+      .join(' ');
+  }
+
   constructor(private auth: AuthService, private periodSvc: PeriodService) {
     const u = this.auth.currentUserValue;
     if (u) {
-      this.userName = `${u.firstname} ${u.lastname}`;
+      this.userName = this.toTitleCase(`${u.firstname || ''} ${u.lastname || ''}`);
       this.userRole = this.mapRole(u.roles[0]);
       this.isAdmin = this.auth.hasRole('Administrador');
     }
     this.auth.currentUser$.subscribe((user) => {
       if (user) {
-        this.userName = `${user.firstname} ${user.lastname}`;
+        this.userName = this.toTitleCase(`${user.firstname || ''} ${user.lastname || ''}`);
         this.userRole = this.mapRole(user.roles[0]);
       } else {
         this.userName = 'Vicerrector';

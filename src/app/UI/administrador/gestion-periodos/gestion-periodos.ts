@@ -40,6 +40,20 @@ export class GestionPeriodos {
   formError = '';
   filtro = '';
 
+  page = 1;
+  pageSize = 10;
+
+  get totalPages(): number {
+    const total = (this.periodosFiltrados || []).length;
+    return Math.max(1, Math.ceil(total / this.pageSize));
+  }
+
+  get pagedPeriodosFiltrados() {
+    const list = this.periodosFiltrados || [];
+    const start = (this.page - 1) * this.pageSize;
+    return list.slice(start, start + this.pageSize);
+  }
+
   constructor(private periodSvc: PeriodService) {
     const t = new Date();
     t.setHours(0, 0, 0, 0);
@@ -97,6 +111,13 @@ export class GestionPeriodos {
     const q = this.filtro.trim().toLowerCase();
     if (!q) return this.periodos;
     return this.periodos.filter(p => p.nombre.toLowerCase().includes(q));
+  }
+
+  setPage(p: number) {
+    const next = Number(p);
+    if (!Number.isFinite(next)) return;
+    if (next < 1 || next > this.totalPages) return;
+    this.page = next;
   }
 
   abrirCrear() {

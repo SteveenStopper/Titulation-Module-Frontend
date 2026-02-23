@@ -3,11 +3,12 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { HttpClient } from '@angular/common/http';
 import Swal from 'sweetalert2';
+import { SearchableSelectComponent } from '../../../core/components/searchable-select.component';
 
 @Component({
   selector: 'app-comision-asignar-lector',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, SearchableSelectComponent],
   templateUrl: './asignar-lector.html'
 })
 export class ComisionAsignarLectorComponent implements OnInit {
@@ -34,6 +35,13 @@ export class ComisionAsignarLectorComponent implements OnInit {
   editingStudentId: number | null = null;
   editingLectorId: number | null = null;
   savingEdit = false;
+
+  get isReadOnly(): boolean {
+    const sel = Number(this.periodoId);
+    const act = Number(this.activePeriodId);
+    if (!Number.isFinite(sel) || !Number.isFinite(act)) return false;
+    return sel !== act;
+  }
 
   // Paginación (client-side)
   pageEst = 1;
@@ -128,7 +136,6 @@ export class ComisionAsignarLectorComponent implements OnInit {
   ngOnInit(): void {
     this.cargarPeriodos();
     this.cargarPeriodoActivo();
-    this.cargarCarreras();
     this.cargarDocentes();
     this.cargarEstudiantes();
     this.cargarAsignados();
@@ -192,7 +199,9 @@ export class ComisionAsignarLectorComponent implements OnInit {
         ...d,
         id_user: Number(d?.id_user),
         fullname: this.toTitleCase(String(d?.fullname || '')),
-      })).filter((d: any) => Number.isFinite(Number(d.id_user)) && d.fullname);
+      }))
+        .filter((d: any) => Number.isFinite(Number(d.id_user)) && d.fullname)
+        .filter((d: any) => !/^usuario\b/i.test(String(d.fullname || '').trim()));
     });
   }
 
@@ -203,8 +212,6 @@ export class ComisionAsignarLectorComponent implements OnInit {
       return;
     }
     const params: any = {};
-    const carreraId = this.toValidId(this.carreraId);
-    if (carreraId) params.careerId = carreraId;
     params.academicPeriodId = periodoId;
     this.http.get<any[]>('/api/uic/admin/estudiantes-sin-lector', { params }).subscribe(rows => {
       this.estudiantes = Array.isArray(rows) ? rows : [];
@@ -219,8 +226,6 @@ export class ComisionAsignarLectorComponent implements OnInit {
       return;
     }
     const params: any = {};
-    const carreraId = this.toValidId(this.carreraId);
-    if (carreraId) params.careerId = carreraId;
     params.academicPeriodId = periodoId;
     this.http.get<any[]>('/api/uic/admin/asignaciones/lector', { params }).subscribe(rows => {
       const list = Array.isArray(rows) ? rows : [];
@@ -235,6 +240,7 @@ export class ComisionAsignarLectorComponent implements OnInit {
   }
 
   startEdit(a: any) {
+    if (this.isReadOnly) return;
     this.message = null;
     this.error = null;
     this.editingStudentId = Number(a?.id_user);
@@ -247,6 +253,10 @@ export class ComisionAsignarLectorComponent implements OnInit {
   }
 
   saveEdit(a: any) {
+    if (this.isReadOnly) {
+      this.error = 'Solo se puede editar en el período activo.';
+      return;
+    }
     this.message = null;
     this.error = null;
     const pid = this.toValidId(this.periodoId);
@@ -279,15 +289,13 @@ export class ComisionAsignarLectorComponent implements OnInit {
     this.cargarAsignados();
   }
 
-  onChangeCarrera() {
-    this.estudianteId = null;
-    this.cargarEstudiantes();
-    this.cargarAsignados();
-  }
-
   pickEstudiante(id: number) { this.estudianteId = id; }
 
   asignar() {
+    if (this.isReadOnly) {
+      this.error = 'Solo se puede asignar en el período activo.';
+      return;
+    }
     this.message = null; this.error = null;
     const periodoId = this.toValidId(this.periodoId);
     if (!periodoId) {

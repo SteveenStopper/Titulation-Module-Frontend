@@ -16,6 +16,27 @@ export class CalificacionPracticas {
   items: Array<{ id: number; estudiante: string; carrera: string; nota: number | null; guardado: boolean; certificate_doc_id?: number | null }> = [];
   private allowed = false;
 
+  page = 1;
+  pageSize = 10;
+
+  get totalPages(): number {
+    const total = (this.items || []).length;
+    return Math.max(1, Math.ceil(total / this.pageSize));
+  }
+
+  get pagedItems() {
+    const list = this.items || [];
+    const start = (this.page - 1) * this.pageSize;
+    return list.slice(start, start + this.pageSize);
+  }
+
+  setPage(p: number) {
+    const next = Number(p);
+    if (!Number.isFinite(next)) return;
+    if (next < 1 || next > this.totalPages) return;
+    this.page = next;
+  }
+
   constructor(private http: HttpClient, private auth: AuthService) {
     const user = this.auth.currentUserValue;
     this.allowed = !!user && (user.roles?.includes('Administrador') || user.roles?.includes('Vinculacion_Practicas'));
@@ -140,6 +161,8 @@ export class CalificacionPracticas {
           guardado: r.status === 'saved' || r.status === 'validated',
           certificate_doc_id: r.certificate_doc_id ?? null,
         }));
+
+        this.page = 1;
       });
   }
 }

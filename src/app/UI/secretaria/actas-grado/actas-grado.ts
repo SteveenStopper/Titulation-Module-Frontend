@@ -14,6 +14,10 @@ import Swal from 'sweetalert2';
 export class ActasGrado {
   activeTab: 'uic' | 'complexivo' = 'uic';
 
+  pageUic = 1;
+  pageComplexivo = 1;
+  pageSize = 10;
+
   items: Array<{
     id: number;
     estudiante: string;
@@ -24,6 +28,42 @@ export class ActasGrado {
     hojaDocumentoId?: number | null;
     guardado: boolean;
   }> = [];
+
+  get totalPagesUic(): number {
+    const total = (this.items || []).length;
+    return Math.max(1, Math.ceil(total / this.pageSize));
+  }
+
+  get pagedItems() {
+    const list = this.items || [];
+    const start = (this.pageUic - 1) * this.pageSize;
+    return list.slice(start, start + this.pageSize);
+  }
+
+  get totalPagesComplexivo(): number {
+    const total = (this.complexivoItems || []).length;
+    return Math.max(1, Math.ceil(total / this.pageSize));
+  }
+
+  get pagedComplexivoItems() {
+    const list = this.complexivoItems || [];
+    const start = (this.pageComplexivo - 1) * this.pageSize;
+    return list.slice(start, start + this.pageSize);
+  }
+
+  setPageUic(p: number) {
+    const next = Number(p);
+    if (!Number.isFinite(next)) return;
+    if (next < 1 || next > this.totalPagesUic) return;
+    this.pageUic = next;
+  }
+
+  setPageComplexivo(p: number) {
+    const next = Number(p);
+    if (!Number.isFinite(next)) return;
+    if (next < 1 || next > this.totalPagesComplexivo) return;
+    this.pageComplexivo = next;
+  }
 
   private toast(message: string, type: 'success' | 'error' | 'warning' = 'success') {
     return Swal.fire({
@@ -291,6 +331,8 @@ export class ActasGrado {
           hojaDocumentoId: (r as any).hojaDocumentoId ?? null,
           guardado: false,
         }));
+
+        this.pageUic = 1;
       });
 
     this.http.get<Array<{ id: number; estudiante: string; carrera: string | null; calificacionComplexivo: number | null; actaDocumentoId?: number | null; actaEstado?: string | null }>>('/api/secretaria/actas/complexivo')
@@ -304,6 +346,8 @@ export class ActasGrado {
           actaEstado: (r as any).actaEstado ?? null,
           guardado: false,
         }));
+
+        this.pageComplexivo = 1;
       });
   }
 }

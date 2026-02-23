@@ -24,16 +24,37 @@ export class CoordinadorLayout {
   isAdmin = false;
   activePeriod: string | null = null;
 
+  get isInsideCronos(): boolean {
+    const url = this.router?.url || '';
+    return /\/coordinador\/cronogramas\//.test(url);
+  }
+
+  get isInsideComision(): boolean {
+    const url = this.router?.url || '';
+    return /\/coordinador\/comision\//.test(url);
+  }
+
+  private toTitleCase(name: string): string {
+    const s = String(name || '').trim();
+    if (!s) return '';
+    return s
+      .toLowerCase()
+      .split(' ')
+      .filter(Boolean)
+      .map(p => p.length ? (p[0].toUpperCase() + p.slice(1)) : p)
+      .join(' ');
+  }
+
   constructor(private router: Router, private auth: AuthService, private periodSvc: PeriodService) {
     const u = this.auth.currentUserValue;
     if (u) {
-      this.userName = u.firstname + ' ' + u.lastname;
+      this.userName = this.toTitleCase(`${u.firstname || ''} ${u.lastname || ''}`);
       this.userRole = this.mapRole(u.roles[0]);
       this.isAdmin = this.auth.hasRole('Administrador');
     }
     this.auth.currentUser$.subscribe((user) => {
       if (user) {
-        this.userName = user.firstname + ' ' + user.lastname;
+        this.userName = this.toTitleCase(`${user.firstname || ''} ${user.lastname || ''}`);
         this.userRole = this.mapRole(user.roles[0]);
         this.isAdmin = this.auth.hasRole('Administrador');
       } else {
@@ -47,9 +68,11 @@ export class CoordinadorLayout {
       if (evt instanceof NavigationEnd) {
         const url = evt.urlAfterRedirects || evt.url;
         const insideCronos = /\/coordinador\/cronogramas\//.test(url);
-        if (!insideCronos) this.cronosOpen = false;
+        if (insideCronos) this.cronosOpen = true;
+        else this.cronosOpen = false;
         const insideComision = /\/coordinador\/comision\//.test(url);
-        if (!insideComision) this.comisionOpen = false;
+        if (insideComision) this.comisionOpen = true;
+        else this.comisionOpen = false;
       }
     });
     // Sync active period from backend

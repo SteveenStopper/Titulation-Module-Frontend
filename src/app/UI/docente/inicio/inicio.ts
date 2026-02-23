@@ -6,11 +6,12 @@ import { NotificationsService } from '../../../services/notifications.service';
 import { HttpClient } from '@angular/common/http';
 import { catchError, forkJoin, of } from 'rxjs';
 import { AuthService } from '../../../services/auth.service';
+import { SearchableSelectComponent } from '../../../core/components/searchable-select.component';
 
 @Component({
   selector: 'app-docente-inicio',
   standalone: true,
-  imports: [CommonModule, RouterModule, FormsModule],
+  imports: [CommonModule, RouterModule, FormsModule, SearchableSelectComponent],
   templateUrl: './inicio.html',
   styleUrl: './inicio.scss'
 })
@@ -28,6 +29,8 @@ export class Inicio {
     { titulo: 'Tribunal Evaluador', ruta: '/docente/tribunal-evaluador', icono: 'fa-gavel', color: 'bg-amber-600 hover:bg-amber-700' },
     { titulo: 'Veedor', ruta: '/docente/veedor', icono: 'fa-user-check', color: 'bg-rose-600 hover:bg-rose-700' },
   ];
+
+  accesosVisibles = this.accesos;
 
   abrirNotificaciones() {
     this.panelNotificacionesAbierto = !this.panelNotificacionesAbierto;
@@ -49,6 +52,17 @@ export class Inicio {
   docentesDisponibles: Array<{ id_user: number; fullname: string }> = [];
   selectedDocenteId: number | null = null;
 
+  private toTitleCase(name: string): string {
+    const s = String(name || '').trim();
+    if (!s) return '';
+    return s
+      .toLowerCase()
+      .split(' ')
+      .filter(Boolean)
+      .map(p => p.length ? (p[0].toUpperCase() + p.slice(1)) : p)
+      .join(' ');
+  }
+
   private cargarDashboard() {
     const dashboard$ = this.http
       .get<any>('/api/docente/dashboard')
@@ -67,6 +81,37 @@ export class Inicio {
         { titulo: 'Revisiones pendientes', valor: revisionesPendientes, icono: 'fa-file-circle-check', color: 'text-amber-600' },
         { titulo: 'Materias a cargo', valor: materiasACargo, icono: 'fa-book', color: 'text-emerald-600' },
       ];
+    });
+
+    this.refreshAccesos();
+  }
+
+  private refreshAccesos() {
+    if (this.isAdmin) {
+      this.accesosVisibles = this.accesos;
+      return;
+    }
+
+    const tutorUic$ = this.http.get<any[]>('/api/docente/uic/estudiantes').pipe(catchError(() => of([] as any[])));
+    const complexivo$ = this.http.get<any[]>('/api/docente/complexivo/mis-materias').pipe(catchError(() => of([] as any[])));
+    const lector$ = this.http.get<any[]>('/api/docente/lector/estudiantes').pipe(catchError(() => of([] as any[])));
+    const veedor$ = this.http.get<any[]>('/api/docente/veedor/estudiantes').pipe(catchError(() => of([] as any[])));
+    const tribunal$ = this.http.get<any[]>('/api/docente/tribunal-evaluador/estudiantes').pipe(catchError(() => of([] as any[])));
+
+    forkJoin({ tutorUic: tutorUic$, complexivo: complexivo$, lector: lector$, veedor: veedor$, tribunal: tribunal$ }).subscribe(r => {
+      const canTutorUic = Array.isArray(r.tutorUic) && r.tutorUic.length > 0;
+      const canComplexivo = Array.isArray(r.complexivo) && r.complexivo.length > 0;
+      const canLector = Array.isArray(r.lector) && r.lector.length > 0;
+      const canVeedor = Array.isArray(r.veedor) && r.veedor.length > 0;
+      const canTribunal = Array.isArray(r.tribunal) && r.tribunal.length > 0;
+      this.accesosVisibles = this.accesos.filter(a => {
+        if (a.ruta.startsWith('/docente/tutor-uic')) return canTutorUic;
+        if (a.ruta.startsWith('/docente/docente-complexivo')) return canComplexivo;
+        if (a.ruta.startsWith('/docente/lector')) return canLector;
+        if (a.ruta.startsWith('/docente/veedor')) return canVeedor;
+        if (a.ruta.startsWith('/docente/tribunal-evaluador')) return canTribunal;
+        return true;
+      });
     });
   }
 
@@ -118,14 +163,29 @@ export class Inicio {
         .subscribe({
           next: (list) => {
             const arr = Array.isArray(list) ? list : [];
-            this.docentesDisponibles = arr;
+            this.docentesDisponibles = arr
+              .filter(d => !/^usuario\b/i.test(String((d as any)?.fullname || '').trim()))
+              .map(d => ({
+                id_user: Number((d as any)?.id_user),
+                fullname: this.toTitleCase(String((d as any)?.fullname || '')),
+              }))
+              .filter(d => Number.isFinite(Number(d.id_user)) && !!String(d.fullname || '').trim());
           },
           error: () => {
             // Fallback (si existe sincronización desde esquema externo)
             this.http
               .get<Array<{ id_user: number; fullname: string }>>('/api/uic/admin/docentes')
               .subscribe({
-                next: (list2) => { this.docentesDisponibles = Array.isArray(list2) ? list2 : []; },
+                next: (list2) => {
+                  const arr2 = Array.isArray(list2) ? list2 : [];
+                  this.docentesDisponibles = arr2
+                    .filter(d => !/^usuario\b/i.test(String((d as any)?.fullname || '').trim()))
+                    .map(d => ({
+                      id_user: Number((d as any)?.id_user),
+                      fullname: this.toTitleCase(String((d as any)?.fullname || '')),
+                    }))
+                    .filter(d => Number.isFinite(Number(d.id_user)) && !!String(d.fullname || '').trim());
+                },
                 error: () => { this.docentesDisponibles = []; }
               });
           }

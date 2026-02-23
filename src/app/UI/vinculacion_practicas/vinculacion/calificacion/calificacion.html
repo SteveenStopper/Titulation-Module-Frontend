@@ -17,7 +17,7 @@
         </tr>
       </thead>
       <tbody class="divide-y divide-gray-100">
-        <tr *ngFor="let it of items" class="odd:bg-white even:bg-gray-50">
+        <tr *ngFor="let it of pagedItems" class="odd:bg-white even:bg-gray-50">
           <td class="px-3 py-2 font-medium text-gray-800">{{ it.estudiante }}</td>
           <td class="px-3 py-2 text-gray-700">{{ it.carrera }}</td>
           <td class="px-3 py-2 text-center">
@@ -50,4 +50,15 @@
       </tbody>
     </table>
   </div>
+
+  <div class="flex items-center justify-between" *ngIf="totalPages > 1">
+    <div class="text-xs text-gray-500">Página {{ page }} de {{ totalPages }}</div>
+    <div class="flex items-center gap-2">
+      <button type="button" (click)="setPage(page - 1)" [disabled]="page <= 1"
+        class="px-2 py-1 rounded border text-xs hover:bg-gray-50 disabled:opacity-50">Anterior</button>
+      <button type="button" (click)="setPage(page + 1)" [disabled]="page >= totalPages"
+        class="px-2 py-1 rounded border text-xs hover:bg-gray-50 disabled:opacity-50">Siguiente</button>
+    </div>
+  </div>
+
 </section>

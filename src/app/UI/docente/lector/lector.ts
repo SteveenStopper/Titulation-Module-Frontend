@@ -17,6 +17,23 @@ export class LectorDocente {
   estudiantes: Array<{ id: string; nombre: string; carrera: string | null; documentoUrl?: string | null; documentoId?: number | null; calificacion: number | null; observacion: string; reviewSaved: boolean; editing: boolean }>
     = [];
 
+  carreraFiltro = '';
+
+  get carrerasDisponibles(): string[] {
+    const set = new Set<string>();
+    for (const e of this.estudiantes || []) {
+      const c = String(e?.carrera || '').trim();
+      if (c) set.add(c);
+    }
+    return Array.from(set).sort((a, b) => a.localeCompare(b));
+  }
+
+  get estudiantesFiltrados() {
+    const c = String(this.carreraFiltro || '').trim();
+    if (!c) return this.estudiantes;
+    return (this.estudiantes || []).filter(e => String(e?.carrera || '').trim() === c);
+  }
+
   hasChanges = false;
   saving = false;
   isAdmin = false;

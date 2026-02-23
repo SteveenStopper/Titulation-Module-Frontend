@@ -15,6 +15,23 @@ import Swal from 'sweetalert2';
 export class DocenteComplexivo {
   view: 'mis-materias' | 'estudiantes' = 'mis-materias';
 
+  carreraFiltro = '';
+
+  get carrerasDisponibles(): string[] {
+    const set = new Set<string>();
+    for (const m of this.materias || []) {
+      const c = String(m?.carrera || '').trim();
+      if (c) set.add(c);
+    }
+    return Array.from(set).sort((a, b) => a.localeCompare(b));
+  }
+
+  get materiasFiltradas() {
+    const c = String(this.carreraFiltro || '').trim();
+    if (!c) return this.materias;
+    return (this.materias || []).filter(m => String(m?.carrera || '').trim() === c);
+  }
+
   materias: Array<{
     id: string;
     nombre: string;
@@ -48,6 +65,13 @@ export class DocenteComplexivo {
 
   get publicadasAsignadas() {
     return this.materias.filter(m => m.publicado && m.asignadoADocente);
+  }
+
+  get publicadasAsignadasFiltradas() {
+    const list = this.publicadasAsignadas;
+    const c = String(this.carreraFiltro || '').trim();
+    if (!c) return list;
+    return list.filter(m => String(m?.carrera || '').trim() === c);
   }
 
   // Navegación

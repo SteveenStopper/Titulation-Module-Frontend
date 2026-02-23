@@ -23,11 +23,13 @@ export interface Avance {
 export interface Alumno {
   id: string;
   nombre: string;
+  carrera?: string | null;
 }
 
 export interface FilaAvance {
   alumnoId: string;
   nombre: string;
+  carrera?: string | null;
   p1: Parcial;
   p2: Parcial;
   p3: Parcial;
@@ -80,6 +82,7 @@ export class TutorAvanceService {
         return {
           alumnoId: a.alumnoId,
           nombre: al?.nombre ?? a.alumnoId,
+          carrera: (al as any)?.carrera ?? null,
           p1: { ...a.p1 },
           p2: { ...a.p2 },
           p3: { ...a.p3 },
@@ -98,8 +101,18 @@ export class TutorAvanceService {
   // Cargar alumnos desde el backend (usa el usuario autenticado como tutor)
   syncFromBackend(tutorId: string): void {
     const store = this.ensureTutor(tutorId);
-    this.http.get<Array<{ id: string; nombre: string }>>('/api/docente/uic/estudiantes').subscribe(list => {
-      const alumnos = Array.isArray(list) ? list.map(x => ({ id: x.id, nombre: x.nombre })) : [];
+    this.http.get<Array<{ id: string; nombre: string; carrera?: string | null; career?: string | null; career_name?: string | null }>>('/api/docente/uic/estudiantes').subscribe(list => {
+      const alumnos = Array.isArray(list) ? list.map(x => ({
+        id: (x as any).id,
+        nombre: (x as any).nombre,
+        carrera: (x as any).carrera
+          ?? (x as any).career
+          ?? (x as any).career_name
+          ?? ((x as any).career_id != null ? String((x as any).career_id) : null)
+          ?? ((x as any).careerId != null ? String((x as any).careerId) : null)
+          ?? ((x as any).carrera_id != null ? String((x as any).carrera_id) : null)
+          ?? null,
+      })) : [];
       store.alumnos$.next(alumnos);
       // Inicializar avances para nuevos alumnos si no existen
       const current = store.avances$.value;

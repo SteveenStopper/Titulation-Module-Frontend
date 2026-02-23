@@ -29,6 +29,17 @@ export class SecretariaLayout implements OnInit {
     return (parts[0]?.[0] || '').concat(parts[1]?.[0] || '').toUpperCase() || 'S';
   }
 
+  private toTitleCase(name: string): string {
+    const s = String(name || '').trim();
+    if (!s) return '';
+    return s
+      .toLowerCase()
+      .split(' ')
+      .filter(Boolean)
+      .map(p => p.length ? (p[0].toUpperCase() + p.slice(1)) : p)
+      .join(' ');
+  }
+
   constructor(
     private authService: AuthService,
     private router: Router,
@@ -36,7 +47,7 @@ export class SecretariaLayout implements OnInit {
   ) {
     const u = this.authService.currentUserValue;
     if (u) {
-      this.userName = `${u.firstname} ${u.lastname}`;
+      this.userName = this.toTitleCase(`${u.firstname || ''} ${u.lastname || ''}`);
       this.userRole = this.mapRole(u.roles[0]);
       this.isAdmin = this.authService.hasRole('Administrador');
     }
@@ -46,7 +57,7 @@ export class SecretariaLayout implements OnInit {
     // Inicializar datos del usuario
     this.authService.currentUser$.subscribe(user => {
       if (user) {
-        this.userName = `${user.firstname} ${user.lastname}`;
+        this.userName = this.toTitleCase(`${user.firstname || ''} ${user.lastname || ''}`);
         this.userRole = this.mapRole(user.roles[0]);
       } else {
         this.userName = 'Secretaría';

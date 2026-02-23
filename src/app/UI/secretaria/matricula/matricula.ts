@@ -21,11 +21,13 @@ export class Matricula {
   // Filtro por carrera (si backend provee campo en el futuro)
   carreraFiltro = '';
 
-  // Lista renderizada desde backend
-  items: any[] = [];
+  // Acordeón (agrupado por estudiante)
+  groups: Array<{ id: number; estudiante: string; carrera: string; documentos: any[] }> = [];
+  // Índice rápido por documento
+  private docIndex = new Map<number, any>();
   loading = false;
   page = 1;
-  pageSize = 10;
+  pageSize = 30;
   totalPages = 1;
   total = 0;
   // Control de estado por fila (expuestas al template)
@@ -33,6 +35,8 @@ export class Matricula {
   decided = new Set<number>();
   // Estado visual por documento (en_revision | aprobado | rechazado)
   statuses: Record<number, 'en_revision'|'aprobado'|'rechazado'> = {};
+
+  expandedStudentId: number | null = null;
 
   private destroyed$ = new Subject<void>();
 
@@ -56,15 +60,17 @@ export class Matricula {
   private resetView() {
     this.search = '';
     this.carreraFiltro = '';
-    this.items = [];
+    this.groups = [];
+    this.docIndex = new Map();
     this.loading = false;
     this.page = 1;
-    this.pageSize = 10;
+    this.pageSize = 30;
     this.totalPages = 1;
     this.total = 0;
     this.processing = new Set<number>();
     this.decided = new Set<number>();
     this.statuses = {};
+    this.expandedStudentId = null;
     this.isPreviewOpen = false;
     this.previewUrl = null;
     this.previewSafeUrl = null;
@@ -109,33 +115,59 @@ export class Matricula {
         const pag = res?.pagination || {};
         this.total = Number(pag.total || 0);
         this.totalPages = Number(pag.totalPages || 1);
-        // Agrupar por usuario para presentar por estudiante (simple)
-        const byUser = new Map<number, any>();
+        // Agrupar por usuario para acordeón por estudiante
+        const byUser = new Map<number, { id: number; estudiante: string; carrera: string; documentos: any[] }>();
+        const idx = new Map<number, any>();
         for (const d of data) {
-          const uid = Number(d.usuario_id || d.id_user);
-          if (!Number.isFinite(uid)) continue;
-          const nombre = d?.users ? `${String(d.users.firstname || '').trim()} ${String(d.users.lastname || '').trim()}`.trim() : '';
-          const g = byUser.get(uid) || { id: uid, estudiante: (nombre || `Usuario ${uid}`), carrera: '-', documentos: [] as any[] };
-          g.documentos.push(d);
-          byUser.set(uid, g);
-        }
-        // Expandimos a tabla por documento con campos amigables
-        this.items = Array.from(byUser.values()).flatMap((g: any) => (
-          g.documentos.map((d: any) => ({
-            id: d.documento_id,
+          const docId = Number(d?.documento_id ?? d?.id_document ?? d?.id);
+          const uid = Number(d?.usuario_id ?? d?.id_user ?? d?.id_owner);
+          if (!Number.isFinite(uid) || !Number.isFinite(docId)) continue;
+
+          const nombre = d?.users
+            ? `${String(d.users.firstname || '').trim()} ${String(d.users.lastname || '').trim()}`.trim()
+            : (String(d?.fullname || d?.estudiante || '').trim());
+
+          const carrera = String(
+            d?.career_name ?? d?.career ?? d?.carrera ?? d?.carrera_nombre ?? (d as any)?.careerName ?? '-'
+          ).trim() || '-';
+
+          const g = byUser.get(uid) || { id: uid, estudiante: (nombre || `Usuario ${uid}`), carrera: carrera || '-', documentos: [] as any[] };
+          if (g.carrera === '-' && carrera !== '-') g.carrera = carrera;
+
+          const view = {
+            id: docId,
             estudiante: g.estudiante,
             carrera: g.carrera,
-            tipo: d.tipo,
-            usuario_id: d.usuario_id,
-            filename: d.nombre_archivo,
-            created_at: d.creado_en,
-            estado: d.estado || 'en_revision',
+            tipo: d?.tipo,
+            usuario_id: uid,
+            filename: d?.nombre_archivo ?? d?.filename ?? d?.name,
+            created_at: d?.creado_en ?? d?.created_at ?? d?.createdAt,
+            estado: d?.estado || 'en_revision',
+          };
+          g.documentos.push(view);
+          idx.set(docId, view);
+          byUser.set(uid, g);
+        }
+
+        const groups = Array.from(byUser.values())
+          .map(g => ({
+            ...g,
+            documentos: (g.documentos || []).sort((a: any, b: any) => Number(new Date(b.created_at)) - Number(new Date(a.created_at))),
           }))
-        ));
+          .sort((a, b) => String(a.estudiante || '').localeCompare(String(b.estudiante || '')));
+
+        this.groups = groups;
+        this.docIndex = idx;
+        if (this.expandedStudentId && !this.groups.some(g => g.id === this.expandedStudentId)) {
+          this.expandedStudentId = null;
+        }
+
         // Inicializar estado visual por defecto
-        for (const it of this.items) {
-          const st = (it as any).estado as ('en_revision'|'aprobado'|'rechazado'|undefined);
-          this.statuses[it.id] = (st || 'en_revision');
+        for (const g of this.groups) {
+          for (const it of (g.documentos || [])) {
+            const st = (it as any).estado as ('en_revision'|'aprobado'|'rechazado'|undefined);
+            this.statuses[it.id] = (st || 'en_revision');
+          }
         }
       },
       error: () => this.toast.error('No se pudo cargar documentos'),
@@ -143,9 +175,33 @@ export class Matricula {
     });
   }
 
-  get filtered() {
+  get filteredGroups() {
     const q = this.search.trim().toLowerCase();
-    return this.items.filter(i => (!q || String(i.estudiante || '').toLowerCase().includes(q)));
+    return (this.groups || []).filter(g => (!q || String(g.estudiante || '').toLowerCase().includes(q)));
+  }
+
+  toggleGroup(id: number) {
+    this.expandedStudentId = this.expandedStudentId === id ? null : id;
+  }
+
+  getGroupSummary(g: { id: number; documentos: any[] }) {
+    const docs = (g?.documentos || []) as any[];
+    const total = docs.length;
+    let approved = 0;
+    let rejected = 0;
+    let pending = 0;
+    for (const d of docs) {
+      const st = this.statuses[Number(d?.id)] || 'en_revision';
+      if (st === 'aprobado') approved++;
+      else if (st === 'rechazado') rejected++;
+      else pending++;
+    }
+    const status: 'aprobado'|'rechazado'|'en_revision' = rejected > 0 ? 'rechazado' : (pending > 0 ? 'en_revision' : 'aprobado');
+    return { total, approved, rejected, pending, status };
+  }
+
+  private getDocById(id: number) {
+    return this.docIndex.get(Number(id));
   }
 
   changePage(delta: number) {
@@ -176,7 +232,7 @@ export class Matricula {
 
   // Acciones
   aceptar(id: number) {
-    const it = this.items.find(x => x.id === id);
+    const it = this.getDocById(id);
     if (!it) return;
     if (this.processing.has(id) || this.decided.has(id)) return;
     this.processing.add(id);
@@ -225,7 +281,7 @@ export class Matricula {
     const id = this.rejectId;
     const obs = (this.rejectObs || '').trim();
     if (!id || !obs) { this.showToast('La observación es obligatoria', 'error'); return; }
-    const it = this.items.find(x => x.id === id);
+    const it = this.getDocById(id);
     if (!it) return;
     this.processing.add(id);
     this.documents.setStatus(Number(id), 'rechazado', obs).subscribe({
@@ -309,7 +365,7 @@ export class Matricula {
     this.previewTitle = 'Documento';
   }
 
-  private mapTipo(t: string): string {
+  mapTipo(t: string): string {
     switch (t) {
       case 'solicitud': return 'Solicitud';
       case 'oficio': return 'Oficio';

@@ -3,33 +3,43 @@
     <div class="h-full px-4 py-5 bg-white border-r border-gray-200 flex flex-col">
       <div class="flex-1 overflow-y-auto">
         <a routerLink="/ingles/inicio" class="flex items-center ps-2.5 mb-5">
-          <img src="assets/Logo.png" class="h-12 md:h-14 me-3 object-contain drop-shadow-md select-none" alt="Instituto Superior Tecnológico Los Andes" />
+          <img src="assets/Logo.png" class="h-12 md:h-14 me-3 object-contain drop-shadow-md select-none"
+            alt="Instituto Superior Tecnológico Los Andes" />
         </a>
         <ul class="space-y-2 font-medium">
           <li>
-            <a routerLink="/ingles/inicio" routerLinkActive="bg-gray-200 text-gray-900" class="flex items-center p-2 text-gray-700 rounded-lg hover:bg-gray-100">
+            <a routerLink="/ingles/inicio"
+              routerLinkActive="bg-blue-100 text-blue-900 border-l-4 border-blue-600 font-semibold"
+              class="flex items-center p-2 text-gray-700 rounded-lg hover:bg-gray-100 border-l-4 border-transparent">
               <i class="fa-solid fa-house w-5 h-5 me-3"></i>
               <span>Inicio</span>
             </a>
           </li>
           <li>
-            <a routerLink="/ingles/calificacion" routerLinkActive="bg-gray-200 text-gray-900" class="flex items-center p-2 text-gray-700 rounded-lg hover:bg-gray-100">
+            <a routerLink="/ingles/calificacion"
+              routerLinkActive="bg-blue-100 text-blue-900 border-l-4 border-blue-600 font-semibold"
+              class="flex items-center p-2 text-gray-700 rounded-lg hover:bg-gray-100 border-l-4 border-transparent">
               <i class="fa-solid fa-star w-5 h-5 me-3"></i>
               <span>Calificación</span>
             </a>
           </li>
-          <li *ngIf="isAdmin">
-            <a routerLink="/administrador/inicio" class="flex items-center p-2 rounded-lg border border-emerald-200 bg-emerald-50 text-emerald-800 hover:bg-emerald-100">
-              <i class="fa-solid fa-user-gear w-5 h-5 me-3 text-emerald-700"></i>
-              <span>Administrador</span>
+          <li *ngIf="isAdmin" class="pt-3 mt-3 border-t border-gray-200">
+            <div class="px-2 text-[11px] uppercase tracking-wide text-gray-500">Modo administrador</div>
+            <a routerLink="/administrador/inicio" routerLinkActive="ring-2 ring-blue-200"
+              class="mt-2 flex items-center p-2 rounded-lg bg-gradient-to-r from-blue-600 to-indigo-600 text-white hover:from-blue-700 hover:to-indigo-700 transition-all">
+              <i class="fa-solid fa-user-gear w-5 h-5 me-3"></i>
+              <span class="font-semibold">Administrador</span>
+              <span class="ml-auto text-[10px] px-2 py-0.5 rounded-full bg-white/20">Cambiar</span>
             </a>
           </li>
         </ul>
       </div>
       <div class="mt-4 border-t pt-4">
         <div class="relative">
-          <button type="button" (click)="toggleProfile()" class="w-full flex items-center gap-3 p-2 rounded-lg hover:bg-gray-100">
-            <span class="inline-flex h-9 w-9 items-center justify-center rounded-full bg-emerald-600 text-white font-semibold">
+          <button type="button" (click)="toggleProfile()"
+            class="w-full flex items-center gap-3 p-2 rounded-lg hover:bg-gray-100">
+            <span
+              class="inline-flex h-9 w-9 items-center justify-center rounded-full bg-blue-600 text-white font-semibold">
               {{ userInitials }}
             </span>
             <div class="text-left">
@@ -38,7 +48,8 @@
             </div>
             <i class="fa-solid fa-ellipsis-vertical ml-auto text-gray-500"></i>
           </button>
-          <div *ngIf="isProfileOpen" class="absolute left-0 right-0 bottom-12 z-50 bg-white border border-gray-200 rounded-lg shadow-md">
+          <div *ngIf="isProfileOpen"
+            class="absolute left-0 right-0 bottom-12 z-50 bg-white border border-gray-200 rounded-lg shadow-md">
             <button type="button" (click)="logout()" class="w-full text-left px-4 py-2 text-sm hover:bg-gray-50">
               <i class="fa-solid fa-right-from-bracket mr-2"></i> Cerrar sesión
             </button>

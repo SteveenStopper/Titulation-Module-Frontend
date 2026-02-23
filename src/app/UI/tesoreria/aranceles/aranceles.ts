@@ -20,6 +20,8 @@ export class Aranceles {
   loading = false;
   page = 1;
   pageSize = 20;
+  totalPages = 1;
+  total = 0;
 
   // Datos desde el backend
   items: TesoreriaResumenItem[] = [];
@@ -86,6 +88,9 @@ export class Aranceles {
       .subscribe({
         next: (resp) => {
           this.items = resp?.data || [];
+          const pag: any = (resp as any)?.pagination || {};
+          this.total = Number(pag.total || 0);
+          this.totalPages = Math.max(1, Number(pag.totalPages || pag.pages || 1));
           this.loading = false;
         },
         error: (err) => {
@@ -93,6 +98,15 @@ export class Aranceles {
           this.toast.error(err?.error?.message || 'No se pudo cargar el resumen');
         }
       });
+  }
+
+  setPage(p: number) {
+    const next = Number(p);
+    if (!Number.isFinite(next)) return;
+    if (next < 1 || next > this.totalPages) return;
+    if (next === this.page) return;
+    this.page = next;
+    this.loadResumen();
   }
 
   private requirePeriodoFromItem(it: TesoreriaResumenItem): number | null {
@@ -135,6 +149,7 @@ export class Aranceles {
     this.tesoreria.rechazar(periodo, estudiante_id, obs)
       .subscribe({
         next: () => {
+          this.toast.success('Rechazado correctamente');
           this.notifications.create({
             id_user: estudiante_id,
             type: 'tesoreria_rechazo',
@@ -142,8 +157,10 @@ export class Aranceles {
             message: obs,
             entity_type: 'tesoreria',
             entity_id: estudiante_id,
-          }).subscribe({ complete: () => {} });
-          this.toast.info('Rechazado y notificado');
+          }).subscribe({
+            next: () => this.toast.info('Notificación enviada'),
+            error: () => this.toast.error('No se pudo enviar la notificación'),
+          });
           this.loading = false;
           this.showRejectDialog = false;
           this.rejectTargetId = null;

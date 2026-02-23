@@ -14,14 +14,14 @@
     <!-- Rechazo Modal -->
     <div *ngIf="rejectOpen" class="fixed inset-0 z-50 flex items-center justify-center">
       <div class="absolute inset-0 bg-black/50" (click)="cancelarRechazo()"></div>
-      <div class="relative bg-white w-[92vw] max-w-md rounded-xl shadow-lg overflow-hidden">
+      <div class="relative bg-white w-[92vw] max-w-md rounded-xl shadow-lg overflow-hidden max-h-[90vh]">
         <div class="flex items-center justify-between px-4 py-2 border-b">
           <div class="font-medium text-gray-800">Rechazar documento</div>
           <button (click)="cancelarRechazo()" class="p-2 rounded hover:bg-gray-100" aria-label="Cerrar">
             <i class="fa fa-xmark"></i>
           </button>
         </div>
-        <div class="p-4 space-y-3">
+        <div class="p-4 space-y-3 overflow-auto">
           <label class="block text-sm font-medium text-gray-700">Observación</label>
           <textarea [(ngModel)]="rejectObs" rows="4" class="w-full border rounded-md px-3 py-2 text-sm"
             placeholder="Describe el motivo del rechazo"></textarea>
@@ -36,72 +36,106 @@
     </div>
   </div>
   <!-- Header -->
-  <div class="bg-white rounded-xl border border-gray-200 shadow-sm px-4 py-3 flex items-center justify-between">
+  <div
+    class="bg-white rounded-xl border border-gray-200 shadow-sm px-4 py-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
     <div>
       <h2 class="text-xl md:text-2xl font-bold text-gray-800">Matrícula</h2>
       <p class="text-gray-600">Revisión de documentos para matriculación</p>
     </div>
-    <div class="flex items-center gap-2">
+    <div class="flex items-center gap-2 w-full sm:w-auto">
       <input [(ngModel)]="search" type="text" placeholder="Buscar por estudiante"
-        class="px-3 py-2 border rounded-lg text-sm w-72" />
+        class="px-3 py-2 border rounded-lg text-sm w-full sm:w-72" />
     </div>
   </div>
 
-  <!-- Tabla -->
-  <div class="bg-white rounded-xl border border-gray-200 shadow-sm overflow-auto">
-    <table class="min-w-full text-sm">
-      <thead class="bg-gray-50 text-gray-700 text-xs uppercase">
-        <tr>
-          <th class="px-3 py-2 text-left">Estudiante</th>
-          <th class="px-3 py-2 text-left">Tipo</th>
-          <th class="px-3 py-2 text-left">Nombre</th>
-          <th class="px-3 py-2 text-left">Fecha</th>
-          <th class="px-3 py-2 text-left">Estado</th>
-          <th class="px-3 py-2 text-center">Acciones</th>
-        </tr>
-      </thead>
-      <tbody class="divide-y divide-gray-100">
-        <tr *ngFor="let it of filtered" class="odd:bg-white even:bg-gray-50 align-top">
-          <td class="px-3 py-2 font-medium text-gray-800">{{ it.estudiante }}</td>
-          <td class="px-3 py-2 text-gray-700">{{ it.tipo }}</td>
-          <td class="px-3 py-2 text-gray-700">{{ it.filename || '-' }}</td>
-          <td class="px-3 py-2 text-gray-700">{{ it.created_at | date:'dd/MM/yyyy' }}</td>
-          <td class="px-3 py-2">
-            <span [ngClass]="{
-              'text-yellow-700': statuses[it.id] === 'en_revision',
-              'text-green-700': statuses[it.id] === 'aprobado',
-              'text-red-700': statuses[it.id] === 'rechazado'
-            }">{{ statuses[it.id] | titlecase }}</span>
-          </td>
-          <td class="px-3 py-2">
-            <div class="flex items-center justify-center gap-2">
-              <button (click)="verDocumento(it)"
-                class="px-3 py-1.5 text-xs rounded-md bg-indigo-600 text-white hover:bg-indigo-700">
-                <i class="fa fa-eye mr-1"></i> Ver
-              </button>
-              <button (click)="aceptar(it.id)" [disabled]="processing.has(it.id) || statuses[it.id] !== 'en_revision'"
-                class="px-3 py-1.5 text-xs rounded-md bg-green-600 text-white hover:bg-green-700 disabled:opacity-60">
-                <i class="fa" [ngClass]="processing.has(it.id) ? 'fa-spinner fa-spin mr-1' : 'fa-check mr-1'"></i>
-                Aceptar
-              </button>
-              <button (click)="abrirRechazo(it.id)"
-                [disabled]="processing.has(it.id) || statuses[it.id] !== 'en_revision'"
-                class="px-3 py-1.5 text-xs rounded-md bg-red-600 text-white hover:bg-red-700 disabled:opacity-60">
-                <i class="fa" [ngClass]="processing.has(it.id) ? 'fa-spinner fa-spin mr-1' : 'fa-xmark mr-1'"></i>
-                Rechazar
-              </button>
+  <!-- Acordeón por estudiante -->
+  <div class="space-y-3">
+    <div *ngFor="let g of filteredGroups" class="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+      <button type="button" (click)="toggleGroup(g.id)" class="w-full text-left px-4 py-3 hover:bg-gray-50">
+        <div class="flex items-start justify-between gap-3">
+          <div class="min-w-0">
+            <div class="font-medium text-gray-800 truncate">{{ g.estudiante }}</div>
+            <div class="text-xs text-gray-500 truncate">{{ g.carrera || '-' }}</div>
+          </div>
+
+          <ng-container *ngIf="getGroupSummary(g) as s">
+            <div class="flex items-center gap-2 shrink-0">
+              <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs border" [ngClass]="{
+                  'bg-emerald-50 text-emerald-700 border-emerald-200': s.status === 'aprobado',
+                  'bg-rose-50 text-rose-700 border-rose-200': s.status === 'rechazado',
+                  'bg-amber-50 text-amber-700 border-amber-200': s.status === 'en_revision'
+                }">
+                {{ s.approved }}/{{ s.total }} aprobados
+              </span>
+              <span class="text-xs text-gray-500">{{ expandedStudentId === g.id ? 'Ocultar' : 'Ver' }}</span>
+              <i class="fa" [ngClass]="expandedStudentId === g.id ? 'fa-chevron-up' : 'fa-chevron-down'"></i>
             </div>
-          </td>
-        </tr>
-        <tr *ngIf="filtered.length===0">
-          <td colspan="6" class="px-4 py-6 text-center text-gray-500">Sin resultados</td>
-        </tr>
-      </tbody>
-    </table>
+          </ng-container>
+        </div>
+      </button>
+
+      <div *ngIf="expandedStudentId === g.id" class="border-t bg-white">
+        <div class="p-4 overflow-x-auto">
+          <table class="min-w-full w-full text-sm">
+            <thead class="bg-gray-50 text-gray-700 text-xs uppercase">
+              <tr>
+                <th class="px-3 py-2 text-left">Tipo</th>
+                <th class="px-3 py-2 text-left">Nombre</th>
+                <th class="px-3 py-2 text-left">Fecha</th>
+                <th class="px-3 py-2 text-left">Estado</th>
+                <th class="px-3 py-2 text-center">Acciones</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-gray-100">
+              <tr *ngFor="let it of g.documentos" class="odd:bg-white even:bg-gray-50 align-top">
+                <td class="px-3 py-2 text-gray-700">{{ mapTipo(it.tipo) }}</td>
+                <td class="px-3 py-2 text-gray-700">{{ it.filename || '-' }}</td>
+                <td class="px-3 py-2 text-gray-700">{{ it.created_at | date:'dd/MM/yyyy' }}</td>
+                <td class="px-3 py-2">
+                  <span [ngClass]="{
+                    'text-yellow-700': statuses[it.id] === 'en_revision',
+                    'text-green-700': statuses[it.id] === 'aprobado',
+                    'text-red-700': statuses[it.id] === 'rechazado'
+                  }">{{ statuses[it.id] | titlecase }}</span>
+                </td>
+                <td class="px-3 py-2">
+                  <div class="flex flex-wrap items-center justify-center gap-2">
+                    <button (click)="verDocumento(it)"
+                      class="px-3 py-1.5 text-xs rounded-md bg-indigo-600 text-white hover:bg-indigo-700">
+                      <i class="fa fa-eye mr-1"></i> Ver
+                    </button>
+                    <button (click)="aceptar(it.id)"
+                      [disabled]="processing.has(it.id) || statuses[it.id] !== 'en_revision'"
+                      class="px-3 py-1.5 text-xs rounded-md bg-green-600 text-white hover:bg-green-700 disabled:opacity-60">
+                      <i class="fa" [ngClass]="processing.has(it.id) ? 'fa-spinner fa-spin mr-1' : 'fa-check mr-1'"></i>
+                      Aceptar
+                    </button>
+                    <button (click)="abrirRechazo(it.id)"
+                      [disabled]="processing.has(it.id) || statuses[it.id] !== 'en_revision'"
+                      class="px-3 py-1.5 text-xs rounded-md bg-red-600 text-white hover:bg-red-700 disabled:opacity-60">
+                      <i class="fa" [ngClass]="processing.has(it.id) ? 'fa-spinner fa-spin mr-1' : 'fa-xmark mr-1'"></i>
+                      Rechazar
+                    </button>
+                  </div>
+                </td>
+              </tr>
+              <tr *ngIf="(g.documentos || []).length===0">
+                <td colspan="5" class="px-4 py-6 text-center text-gray-500">Sin documentos</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <div *ngIf="filteredGroups.length===0"
+      class="bg-white rounded-xl border border-gray-200 shadow-sm px-4 py-6 text-center text-gray-500">
+      Sin resultados
+    </div>
   </div>
 
   <!-- Paginación -->
-  <div class="flex items-center justify-between pt-3">
+  <div class="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between pt-3">
     <div class="text-xs text-gray-600">Página {{ page }} de {{ totalPages }}</div>
     <div class="flex items-center gap-2">
       <button (click)="changePage(-1)" [disabled]="page <= 1"

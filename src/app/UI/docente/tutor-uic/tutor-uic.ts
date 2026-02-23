@@ -14,6 +14,27 @@ import { AuthService } from '../../../services/auth.service';
 export class TutorUicDocente {
   tab: 'avance' = 'avance';
   estudiantes: FilaAvance[] = [];
+  private allEstudiantes: FilaAvance[] = [];
+
+  carreraFiltro = '';
+
+  get carrerasDisponibles(): string[] {
+    const set = new Set<string>();
+    for (const e of this.allEstudiantes || []) {
+      const c = String((e as any)?.carrera || '').trim();
+      if (c) set.add(c);
+    }
+    return Array.from(set).sort((a, b) => a.localeCompare(b));
+  }
+
+  private applyFilters() {
+    const c = String(this.carreraFiltro || '').trim();
+    if (!c) {
+      this.estudiantes = this.allEstudiantes;
+      return;
+    }
+    this.estudiantes = (this.allEstudiantes || []).filter(e => String((e as any)?.carrera || '').trim() === c);
+  }
   private tutorId = '';
   private isAdmin = false;
   showToast = false;
@@ -30,12 +51,18 @@ export class TutorUicDocente {
       this.tutorId = String(me);
       this.avanceSvc.syncFromBackend(this.tutorId);
       this.avanceSvc.getListaTutor(this.tutorId).subscribe(lista => {
-        this.estudiantes = lista;
+        this.allEstudiantes = Array.isArray(lista) ? lista : [];
+        this.applyFilters();
       });
     } else {
       this.tutorId = '';
       this.estudiantes = [];
+      this.allEstudiantes = [];
     }
+  }
+
+  onChangeCarrera() {
+    this.applyFilters();
   }
 
   promedio(e: { p1: { nota: number|null }, p2: { nota: number|null }, p3: { nota: number|null } }): number | null {
@@ -61,12 +88,12 @@ export class TutorUicDocente {
 
   puedeEditar(e: any, key: 'p1'|'p2'|'p3'): boolean {
     if (this.isAdmin) return e[key].estado === 'editing';
-    return e[key].estado !== 'published';
+    return e[key].estado === 'editing';
   }
 
   puedeMostrarEditar(e: any, key: 'p1'|'p2'|'p3'): boolean {
-    if (!this.isAdmin) return false;
-    return (e[key].estado === 'saved' || e[key].estado === 'published');
+    if (this.isAdmin) return (e[key].estado === 'saved' || e[key].estado === 'published');
+    return e[key].estado === 'saved';
   }
 
   guardar(e: FilaAvance, key: 'p1'|'p2'|'p3') {
@@ -79,7 +106,7 @@ export class TutorUicDocente {
   }
 
   editar(e: FilaAvance, key: 'p1'|'p2'|'p3') {
-    if (!this.isAdmin) return;
+    if (e[key].estado === 'published') return;
     e[key].estado = 'editing';
   }
 

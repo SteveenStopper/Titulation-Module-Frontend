@@ -10,11 +10,12 @@ import { HttpClient } from '@angular/common/http';
 import { DocumentsService } from '../../../services/documents.service';
 import { VouchersService } from '../../../services/vouchers.service';
 import { AuthService } from '../../../services/auth.service';
+import { SearchableSelectComponent } from '../../../core/components/searchable-select.component';
 
 @Component({
   selector: 'app-gestion-modalidad',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, SearchableSelectComponent],
   templateUrl: './gestion-modalidad.html',
   styleUrl: './gestion-modalidad.scss'
 })
@@ -103,6 +104,17 @@ export class GestionModalidad {
     private vouchers: VouchersService,
     private auth: AuthService,
   ) { }
+
+  private toTitleCase(name: string): string {
+    const s = String(name || '').trim();
+    if (!s) return '';
+    return s
+      .toLowerCase()
+      .split(' ')
+      .filter(Boolean)
+      .map(p => p.length ? (p[0].toUpperCase() + p.slice(1)) : p)
+      .join(' ');
+  }
 
   ngOnInit() {
     const bypass = String(this.route.snapshot.queryParamMap.get('bypassValidations') || '').toLowerCase();
@@ -196,7 +208,13 @@ export class GestionModalidad {
 
     // 3) Cargar docentes para selector
     this.http.get<Array<{ id_user: number; fullname: string }>>('/api/uic/docentes').subscribe({
-      next: (rows) => { this.docentes = Array.isArray(rows) ? rows : []; },
+      next: (rows) => {
+        const list = Array.isArray(rows) ? rows : [];
+        this.docentes = list
+          .map((d: any) => ({ id_user: Number(d?.id_user), fullname: this.toTitleCase(String(d?.fullname || '')) }))
+          .filter(d => Number.isFinite(Number(d.id_user)) && !!d.fullname)
+          .filter(d => !/^usuario\b/i.test(String(d.fullname || '').trim()));
+      },
       error: () => { this.docentes = []; }
     });
 
@@ -267,6 +285,10 @@ export class GestionModalidad {
         error: () => { /* ignore */ }
       });
     });
+  }
+
+  nombreTutorPorId(id: number): string {
+    return this.docentes.find(d => Number(d.id_user) === Number(id))?.fullname || '';
   }
 
   submitUIC() {

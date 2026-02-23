@@ -5,7 +5,7 @@
 }
 
 :host ::ng-deep .reject-dialog .p-dialog {
-  border-radius: 14px;
+  border-radius: 18px;
   overflow: hidden;
   box-shadow: 0 20px 60px rgba(0, 0, 0, 0.25);
 }
@@ -13,10 +13,32 @@
 :host ::ng-deep .reject-dialog .p-dialog-header {
   border-bottom: 1px solid #e5e7eb;
   background: #ffffff;
+  padding: 1rem 1rem;
+}
+
+:host ::ng-deep .reject-dialog .p-dialog-title {
+  flex: 1;
+  text-align: center;
+  font-weight: 700;
+  color: #111827;
+}
+
+:host ::ng-deep .reject-dialog .p-dialog-header-icons {
+  margin-left: auto;
+}
+
+:host ::ng-deep .reject-dialog .p-dialog-header-icon {
+  width: 2.25rem;
+  height: 2.25rem;
+  border-radius: 0.5rem;
+}
+
+:host ::ng-deep .reject-dialog .p-dialog-header-icon:hover {
+  background: rgba(15, 23, 42, 0.06);
 }
 
 :host ::ng-deep .reject-dialog .p-dialog-content {
-  padding-top: 1rem;
+  padding: 1.25rem;
   background: #ffffff;
   color: #111827;
 }
