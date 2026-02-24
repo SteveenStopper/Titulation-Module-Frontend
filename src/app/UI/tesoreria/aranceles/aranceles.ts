@@ -16,18 +16,31 @@ import { DialogModule } from 'primeng/dialog';
 export class Aranceles {
   // Filtros y estado
   search = '';
-  carreraFiltro = '';
+  carreraFiltro: number | null = null;
   loading = false;
   page = 1;
   pageSize = 20;
   totalPages = 1;
   total = 0;
 
+  careers: Array<{ id: number; nombre: string }> = [];
+
   // Datos desde el backend
   items: TesoreriaResumenItem[] = [];
 
-  get carreras(): string[] {
-    return Array.from(new Set(this.items.map(it => String(it.carrera_nombre || '').trim()).filter(Boolean)));
+  get carreras(): Array<{ id: number; nombre: string }> {
+    return (this.careers || []).slice().sort((a, b) => String(a.nombre).localeCompare(String(b.nombre)));
+  }
+
+  private titleCaseName(s: string): string {
+    const str = String(s || '').trim();
+    if (!str) return '';
+    return str
+      .toLowerCase()
+      .split(/\s+/g)
+      .filter(Boolean)
+      .map(w => w.length ? (w[0].toUpperCase() + w.slice(1)) : '')
+      .join(' ');
   }
 
   // Modal rechazo
@@ -47,7 +60,9 @@ export class Aranceles {
   get filtered() {
     const q = this.search.trim().toLowerCase();
     return this.items.filter(it => {
-      if (this.carreraFiltro && String(it.carrera_nombre || '').trim() !== this.carreraFiltro) return false;
+      if (Number.isFinite(Number(this.carreraFiltro)) && Number(this.carreraFiltro) > 0) {
+        if (Number(it.carrera_id) !== Number(this.carreraFiltro)) return false;
+      }
       if (!q) return true;
       return (
         (it.nombre || '').toLowerCase().includes(q) ||
@@ -84,10 +99,14 @@ export class Aranceles {
 
   loadResumen() {
     this.loading = true;
-    this.tesoreria.getResumen(this.page, this.pageSize)
+    this.tesoreria.getResumen(this.page, this.pageSize, undefined, this.carreraFiltro)
       .subscribe({
         next: (resp) => {
-          this.items = resp?.data || [];
+          this.careers = (resp as any)?.careers || [];
+          this.items = (resp?.data || []).map(it => ({
+            ...it,
+            nombre: this.titleCaseName(String((it as any).nombre || '')),
+          }));
           const pag: any = (resp as any)?.pagination || {};
           this.total = Number(pag.total || 0);
           this.totalPages = Math.max(1, Number(pag.totalPages || pag.pages || 1));
@@ -98,6 +117,11 @@ export class Aranceles {
           this.toast.error(err?.error?.message || 'No se pudo cargar el resumen');
         }
       });
+  }
+
+  onFiltroChange() {
+    this.page = 1;
+    this.loadResumen();
   }
 
   setPage(p: number) {

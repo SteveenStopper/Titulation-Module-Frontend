@@ -28,7 +28,7 @@ export class NotaEstudiantes {
   // Búsqueda simple
   search = '';
   // Filtro por carrera
-  carreraFiltro = '';
+  carreraFiltro: number | null = null;
   // Estado
   loading = false;
   page = 1;
@@ -36,9 +36,10 @@ export class NotaEstudiantes {
   totalPages = 1;
   total = 0;
 
-  // Lista de carreras (únicas) derivada de los datos
-  get carreras(): string[] {
-    return Array.from(new Set(this.items.map(e => e.carrera)));
+  careers: Array<{ id: number; nombre: string }> = [];
+
+  get carreras(): Array<{ id: number; nombre: string }> {
+    return (this.careers || []).slice().sort((a, b) => String(a.nombre).localeCompare(String(b.nombre)));
   }
 
   // Datos desde backend
@@ -53,43 +54,42 @@ export class NotaEstudiantes {
   get filtered() {
     const q = this.search.trim().toLowerCase();
     return this.items.filter(e =>
-      (!this.carreraFiltro || e.carrera === this.carreraFiltro) &&
+      (!Number.isFinite(Number(this.carreraFiltro)) || Number(this.carreraFiltro) <= 0 || Number((e as any).carrera_id) === Number(this.carreraFiltro)) &&
       (!q || (e.nombre || '').toLowerCase().includes(q))
     );
   }
 
   get mostrarS5(): boolean {
-    return false;
+    return true;
   }
 
   get mostrarS4(): boolean {
-    return false;
+    return true;
   }
 
-  private semestresDe(e: any): number {
-    return 3;
+  private titleCaseName(s: string): string {
+    const str = String(s || '').trim();
+    if (!str) return '';
+    return str
+      .toLowerCase()
+      .split(/\s+/g)
+      .filter(Boolean)
+      .map(w => w.length ? (w[0].toUpperCase() + w.slice(1)) : '')
+      .join(' ');
   }
 
   private valoresDe(e: any): Array<number | null> {
-    const arr = [e.s1, e.s2, e.s3];
-    return arr.slice(0, this.semestresDe(e));
-  }
-
-  promedio(e: any) {
-    if (typeof e?.promedio_general === 'number') {
-      return Math.round(e.promedio_general * 100) / 100;
-    }
-    const vals = this.valoresDe(e).filter((v: number | null) => typeof v === 'number') as number[];
-    if (!vals.length) return 0;
-    return Math.round((vals.reduce((a, b) => a + b, 0) / vals.length) * 100) / 100;
+    return [e.s1, e.s2, e.s3, e.s4, e.s5];
   }
 
   sinNotas(e: any) {
-    return this.valoresDe(e).some((v: number | null) => v === null || v === undefined);
+    const vals = this.valoresDe(e);
+    return vals.slice(0, 4).some(v => v === null || v === undefined);
   }
 
   tieneBajas(e: any) {
-    return this.valoresDe(e).some((v: number | null) => typeof v === 'number' && v < this.minNota);
+    const vals = this.valoresDe(e);
+    return vals.slice(0, 4).some(v => typeof v === 'number' && v < this.minNota);
   }
 
   elegible(e: any) {
@@ -121,10 +121,14 @@ export class NotaEstudiantes {
 
   loadPromedios() {
     this.loading = true;
-    this.secretaria.listPromedios(this.page, this.pageSize)
+    this.secretaria.listPromedios(this.page, this.pageSize, this.carreraFiltro)
       .subscribe({
         next: (resp) => {
-          this.items = resp?.data || [];
+          this.careers = (resp as any)?.careers || [];
+          this.items = (resp?.data || []).map(it => ({
+            ...it,
+            nombre: this.titleCaseName(String((it as any).nombre || '')),
+          }));
           const pag: any = (resp as any)?.pagination || {};
           this.total = Number(pag.total || 0);
           this.totalPages = Math.max(1, Number(pag.totalPages || pag.pages || 1));
@@ -135,6 +139,11 @@ export class NotaEstudiantes {
           this.toast.error(err?.error?.message || 'No se pudo cargar promedios');
         }
       });
+  }
+
+  onFiltroChange() {
+    this.page = 1;
+    this.loadPromedios();
   }
 
   setPage(p: number) {

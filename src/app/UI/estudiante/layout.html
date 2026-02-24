@@ -11,7 +11,7 @@
           <!-- Inicio -->
           <li>
             <a routerLink="/estudiante/inicio"
-              routerLinkActive="bg-blue-50 text-blue-800 border-l-4 border-blue-500 font-semibold"
+              routerLinkActive="bg-blue-100 text-blue-900 border-l-4 border-blue-600 font-semibold"
               class="flex items-center p-2 text-gray-700 rounded-lg hover:bg-gray-100 border-l-4 border-transparent">
               <i class="fa-solid fa-house w-5 h-5 me-3"></i>
               <span>Inicio</span>
@@ -20,7 +20,7 @@
           <!-- Pagos -->
           <li>
             <a routerLink="/estudiante/pagos"
-              routerLinkActive="bg-blue-50 text-blue-800 border-l-4 border-blue-500 font-semibold"
+              routerLinkActive="bg-blue-100 text-blue-900 border-l-4 border-blue-600 font-semibold"
               class="flex items-center p-2 text-gray-700 rounded-lg hover:bg-gray-100 border-l-4 border-transparent">
               <i class="fa-solid fa-receipt w-5 h-5 me-3"></i>
               <span>Pagos</span>
@@ -29,7 +29,7 @@
           <!-- Matriculación -->
           <li>
             <a routerLink="/estudiante/matriculacion"
-              routerLinkActive="bg-blue-50 text-blue-800 border-l-4 border-blue-500 font-semibold"
+              routerLinkActive="bg-blue-100 text-blue-900 border-l-4 border-blue-600 font-semibold"
               class="flex items-center p-2 text-gray-700 rounded-lg hover:bg-gray-100 border-l-4 border-transparent">
               <i class="fa-solid fa-id-card w-5 h-5 me-3"></i>
               <span>Matricula</span>
@@ -38,7 +38,7 @@
           <!-- Gestión Modalidad -->
           <li>
             <a routerLink="/estudiante/gestion-modalidad"
-              routerLinkActive="bg-blue-50 text-blue-800 border-l-4 border-blue-500 font-semibold"
+              routerLinkActive="bg-blue-100 text-blue-900 border-l-4 border-blue-600 font-semibold"
               class="flex items-center p-2 text-gray-700 rounded-lg hover:bg-gray-100 border-l-4 border-transparent">
               <i class="fa-solid fa-folder-open w-5 h-5 me-3"></i>
               <span>Gestión Modalidad</span>
@@ -48,22 +48,25 @@
           <!-- Grupo: UIC (habilitado siempre) -->
           <li *ngIf="modality === 'UIC'">
             <button type="button" (click)="toggleUIC()"
-              class="w-full flex items-center p-2 text-gray-700 rounded-lg hover:bg-gray-100">
+              class="w-full flex items-center p-2 text-gray-700 rounded-lg hover:bg-gray-100 border-l-4 border-transparent"
+              [ngClass]="isInsideUIC ? 'bg-blue-100 text-blue-900 border-l-4 border-blue-600 font-semibold' : ''">
               <i class="fa-solid fa-building-columns w-5 h-5 me-3"></i>
               <span class="flex-1 text-left">Unidad Integracion Curricular / UIC</span>
               <i class="fa-solid" [ngClass]="uicOpen ? 'fa-chevron-down' : 'fa-chevron-right'"></i>
             </button>
             <ul *ngIf="uicOpen" class="mt-1 ms-8 space-y-1">
               <li>
-                <a routerLink="/estudiante/cronograma-uic" routerLinkActive="text-blue-700"
-                  class="flex items-center p-2 text-gray-600 rounded hover:bg-gray-50">
+                <a routerLink="/estudiante/cronograma-uic"
+                  routerLinkActive="bg-blue-100 text-blue-900 border-l-4 border-blue-600 font-semibold"
+                  class="flex items-center p-2 text-gray-700 rounded-lg hover:bg-gray-100 border-l-4 border-transparent">
                   <i class="fa-regular fa-calendar me-2"></i>
                   <span>Cronograma UIC</span>
                 </a>
               </li>
               <li>
-                <a routerLink="/estudiante/avance" routerLinkActive="text-blue-700"
-                  class="flex items-center p-2 text-gray-600 rounded hover:bg-gray-50">
+                <a routerLink="/estudiante/avance"
+                  routerLinkActive="bg-blue-100 text-blue-900 border-l-4 border-blue-600 font-semibold"
+                  class="flex items-center p-2 text-gray-700 rounded-lg hover:bg-gray-100 border-l-4 border-transparent">
                   <i class="fa-solid fa-chart-line me-2"></i>
                   <span>Avance</span>
                 </a>
@@ -74,22 +77,25 @@
           <!-- Grupo: Examen Complexivo (habilitado siempre) -->
           <li *ngIf="modality === 'EXAMEN_COMPLEXIVO'">
             <button type="button" (click)="toggleComplexivo()"
-              class="w-full flex items-center p-2 text-gray-700 rounded-lg hover:bg-gray-100">
+              class="w-full flex items-center p-2 text-gray-700 rounded-lg hover:bg-gray-100 border-l-4 border-transparent"
+              [ngClass]="isInsideComplexivo ? 'bg-blue-100 text-blue-900 border-l-4 border-blue-600 font-semibold' : ''">
               <i class="fa-solid fa-file-pen w-5 h-5 me-3"></i>
               <span class="flex-1 text-left">Examen Complexivo</span>
               <i class="fa-solid" [ngClass]="complexivoOpen ? 'fa-chevron-down' : 'fa-chevron-right'"></i>
             </button>
             <ul *ngIf="complexivoOpen" class="mt-1 ms-8 space-y-1">
               <li>
-                <a routerLink="/estudiante/cronograma-complexivo" routerLinkActive="text-blue-700"
-                  class="flex items-center p-2 text-gray-600 rounded hover:bg-gray-50">
+                <a routerLink="/estudiante/cronograma-complexivo"
+                  routerLinkActive="bg-blue-100 text-blue-900 border-l-4 border-blue-600 font-semibold"
+                  class="flex items-center p-2 text-gray-700 rounded-lg hover:bg-gray-100 border-l-4 border-transparent">
                   <i class="fa-regular fa-calendar-check me-2"></i>
                   <span>Cronograma Examen Complexivo</span>
                 </a>
               </li>
               <li>
-                <a routerLink="/estudiante/tutorias" routerLinkActive="text-blue-700"
-                  class="flex items-center p-2 text-gray-600 rounded hover:bg-gray-50">
+                <a routerLink="/estudiante/tutorias"
+                  routerLinkActive="bg-blue-100 text-blue-900 border-l-4 border-blue-600 font-semibold"
+                  class="flex items-center p-2 text-gray-700 rounded-lg hover:bg-gray-100 border-l-4 border-transparent">
                   <i class="fa-solid fa-chalkboard-user me-2"></i>
                   <span>Tutorías</span>
                 </a>

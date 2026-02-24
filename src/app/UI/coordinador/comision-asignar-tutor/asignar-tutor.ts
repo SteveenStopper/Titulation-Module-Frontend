@@ -131,13 +131,22 @@ export class ComisionAsignarTutorComponent implements OnInit {
     this.cargarPeriodos();
     this.cargarPeriodoActivo();
     this.cargarDocentes();
-    this.cargarEstudiantes();
-    this.cargarAsignados();
   }
 
   private toValidId(v: any): number | null {
     const n = Number(v);
     return Number.isFinite(n) && n > 0 ? n : null;
+  }
+
+  private tryAutoSelectActivePeriod() {
+    const act = this.toValidId(this.activePeriodId);
+    if (!act) return;
+    const name = this.activePeriodName || String(act);
+    this.upsertPeriodo({ id_academic_periods: act, name });
+    if (!this.toValidId(this.periodoId)) {
+      this.periodoId = act;
+      this.onChangePeriodo();
+    }
   }
 
   private upsertPeriodo(p: { id_academic_periods: number; name: string }) {
@@ -181,10 +190,7 @@ export class ComisionAsignarTutorComponent implements OnInit {
         map.set(id, { id_academic_periods: id, name: String((r as any)?.name || '') });
       }
       this.periodos = Array.from(map.values());
-      // Asegurar que el activo esté presente sin duplicarlo
-      if (Number.isFinite(Number(this.activePeriodId)) && this.activePeriodName) {
-        this.upsertPeriodo({ id_academic_periods: Number(this.activePeriodId), name: this.activePeriodName });
-      }
+      this.tryAutoSelectActivePeriod();
     });
   }
 
@@ -192,16 +198,7 @@ export class ComisionAsignarTutorComponent implements OnInit {
     this.http.get<any>('/api/settings/active-period').subscribe(val => {
       this.activePeriodName = val && val.name ? String(val.name) : null;
       this.activePeriodId = val && Number.isFinite(Number(val.id_academic_periods)) ? Number(val.id_academic_periods) : null;
-      if (Number.isFinite(Number(this.activePeriodId))) {
-        // Asegurar que exista en la lista sin duplicar
-        if (this.activePeriodName) this.upsertPeriodo({ id_academic_periods: Number(this.activePeriodId), name: this.activePeriodName });
-        // Auto-seleccionar el período activo si aún no se ha seleccionado
-        if (!Number.isFinite(Number(this.periodoId))) {
-          this.periodoId = Number(this.activePeriodId);
-          this.cargarEstudiantes();
-          this.cargarAsignados();
-        }
-      }
+      this.tryAutoSelectActivePeriod();
     });
   }
 

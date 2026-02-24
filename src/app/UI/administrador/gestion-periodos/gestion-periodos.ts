@@ -55,9 +55,7 @@ export class GestionPeriodos {
   }
 
   constructor(private periodSvc: PeriodService) {
-    const t = new Date();
-    t.setHours(0, 0, 0, 0);
-    this.minStartDate = t.toISOString().slice(0, 10);
+    this.minStartDate = this.buildMinStartDate();
 
     this.cargar();
     // Cargar lista desde backend y reflejar en UI
@@ -78,7 +76,27 @@ export class GestionPeriodos {
           };
         });
       }
+
+      this.minStartDate = this.buildMinStartDate();
     });
+  }
+
+  private buildMinStartDate() {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const active = this.activoActual;
+    if (!active?.fechaFin) return today.toISOString().slice(0, 10);
+
+    const end = new Date(String(active.fechaFin));
+    if (!Number.isFinite(end.getTime())) return today.toISOString().slice(0, 10);
+
+    // Primer día del mes siguiente (ej: si termina en septiembre -> 01 de octubre)
+    const nextMonthStart = new Date(end.getFullYear(), end.getMonth() + 1, 1);
+    nextMonthStart.setHours(0, 0, 0, 0);
+
+    const min = nextMonthStart > today ? nextMonthStart : today;
+    return min.toISOString().slice(0, 10);
   }
 
   private refreshList() {
@@ -124,6 +142,7 @@ export class GestionPeriodos {
     this.isEditing = false;
     this.form = { id: this.uuid(), nombre: '', fechaInicio: '', fechaFin: '' };
     this.formError = '';
+    this.minStartDate = this.buildMinStartDate();
     this.institutePeriods = [];
     this.selectedInstitutePeriodId = null;
     this.periodSvc.listInstitutePeriods().subscribe({
@@ -188,6 +207,7 @@ export class GestionPeriodos {
     this.isEditing = true;
     this.form = { id: p.id, nombre: p.nombre, fechaInicio: p.fechaInicio, fechaFin: p.fechaFin };
     this.formError = '';
+    this.minStartDate = this.buildMinStartDate();
     this.institutePeriods = [];
     this.selectedInstitutePeriodId = (p.external_period_id != null ? Number(p.external_period_id) : null);
     this.periodSvc.listInstitutePeriods().subscribe({
@@ -255,6 +275,21 @@ export class GestionPeriodos {
       if (de < today) {
         this.formError = 'No se puede establecer una fecha fin pasada';
         return;
+      }
+    }
+
+    // No permitir solapamiento con el período activo actual
+    const active = this.activoActual;
+    if (active && String(active.id) !== String(this.form.id) && active.fechaInicio && active.fechaFin) {
+      const as = new Date(String(active.fechaInicio));
+      const ae = new Date(String(active.fechaFin));
+      if (Number.isFinite(as.getTime()) && Number.isFinite(ae.getTime())) {
+        // overlap si ds <= ae && de >= as
+        const overlaps = ds <= ae && de >= as;
+        if (overlaps) {
+          this.formError = `No se puede usar un rango de fechas dentro del período activo (${active.fechaInicio} a ${active.fechaFin}). Debe iniciar desde ${this.minStartDate}.`;
+          return;
+        }
       }
     }
 

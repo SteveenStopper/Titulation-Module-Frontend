@@ -84,14 +84,6 @@
           </app-searchable-select>
           <div *ngIf="uicAttempted && !selectedTutorId" class="text-xs text-rose-600 mt-1">Este campo es obligatorio.
           </div>
-          <div *ngIf="uicSubmitted && selectedTutorId" class="text-xs text-gray-600 mt-1">
-            Tutor asignado:
-            <span class="font-medium text-gray-800">{{ assignedTutorNombre || nombreTutorPorId(selectedTutorId) }}</span>
-          </div>
-          <div *ngIf="assignedTutorNombre && assignedTutorId && selectedTutorId && assignedTutorId !== selectedTutorId"
-            class="text-xs text-amber-700 mt-1">
-            Tutor asignado: <span class="font-medium">{{ assignedTutorNombre }}</span>
-          </div>
         </div>
       </div>
 

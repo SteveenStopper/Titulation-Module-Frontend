@@ -18,7 +18,8 @@ export interface TesoreriaResumenItem {
 
 export interface Page<T> {
   data: T[];
-  pagination: { page: number; pageSize: number };
+  careers?: Array<{ id: number; nombre: string }>;
+  pagination: { page: number; pageSize: number; total?: number; totalPages?: number };
 }
 
 @Injectable({ providedIn: 'root' })
@@ -27,9 +28,10 @@ export class TesoreriaService {
 
   constructor(private http: HttpClient) {}
 
-  getResumen(page = 1, pageSize = 20, minSem?: number): Observable<Page<TesoreriaResumenItem>> {
+  getResumen(page = 1, pageSize = 20, minSem?: number, careerId?: number | null): Observable<Page<TesoreriaResumenItem>> {
     const params: any = { page, pageSize };
     if (minSem !== undefined && minSem !== null) params.minSem = String(minSem);
+    if (careerId !== undefined && careerId !== null) params.careerId = String(careerId);
     return this.http.get<Page<TesoreriaResumenItem>>(`${this.base}/resumen`, { params });
   }
 

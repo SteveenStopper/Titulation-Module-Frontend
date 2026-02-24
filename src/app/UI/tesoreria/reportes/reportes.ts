@@ -118,6 +118,17 @@ export class Reportes {
       .replace(/'/g, '&#039;');
   }
 
+  private titleCaseName(s: string): string {
+    const str = String(s || '').trim();
+    if (!str) return '';
+    return str
+      .toLowerCase()
+      .split(/\s+/g)
+      .filter(Boolean)
+      .map(w => w.length ? (w[0].toUpperCase() + w.slice(1)) : '')
+      .join(' ');
+  }
+
   private normalizeEstado(s: any) {
     const v = String(s || '').toLowerCase();
     if (!v) return 'Sin comprobante';
@@ -184,7 +195,7 @@ export class Reportes {
       const data = Array.isArray(resp?.data) ? resp.data : [];
       this.previewComprobantes = data.map((r: any) => ({
         nro: Number(r?.nro || 0),
-        estudiante: String(r?.estudiante || '').trim(),
+        estudiante: this.titleCaseName(String(r?.estudiante || '').trim()),
         carrera: String(r?.carrera || '').trim(),
         comprobante_certificados: this.normalizeEstado(r?.comprobante_certificados),
         comprobante_titulacion: this.normalizeEstado(r?.comprobante_titulacion),
@@ -200,7 +211,7 @@ export class Reportes {
       const data = Array.isArray(resp?.data) ? resp.data : [];
       this.previewAranceles = data.map((r: any) => ({
         nro: Number(r?.nro || 0),
-        estudiante: String(r?.estudiante || '').trim(),
+        estudiante: this.titleCaseName(String(r?.estudiante || '').trim()),
         carrera: String(r?.carrera || '').trim(),
         estado_aranceles: String(r?.estado_aranceles || '').trim() || 'Inactivo',
       }));
@@ -222,9 +233,14 @@ export class Reportes {
     const fecha = this.formatLongDate(new Date());
     const signerName = this.getSignerFullName();
 
-    const pageSize = 29;
+    const firstPageSize = 24;
+    const otherPageSize = 21;
     const chunks: Array<any[]> = [];
-    for (let i = 0; i < (rows || []).length; i += pageSize) chunks.push((rows || []).slice(i, i + pageSize));
+    const allRows = Array.isArray(rows) ? rows : [];
+    if (allRows.length) {
+      chunks.push(allRows.slice(0, firstPageSize));
+      for (let i = firstPageSize; i < allRows.length; i += otherPageSize) chunks.push(allRows.slice(i, i + otherPageSize));
+    }
     if (!chunks.length) chunks.push([]);
 
     const renderRows = (slice: any[]) => (slice || []).map(r => `
@@ -237,6 +253,7 @@ export class Reportes {
     `).join('');
 
     const renderPage = (slice: any[], pageIndex: number, totalPages: number) => {
+      const isFirst = pageIndex === 0;
       const isLast = pageIndex === totalPages - 1;
       const bodyRows = renderRows(slice);
       const foot = isLast
@@ -253,13 +270,19 @@ export class Reportes {
         `
         : `<div style="height:44mm;"></div>`;
 
+      const header = isFirst
+        ? `
+            <img class="logo" src="${origin}/assets/Logo.png" />
+            <div class="title">REPORTE DE ESTADO DE ARANCELES DE ESTUDIANTES</div>
+            <div class="meta"><strong>PERIODO ACADEMICO:</strong> ${this.escapeHtml(info.periodLabel)}</div>
+        `
+        : '';
+
       return `
         <div class="page">
           <img class="bg" src="${origin}/assets/Fondo_doc.jpg" />
-          <img class="logo" src="${origin}/assets/Logo.png" />
-          <div class="content">
-            <div class="title">REPORTE DE ESTADO DE ARANCELES DE ESTUDIANTES</div>
-            <div class="meta"><strong>PERIODO ACADEMICO:</strong> ${this.escapeHtml(info.periodLabel)}</div>
+          <div class="content ${isFirst ? 'with-header' : 'no-header'}">
+            ${header}
             <table>
               <thead>
                 <tr>
@@ -277,7 +300,7 @@ export class Reportes {
       `;
     };
 
-    const pagesHtml = chunks.map((slice, idx) => renderPage(slice, idx, chunks.length)).join('<div class="page-break"></div>');
+    const pagesHtml = chunks.map((slice, idx) => renderPage(slice, idx, chunks.length)).join('');
 
     const html = `<!doctype html><html><head><meta charset="utf-8">
       <style>
@@ -288,7 +311,9 @@ export class Reportes {
         .page-break { page-break-after: always; }
         .bg { position:absolute; inset:0; width:100%; height:100%; object-fit:cover; }
         .logo { position:absolute; top: 16mm; left: 18mm; height: 18mm; width: auto; }
-        .content { position: relative; padding: 32mm 18mm 42mm 18mm; }
+        .content { position: relative; padding: 18mm 18mm 42mm 18mm; }
+        .content.with-header { padding-top: 44mm; }
+        .content.no-header { padding-top: 34mm; padding-bottom: 54mm; }
         .title { text-align:center; font-weight:700; font-size:14px; margin-top: 10mm; line-height:1.3; }
         .meta { margin-top: 10mm; font-size: 10.5px; font-weight: 500; }
         .section { margin-top: 14mm; font-size: 11px; font-weight:700; }
@@ -296,7 +321,7 @@ export class Reportes {
         th, td { border: 1px solid #111; padding: 6px; vertical-align: top; }
         th { text-align:left; font-weight:700; }
         .foot { margin-top: 10mm; font-size: 10px; }
-        .firma { margin-top: 28mm; text-align:center; font-size: 10px; }
+        .firma { margin-top: 22mm; text-align:center; font-size: 10px; }
         .firma .name { font-weight:700; }
         .firma .role { font-weight:700; letter-spacing:0.5px; }
       </style>
@@ -310,9 +335,14 @@ export class Reportes {
     const fecha = this.formatLongDate(new Date());
     const signerName = this.getSignerFullName();
 
-    const pageSize = 29;
+    const firstPageSize = 18;
+    const otherPageSize = 14;
     const chunks: Array<any[]> = [];
-    for (let i = 0; i < (rows || []).length; i += pageSize) chunks.push((rows || []).slice(i, i + pageSize));
+    const allRows = Array.isArray(rows) ? rows : [];
+    if (allRows.length) {
+      chunks.push(allRows.slice(0, firstPageSize));
+      for (let i = firstPageSize; i < allRows.length; i += otherPageSize) chunks.push(allRows.slice(i, i + otherPageSize));
+    }
     if (!chunks.length) chunks.push([]);
 
     const renderRows = (slice: any[]) => (slice || []).map(r => `
@@ -327,6 +357,7 @@ export class Reportes {
     `).join('');
 
     const renderPage = (slice: any[], pageIndex: number, totalPages: number) => {
+      const isFirst = pageIndex === 0;
       const isLast = pageIndex === totalPages - 1;
       const bodyRows = renderRows(slice);
       const foot = isLast
@@ -342,14 +373,20 @@ export class Reportes {
           </div>
         `
         : `<div style="height:44mm;"></div>`;
-      return `
-        <div class="page">
-          <img class="bg" src="${origin}/assets/Fondo_doc.jpg" />
-          <img class="logo" src="${origin}/assets/Logo.png" />
-          <div class="content">
+      const header = isFirst
+        ? `
+            <img class="logo" src="${origin}/assets/Logo.png" />
             <div class="title">REPORTE DE COMPROBANTES DE PAGO</div>
             <div class="meta"><strong>PERIODO ACADÉMICO:</strong> ${this.escapeHtml(info.periodLabel)}</div>
             <div class="meta"><strong>CARRERA:</strong> ${this.escapeHtml(info.careerLabel || 'Todas')}</div>
+        `
+        : '';
+
+      return `
+        <div class="page">
+          <img class="bg" src="${origin}/assets/Fondo_doc.jpg" />
+          <div class="content ${isFirst ? 'with-header' : 'no-header'}">
+            ${header}
             <table>
               <thead>
                 <tr>
@@ -369,7 +406,7 @@ export class Reportes {
       `;
     };
 
-    const pagesHtml = chunks.map((slice, idx) => renderPage(slice, idx, chunks.length)).join('<div class="page-break"></div>');
+    const pagesHtml = chunks.map((slice, idx) => renderPage(slice, idx, chunks.length)).join('');
 
     const html = `<!doctype html><html><head><meta charset="utf-8">
       <style>
@@ -380,7 +417,9 @@ export class Reportes {
         .page-break { page-break-after: always; }
         .bg { position:absolute; inset:0; width:100%; height:100%; object-fit:cover; }
         .logo { position:absolute; top: 16mm; left: 18mm; height: 18mm; width: auto; }
-        .content { position: relative; padding: 32mm 18mm 42mm 18mm; }
+        .content { position: relative; padding: 18mm 18mm 42mm 18mm; }
+        .content.with-header { padding-top: 44mm; }
+        .content.no-header { padding-top: 34mm; padding-bottom: 54mm; }
         .title { text-align:center; font-weight:700; font-size:14px; margin-top: 10mm; line-height:1.3; }
         .meta { margin-top: 6mm; font-size: 10.5px; font-weight: 500; }
         .section { margin-top: 10mm; font-size: 11px; font-weight:700; }

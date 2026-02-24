@@ -26,6 +26,8 @@ export class EstudianteLayout {
   isProfileOpen = false;
   uicOpen = false;
   complexivoOpen = false;
+  isInsideUIC = false;
+  isInsideComplexivo = false;
   // Período activo global
   activePeriod: string | null = null;
   periodOptions: string[] = [];
@@ -67,10 +69,10 @@ export class EstudianteLayout {
     this.router.events.subscribe(evt => {
       if (evt instanceof NavigationEnd) {
         const url = evt.urlAfterRedirects || evt.url;
-        const insideUIC = /\/estudiante\/(cronograma-uic|avance)(\/|$)/.test(url);
-        const insideComplexivo = /\/estudiante\/(cronograma-complexivo|tutorias)(\/|$)/.test(url);
-        if (!insideUIC) this.uicOpen = false;
-        if (!insideComplexivo) this.complexivoOpen = false;
+        this.isInsideUIC = /\/estudiante\/(cronograma-uic|avance)(\/|$)/.test(url);
+        this.isInsideComplexivo = /\/estudiante\/(cronograma-complexivo|tutorias)(\/|$)/.test(url);
+        this.uicOpen = this.isInsideUIC;
+        this.complexivoOpen = this.isInsideComplexivo;
       }
     });
     // Sincronizar datos de perfil y período activo desde backend

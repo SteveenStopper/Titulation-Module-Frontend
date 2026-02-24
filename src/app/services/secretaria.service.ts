@@ -6,6 +6,7 @@ export interface SecretariaPromedioItem {
   estudiante_id: number;
   nombre: string;
   carrera: string;
+  carrera_id?: number;
   s1: number | null;
   s2: number | null;
   s3: number | null;
@@ -16,14 +17,21 @@ export interface SecretariaPromedioItem {
   certificado_doc_id?: number | null;
 }
 
+export interface SecretariaPage<T> {
+  data: T[];
+  careers?: Array<{ id: number; nombre: string }>;
+  pagination?: { page: number; pageSize: number; total?: number; totalPages?: number };
+}
+
 @Injectable({ providedIn: 'root' })
 export class SecretariaService {
   private base = '/api/secretaria';
   constructor(private http: HttpClient) { }
 
-  listPromedios(page = 1, pageSize = 20): Observable<{ data: SecretariaPromedioItem[]; pagination?: any }> {
-    const params = new HttpParams().set('page', String(page)).set('pageSize', String(pageSize));
-    return this.http.get<{ data: SecretariaPromedioItem[]; pagination?: any }>(`${this.base}/promedios`, { params });
+  listPromedios(page = 1, pageSize = 20, careerId?: number | null): Observable<SecretariaPage<SecretariaPromedioItem>> {
+    let params = new HttpParams().set('page', String(page)).set('pageSize', String(pageSize));
+    if (careerId !== undefined && careerId !== null) params = params.set('careerId', String(careerId));
+    return this.http.get<SecretariaPage<SecretariaPromedioItem>>(`${this.base}/promedios`, { params });
   }
 
   getPromediosById(id: number): Observable<SecretariaPromedioItem> {
