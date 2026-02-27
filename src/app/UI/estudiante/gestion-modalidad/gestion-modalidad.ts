@@ -105,6 +105,17 @@ export class GestionModalidad {
     private auth: AuthService,
   ) { }
 
+  private ensureTutorInList(id: number | null, name?: string | null) {
+    const tid = Number(id);
+    if (!Number.isFinite(tid)) return;
+
+    const exists = this.docentes.some(d => Number(d.id_user) === tid);
+    if (exists) return;
+
+    const label = this.toTitleCase(String(name || '')) || `Tutor ${tid}`;
+    this.docentes = [...this.docentes, { id_user: tid, fullname: label }];
+  }
+
   private toTitleCase(name: string): string {
     const s = String(name || '').trim();
     if (!s) return '';
@@ -195,7 +206,7 @@ export class GestionModalidad {
         next: (res) => {
           this.current = (res as EnrollmentCurrent) || null;
           const mod = this.current?.modality as Modality | undefined;
-          this.uicSubmitted = mod === 'UIC';
+          this.uicSubmitted = this.uicSubmitted || (mod === 'UIC');
           this.complexivoSelected = mod === 'EXAMEN_COMPLEXIVO';
           if (mod === 'UIC') this.activeTab = 'uic';
           if (mod === 'EXAMEN_COMPLEXIVO') this.activeTab = 'complexivo';
@@ -214,6 +225,8 @@ export class GestionModalidad {
           .map((d: any) => ({ id_user: Number(d?.id_user), fullname: this.toTitleCase(String(d?.fullname || '')) }))
           .filter(d => Number.isFinite(Number(d.id_user)) && !!d.fullname)
           .filter(d => !/^usuario\b/i.test(String(d.fullname || '').trim()));
+
+        this.ensureTutorInList(this.selectedTutorId, this.assignedTutorNombre);
       },
       error: () => { this.docentes = []; }
     });
@@ -257,6 +270,8 @@ export class GestionModalidad {
 
         // Si ya existe, bloquear edición (igual que cuando se envía)
         this.uicSubmitted = true;
+
+        this.ensureTutorInList(this.selectedTutorId, this.assignedTutorNombre);
       },
       complete: () => { this.uicTopicLoading = false; },
       error: () => { this.uicTopicLoading = false; }
@@ -277,6 +292,8 @@ export class GestionModalidad {
                 this.assignedTutorId = tid;
                 this.assignedTutorNombre = tname;
                 this.selectedTutorId = tid;
+
+                this.ensureTutorInList(tid, tname);
               }
             },
             error: () => { /* ignore */ }

@@ -33,7 +33,14 @@ export class ComisionAsignarTutorComponent implements OnInit {
 
   editingStudentId: number | null = null;
   editingTutorId: number | null = null;
+  private originalEditingTutorId: number | null = null;
+  private editingRow: any | null = null;
   savingEdit = false;
+
+  get hasEditChanges(): boolean {
+    if (!this.editingStudentId) return false;
+    return String(this.editingTutorId ?? '') !== String(this.originalEditingTutorId ?? '');
+  }
 
   get isReadOnly(): boolean {
     const sel = Number(this.periodoId);
@@ -211,7 +218,11 @@ export class ComisionAsignarTutorComponent implements OnInit {
     const params: any = {};
     params.academicPeriodId = Number(pid);
     this.http.get<any[]>('/api/uic/admin/estudiantes-sin-tutor', { params }).subscribe(rows => {
-      this.estudiantes = Array.isArray(rows) ? rows : [];
+      this.estudiantes = (Array.isArray(rows) ? rows : []).map((e: any) => ({
+        ...e,
+        fullname: e?.fullname != null ? this.toTitleCase(String(e.fullname)) : e?.fullname,
+        suggested_tutor: e?.suggested_tutor != null ? this.toTitleCase(String(e.suggested_tutor)) : e?.suggested_tutor,
+      }));
       this.setPageEst(1);
     });
   }
@@ -241,11 +252,23 @@ export class ComisionAsignarTutorComponent implements OnInit {
     this.error = null;
     this.editingStudentId = Number(a?.id_user);
     this.editingTutorId = a?.tutor_id != null ? Number(a.tutor_id) : null;
+    this.originalEditingTutorId = this.editingTutorId;
+    this.editingRow = a || null;
   }
 
   cancelEdit() {
     this.editingStudentId = null;
     this.editingTutorId = null;
+    this.originalEditingTutorId = null;
+    this.editingRow = null;
+  }
+
+  saveEditCurrent() {
+    if (!this.editingRow) {
+      this.error = 'Seleccione un registro para editar.';
+      return;
+    }
+    this.saveEdit(this.editingRow);
   }
 
   saveEdit(a: any) {

@@ -21,6 +21,10 @@ export class Pagos {
   pagoEstado: 'enviado' | 'aprobado' | 'rechazado' | '' = '';
   dragOver = false;
 
+  // Lock del formulario: solo habilitar para tipos faltantes o rechazados
+  private readonly requiredVoucherTypes = ['pago_certificado', 'pago_titulacion', 'pago_acta_grado'] as const;
+  private statusByType = new Map<string, 'aprobado' | 'rechazado' | 'en_revision' | ''>();
+
   // Validaciones (gating)
   validationsLoading = false;
   canProceed = true;
@@ -28,6 +32,41 @@ export class Pagos {
   // Historial
   loading = false;
   items: any[] = [];
+
+  get canRegisterPago(): boolean {
+    if (this.validationsLoading || !this.canProceed) return false;
+    if (!this.statusByType || this.statusByType.size === 0) return true;
+
+    const allApproved = this.requiredVoucherTypes.every(t => this.statusByType.get(t) === 'aprobado');
+    if (allApproved) return false;
+
+    // Si existe algún rechazado o falta alguno, se permite registrar
+    const hasRejected = this.requiredVoucherTypes.some(t => this.statusByType.get(t) === 'rechazado');
+    const hasMissing = this.requiredVoucherTypes.some(t => !this.statusByType.get(t));
+    return hasRejected || hasMissing;
+  }
+
+  get disabledPagoMsg(): string {
+    const allApproved = this.requiredVoucherTypes.every(t => this.statusByType.get(t) === 'aprobado');
+    return allApproved ? 'Ya tienes aprobados tus comprobantes. Solo podrás subir de nuevo si alguno es rechazado.' : '';
+  }
+
+  isTipoPagoEnabled(tipoUi: string): boolean {
+    const mapTipo = (t: string): string => {
+      if (t === 'titulacion') return 'pago_titulacion';
+      if (t === 'certificados') return 'pago_certificado';
+      if (t === 'acta_grado') return 'pago_acta_grado';
+      return '';
+    };
+    const vtype = mapTipo(tipoUi);
+    if (!vtype) return false;
+
+    const st = this.statusByType.get(vtype);
+    if (!st) return true; // no existe aún
+    if (st === 'rechazado') return true;
+    // en_revision o aprobado => bloquear para evitar reenvíos
+    return false;
+  }
 
   constructor(
     private toastr: ToastrService,
@@ -67,7 +106,7 @@ export class Pagos {
       next: (res: any) => {
         const raw = Array.isArray(res?.data) ? res.data : (Array.isArray(res) ? res : []);
         const allowed = new Set(['pago_titulacion','pago_certificado','pago_acta_grado']);
-        this.items = raw
+        const normalized = raw
           .map((v: any) => ({
             ...v,
             id_voucher: v?.id_voucher ?? v?.id ?? v?.voucher_id,
@@ -79,6 +118,37 @@ export class Pagos {
             observation: v?.observation ?? v?.observacion,
           }))
           .filter((v: any) => allowed.has(String(v.voucher_type || '').toLowerCase()));
+
+        this.items = normalized;
+
+        // statusByType: tomar el último registro por fecha (fallback por id)
+        const byType = new Map<string, any[]>();
+        for (const it of normalized) {
+          const t = String(it?.voucher_type || '').toLowerCase();
+          if (!t) continue;
+          if (!byType.has(t)) byType.set(t, []);
+          byType.get(t)!.push(it);
+        }
+        this.statusByType = new Map();
+        for (const [t, list] of byType.entries()) {
+          const sorted = list.slice().sort((a, b) => {
+            const da = a?.created_at ? new Date(a.created_at).getTime() : 0;
+            const db = b?.created_at ? new Date(b.created_at).getTime() : 0;
+            if (da !== db) return db - da;
+            return Number(b?.id_voucher || 0) - Number(a?.id_voucher || 0);
+          });
+          const last = sorted[0];
+          const st = String(last?.status || '').toLowerCase() as any;
+          this.statusByType.set(t, (st === 'aprobado' || st === 'rechazado' || st === 'en_revision') ? st : '');
+        }
+
+        // Si el tipo seleccionado está bloqueado (aprobado/en revisión), limpiar selección
+        if (this.pago?.tipo && !this.isTipoPagoEnabled(this.pago.tipo)) {
+          this.pago = { tipo: '', referencia: '', monto: null };
+          this.pagoArchivo = null;
+          this.pagoArchivoNombre = '';
+          try { if (this.voucherFile?.nativeElement) this.voucherFile.nativeElement.value = ''; } catch {}
+        }
       },
       error: () => this.toastr.error('No se pudo cargar el historial de pagos'),
       complete: () => { this.loading = false; }
@@ -143,6 +213,10 @@ export class Pagos {
   }
 
   submitPago() {
+    if (!this.canRegisterPago) {
+      this.toastr.info(this.disabledPagoMsg || 'No puedes registrar más pagos en este momento.');
+      return;
+    }
     if (!this.canProceed) {
       this.toastr.warning(this.validationsMsg || 'No puedes continuar aún.');
       return;
@@ -178,6 +252,10 @@ export class Pagos {
     };
 
     const v_type = mapTipo(this.pago.tipo);
+    if (!this.isTipoPagoEnabled(this.pago.tipo)) {
+      this.toastr.info('Este tipo de comprobante ya está aprobado o en revisión. Solo puedes reenviar si fue rechazado.');
+      return;
+    }
     this.vouchers.create(this.pagoArchivo, {
       v_type,
       id_user,

@@ -28,7 +28,23 @@ export class TribunalEvaluador {
   editingPresidentId: number | null = null;
   editingSecretaryId: number | null = null;
   editingVocalId: number | null = null;
+  editingSecretaryFallback: string | null = null;
+  editingVocalFallback: string | null = null;
+  private originalEditingSecretaryId: number | null = null;
+  private originalEditingVocalId: number | null = null;
+  private editingAsignadoRow: any | null = null;
   savingEdit = false;
+
+  get hasEditAsignadoChanges(): boolean {
+    if (!this.editingStudentId) return false;
+    const sec = Number(this.editingSecretaryId);
+    const voc = Number(this.editingVocalId);
+    const osec = Number(this.originalEditingSecretaryId);
+    const ovoc = Number(this.originalEditingVocalId);
+    const secOk = Number.isFinite(sec) && Number.isFinite(osec) ? sec !== osec : String(this.editingSecretaryId ?? '') !== String(this.originalEditingSecretaryId ?? '');
+    const vocOk = Number.isFinite(voc) && Number.isFinite(ovoc) ? voc !== ovoc : String(this.editingVocalId ?? '') !== String(this.originalEditingVocalId ?? '');
+    return secOk || vocOk;
+  }
 
   get isReadOnly(): boolean {
     const sel = Number(this.model.periodo);
@@ -74,8 +90,19 @@ export class TribunalEvaluador {
     this.errors = [];
     this.editingStudentId = Number(a?.id_user);
     this.editingPresidentId = Number(this.lectorByStudentId.get(Number(a?.id_user)) || null);
-    this.editingSecretaryId = a?.secretary_id != null ? Number(a.secretary_id) : (a?.id_secretary != null ? Number(a.id_secretary) : null);
+    this.editingSecretaryId = a?.secretario_id != null
+      ? Number(a.secretario_id)
+      : (a?.id_secretario != null
+        ? Number(a.id_secretario)
+        : (a?.secretary_id != null
+          ? Number(a.secretary_id)
+          : (a?.id_secretary != null ? Number(a.id_secretary) : null)));
     this.editingVocalId = a?.vocal_id != null ? Number(a.vocal_id) : (a?.id_vocal != null ? Number(a.id_vocal) : null);
+    this.editingSecretaryFallback = a?.secretario != null ? String(a.secretario) : null;
+    this.editingVocalFallback = a?.vocal != null ? String(a.vocal) : null;
+    this.originalEditingSecretaryId = this.editingSecretaryId;
+    this.originalEditingVocalId = this.editingVocalId;
+    this.editingAsignadoRow = a || null;
   }
 
   cancelEditAsignado() {
@@ -83,6 +110,16 @@ export class TribunalEvaluador {
     this.editingPresidentId = null;
     this.editingSecretaryId = null;
     this.editingVocalId = null;
+    this.editingSecretaryFallback = null;
+    this.editingVocalFallback = null;
+    this.originalEditingSecretaryId = null;
+    this.originalEditingVocalId = null;
+    this.editingAsignadoRow = null;
+  }
+
+  saveEditAsignadoCurrent() {
+    if (!this.editingAsignadoRow) return;
+    this.saveEditAsignado(this.editingAsignadoRow);
   }
 
   get hasStudents(): boolean {

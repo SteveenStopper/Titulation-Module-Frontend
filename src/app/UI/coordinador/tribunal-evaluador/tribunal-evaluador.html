@@ -27,7 +27,8 @@
         </div>
       </div>
       <div class="flex items-end">
-        <button type="button" (click)="addMiembro()" [disabled]="isReadOnly || !hasStudents || model.miembros.length >= 2"
+        <button type="button" (click)="addMiembro()"
+          [disabled]="isReadOnly || !hasStudents || model.miembros.length >= 2"
           class="px-3 py-2 rounded-lg border text-sm hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed">
           <i class="fa fa-plus mr-1"></i> Agregar miembro
         </button>
@@ -48,21 +49,20 @@
         <tbody class="divide-y divide-gray-100">
           <tr *ngFor="let m of model.miembros; let i = index" class="odd:bg-white even:bg-gray-50">
             <td class="px-3 py-2">
-              <select class="border border-gray-300 rounded-md px-2 py-1 w-full" [(ngModel)]="m.rol" [disabled]="isReadOnly"
-                (ngModelChange)="onChange()">
+              <select class="border border-gray-300 rounded-md px-2 py-1 w-full" [(ngModel)]="m.rol"
+                [disabled]="isReadOnly" (ngModelChange)="onChange()">
                 <option [ngValue]="undefined" disabled>Seleccione</option>
                 <option *ngFor="let r of roles" [ngValue]="r">{{ r }}</option>
               </select>
             </td>
             <td class="px-3 py-2">
-              <app-searchable-select [(ngModel)]="m.docente" (ngModelChange)="onChange()" [items]="docentes" [disabled]="isReadOnly"
-                labelKey="fullname" valueKey="id_user" placeholder="Seleccione" maxPanelHeight="240px"
-                class="block w-full">
+              <app-searchable-select [(ngModel)]="m.docente" (ngModelChange)="onChange()" [items]="docentes"
+                [disabled]="isReadOnly" labelKey="fullname" valueKey="id_user" placeholder="Seleccione"
+                maxPanelHeight="240px" class="block w-full">
               </app-searchable-select>
             </td>
             <td class="px-3 py-2">
-              <button type="button" (click)="removeMiembro(i)"
-                [disabled]="isReadOnly"
+              <button type="button" (click)="removeMiembro(i)" [disabled]="isReadOnly"
                 class="px-2 py-1 rounded border text-xs hover:bg-gray-50">
                 <i class="fa fa-trash mr-1"></i> Quitar
               </button>
@@ -123,40 +123,18 @@
               <td class="px-3 py-2">{{ a.fullname }}</td>
               <td class="px-3 py-2">{{ a.career_name || a.career_id || '-' }}</td>
               <td class="px-3 py-2">
-                <div *ngIf="editingStudentId !== a.id_user">{{ a.presidente || '—' }}</div>
-                <div *ngIf="editingStudentId === a.id_user" class="text-xs text-gray-500">Fijo (Lector)</div>
+                {{ a.presidente || '—' }}
               </td>
               <td class="px-3 py-2">
-                <div *ngIf="editingStudentId !== a.id_user">{{ a.secretario || '—' }}</div>
-                <div *ngIf="editingStudentId === a.id_user" class="max-w-xs">
-                  <app-searchable-select [(ngModel)]="editingSecretaryId" (ngModelChange)="onChange()"
-                    [items]="docentes" [disabled]="isReadOnly" labelKey="fullname" valueKey="id_user" placeholder="Seleccione"
-                    maxPanelHeight="240px" class="block w-full">
-                  </app-searchable-select>
-                </div>
+                {{ a.secretario || '—' }}
               </td>
               <td class="px-3 py-2">
-                <div *ngIf="editingStudentId !== a.id_user">{{ a.vocal || '—' }}</div>
-                <div *ngIf="editingStudentId === a.id_user" class="max-w-xs">
-                  <app-searchable-select [(ngModel)]="editingVocalId" (ngModelChange)="onChange()" [items]="docentes"
-                    [disabled]="isReadOnly"
-                    labelKey="fullname" valueKey="id_user" placeholder="Seleccione" maxPanelHeight="240px"
-                    class="block w-full">
-                  </app-searchable-select>
-                </div>
+                {{ a.vocal || '—' }}
               </td>
               <td class="px-3 py-2">
                 <div class="flex gap-2" *ngIf="editingStudentId !== a.id_user">
-                  <button type="button" (click)="startEditAsignado(a)"
-                    [disabled]="isReadOnly"
+                  <button type="button" (click)="startEditAsignado(a)" [disabled]="isReadOnly"
                     class="text-xs px-2 py-1 rounded border hover:bg-gray-50">Editar</button>
-                </div>
-                <div class="flex gap-2" *ngIf="editingStudentId === a.id_user">
-                  <button type="button" (click)="saveEditAsignado(a)"
-                    [disabled]="isReadOnly || savingEdit || !editingSecretaryId || !editingVocalId"
-                    class="text-xs px-2 py-1 rounded bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-60">Guardar</button>
-                  <button type="button" (click)="cancelEditAsignado()" [disabled]="savingEdit"
-                    class="text-xs px-2 py-1 rounded border hover:bg-gray-50 disabled:opacity-60">Cancelar</button>
                 </div>
               </td>
             </tr>
@@ -166,6 +144,44 @@
             </tr>
           </tbody>
         </table>
+      </div>
+
+      <div *ngIf="editingStudentId" class="mt-3 p-3 rounded-lg border border-gray-200 bg-gray-50">
+        <div class="text-sm font-semibold text-gray-800">Editar tribunal asignado</div>
+        <div class="mt-2 grid grid-cols-1 md:grid-cols-4 gap-3 items-end">
+          <div>
+            <label class="block text-xs text-gray-600 mb-1">Integrante 1</label>
+            <input type="text" [value]="'Fijo (Lector)'" disabled
+              class="w-full border border-gray-300 rounded-md px-2 py-2 text-sm bg-white" />
+          </div>
+          <div>
+            <label class="block text-xs text-gray-600 mb-1">Integrante 2</label>
+            <app-searchable-select [(ngModel)]="editingSecretaryId" (ngModelChange)="onChange()" [items]="docentes"
+              [fallbackLabel]="editingSecretaryFallback"
+              [disabled]="isReadOnly" labelKey="fullname" valueKey="id_user" placeholder="Seleccione"
+              maxPanelHeight="240px" class="block w-full">
+            </app-searchable-select>
+          </div>
+          <div>
+            <label class="block text-xs text-gray-600 mb-1">Integrante 3</label>
+            <app-searchable-select [(ngModel)]="editingVocalId" (ngModelChange)="onChange()" [items]="docentes"
+              [fallbackLabel]="editingVocalFallback"
+              [disabled]="isReadOnly" labelKey="fullname" valueKey="id_user" placeholder="Seleccione"
+              maxPanelHeight="240px" class="block w-full">
+            </app-searchable-select>
+          </div>
+          <div class="flex gap-2">
+            <button type="button" (click)="saveEditAsignadoCurrent()"
+              [disabled]="isReadOnly || savingEdit || !editingSecretaryId || !editingVocalId || !hasEditAsignadoChanges"
+              class="text-xs px-3 py-2 rounded bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-60">
+              Guardar
+            </button>
+            <button type="button" (click)="cancelEditAsignado()" [disabled]="savingEdit"
+              class="text-xs px-3 py-2 rounded border hover:bg-gray-50 disabled:opacity-60">
+              Cancelar
+            </button>
+          </div>
+        </div>
       </div>
 
       <div class="mt-2 flex items-center justify-between" *ngIf="(tribunalAsignado || []).length > pageSizeAsig">

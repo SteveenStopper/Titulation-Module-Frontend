@@ -78,8 +78,15 @@
         <!-- Tutor -->
         <div>
           <label class="block text-sm font-medium text-gray-700 mb-1">Tutor</label>
-          <app-searchable-select [(ngModel)]="selectedTutorId" [items]="docentes" labelKey="fullname" valueKey="id_user"
-            placeholder="Seleccione tutor" [disabled]="uicSubmitted || uicTopicLoading" maxPanelHeight="240px"
+          <input *ngIf="uicSubmitted"
+            type="text"
+            [value]="assignedTutorNombre || (selectedTutorId ? nombreTutorPorId(selectedTutorId) : '') || 'Tutor asignado'"
+            disabled
+            class="w-full rounded-md border-gray-300 focus:border-blue-500 focus:ring-blue-500 text-sm"
+            placeholder="Tutor" />
+
+          <app-searchable-select *ngIf="!uicSubmitted" [(ngModel)]="selectedTutorId" [items]="docentes" labelKey="fullname" valueKey="id_user"
+            placeholder="Seleccione tutor" [disabled]="uicTopicLoading" maxPanelHeight="240px"
             class="block w-full">
           </app-searchable-select>
           <div *ngIf="uicAttempted && !selectedTutorId" class="text-xs text-rose-600 mt-1">Este campo es obligatorio.

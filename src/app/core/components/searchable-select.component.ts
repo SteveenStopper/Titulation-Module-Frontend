@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, ElementRef, forwardRef, HostListener, Input, ViewChild } from '@angular/core';
+import { Component, ElementRef, forwardRef, HostListener, Input, OnChanges, SimpleChanges, ViewChild } from '@angular/core';
 import { ControlValueAccessor, FormsModule, NG_VALUE_ACCESSOR } from '@angular/forms';
 
 type AnyObj = Record<string, any>;
@@ -53,6 +53,7 @@ export class SearchableSelectComponent implements ControlValueAccessor {
   @Input() placeholder = 'Seleccione';
   @Input() disabled = false;
   @Input() maxPanelHeight = '240px';
+  @Input() fallbackLabel: string | null = null;
 
   @ViewChild('inputEl') inputEl?: ElementRef<HTMLInputElement>;
 
@@ -64,10 +65,24 @@ export class SearchableSelectComponent implements ControlValueAccessor {
   private onChange: (v: any) => void = () => {};
   private onTouched: () => void = () => {};
 
+  ngOnChanges(changes: SimpleChanges): void {
+    if (changes['items']) {
+      if (this.value == null) return;
+      const label = this.getLabel(this.findByValue(this.value));
+      if (!label) return;
+      const current = String(this.search || '').trim();
+      const fallback = String(this.fallbackLabel || '').trim();
+      if (!current || (fallback && current === fallback)) {
+        this.search = String(label || '');
+      }
+      this.recompute();
+    }
+  }
+
   writeValue(obj: any): void {
     this.value = obj ?? null;
     const label = this.value != null ? this.getLabel(this.findByValue(this.value)) : '';
-    this.search = label || '';
+    this.search = label || (this.value != null ? String(this.fallbackLabel || '') : '') || '';
     this.recompute();
   }
 

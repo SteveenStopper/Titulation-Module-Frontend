@@ -4,13 +4,14 @@ import { FormsModule } from '@angular/forms';
 import { PeriodService } from '../../../services/period.service';
 import { HttpClient } from '@angular/common/http';
 import { forkJoin, of, Observable } from 'rxjs';
+import Swal from 'sweetalert2';
 
 @Component({
   selector: 'app-veedor-examen-complexivo',
   standalone: true,
   imports: [CommonModule, FormsModule],
   templateUrl: './veedor-examen-complexivo.html',
-  styleUrl: './veedor-examen-complexivo.scss'
+  styleUrls: ['./veedor-examen-complexivo.scss']
 })
 export class VeedorExamenComplexivo {
 
@@ -41,6 +42,30 @@ export class VeedorExamenComplexivo {
   loading = false;
   message: string | null = null;
   error: string | null = null;
+
+  private toastSuccess(msg: string) {
+    return Swal.fire({
+      toast: true,
+      position: 'top-end',
+      icon: 'success',
+      title: msg,
+      showConfirmButton: false,
+      timer: 3000,
+      timerProgressBar: true,
+    });
+  }
+
+  private toastError(msg: string) {
+    return Swal.fire({
+      toast: true,
+      position: 'top-end',
+      icon: 'error',
+      title: msg,
+      showConfirmButton: false,
+      timer: 3500,
+      timerProgressBar: true,
+    });
+  }
 
   // Paginación (client-side)
   page = 1;
@@ -171,10 +196,8 @@ export class VeedorExamenComplexivo {
   }
 
   getAvailableVeedores(rowIndex: number, slot: 1 | 2) {
-    const currentSelected = new Set<number>(this.getSelectedIdsForRow(rowIndex));
-
     const usedElsewhere = new Set<number>();
-    this.model.materias.forEach((m, idx) => {
+    this.model.materias.forEach((m: any, idx: number) => {
       if (idx === rowIndex) return;
       [Number(m?.veedor1Id), Number(m?.veedor2Id)].forEach((v) => {
         const id = Number(v);
@@ -199,6 +222,23 @@ export class VeedorExamenComplexivo {
       if (usedElsewhere.has(id)) return false;
       // excluir si ya está asignado en otra carrera del período
       return !this.veedoresAsignadosPeriodo.has(id);
+    });
+  }
+
+  getAvailableCarreras(rowIndex: number) {
+    const currentCareerId = Number(this.model.materias?.[rowIndex]?.carreraId);
+    const taken = new Set<number>();
+    (this.model.materias || []).forEach((m, idx) => {
+      if (idx === rowIndex) return;
+      const cid = Number((m as any)?.carreraId);
+      if (!Number.isFinite(cid)) return;
+      if ((m as any)?.locked) taken.add(cid);
+    });
+    return (this.carrerasDisponibles || []).filter((c) => {
+      const cid = Number((c as any)?.id);
+      if (!Number.isFinite(cid)) return false;
+      if (Number.isFinite(currentCareerId) && cid === currentCareerId) return true;
+      return !taken.has(cid);
     });
   }
 
@@ -233,7 +273,7 @@ export class VeedorExamenComplexivo {
     if (this.model.materias.length === 0) errs.push('Agregue al menos una carrera.');
     const nombres = new Set<string>();
 
-    this.model.materias.forEach((m, idx) => {
+    this.model.materias.forEach((m: any, idx: number) => {
       if (!m.carreraId) errs.push(`Fila ${idx + 1}: La carrera evaluada es requerida.`);
       if (Number.isFinite(Number(m.carreraId))) {
         const key = String(m.carreraId);
@@ -245,7 +285,8 @@ export class VeedorExamenComplexivo {
       const v2 = Number(m.veedor2Id);
       const hasV1 = Number.isFinite(v1);
       const hasV2 = Number.isFinite(v2);
-      if (!hasV1 && !hasV2) errs.push(`Fila ${idx + 1}: Seleccione al menos un veedor.`);
+      if (!hasV1) errs.push(`Fila ${idx + 1}: Veedor 1 es obligatorio.`);
+      if (!hasV2) errs.push(`Fila ${idx + 1}: Veedor 2 es obligatorio.`);
       if (hasV1 && hasV2 && v1 === v2) errs.push(`Fila ${idx + 1}: Los veedores no pueden ser el mismo.`);
     });
     this.errors = errs; return errs.length === 0;
@@ -362,6 +403,7 @@ export class VeedorExamenComplexivo {
     this.message = null;
     this.error = null;
     if (!this.validate()) return;
+
     const academicPeriodId = Number(this.model.periodoId);
     if (Number.isFinite(Number(this.activePeriodId)) && academicPeriodId !== Number(this.activePeriodId)) {
       this.error = 'Solo se permite guardar en el período activo.';
@@ -371,7 +413,7 @@ export class VeedorExamenComplexivo {
 
     // Guardar por carrera (reemplaza las asignaciones de esa carrera en el período activo)
     const requests = this.model.materias
-      .map((m): Observable<unknown> | null => {
+      .map((m: any): Observable<unknown> | null => {
         const careerId = Number(m.carreraId);
         if (!Number.isFinite(careerId)) return null;
         const teacherIds = [Number(m.veedor1Id), Number(m.veedor2Id)]
@@ -385,12 +427,14 @@ export class VeedorExamenComplexivo {
     run$.subscribe({
       next: () => {
         this.message = 'Asignación de veedores guardada correctamente.';
+        this.toastSuccess('Asignación de veedores guardada correctamente.');
         // Bloquear edición después de guardar. Se habilita nuevamente al agregar una nueva carrera.
         this.model.materias = (this.model.materias || []).map((m) => ({ ...m, locked: true }));
         this.cargarAsignaciones();
       },
       error: (err) => {
         this.error = err?.error?.message || 'No se pudo guardar la asignación de veedores.';
+        this.toastError(this.error || 'No se pudo guardar la asignación de veedores.');
       },
       complete: () => { this.loading = false; }
     });

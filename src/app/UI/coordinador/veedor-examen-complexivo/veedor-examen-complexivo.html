@@ -39,7 +39,7 @@
               <select class="border border-gray-300 rounded-md px-2 py-1 w-full" [(ngModel)]="m.carreraId"
                 (ngModelChange)="onChange()" [disabled]="!!m.locked">
                 <option [ngValue]="undefined" disabled>Seleccione</option>
-                <option *ngFor="let c of carrerasDisponibles" [ngValue]="c.id">{{ c.nombre }}</option>
+                <option *ngFor="let c of getAvailableCarreras((page - 1) * pageSize + i)" [ngValue]="c.id">{{ c.nombre }}</option>
               </select>
             </td>
             <td class="px-3 py-2">
@@ -47,8 +47,8 @@
                 <div>
                   <label class="block text-xs text-gray-600 mb-1">Veedor 1</label>
                   <select class="border border-gray-300 rounded-md px-2 py-1 w-full" [(ngModel)]="m.veedor1Id"
-                    (ngModelChange)="onChangeVeedores((page - 1) * pageSize + i)" [disabled]="!!m.locked">
-                    <option [ngValue]="undefined">Seleccione</option>
+                    (ngModelChange)="onChangeVeedores((page - 1) * pageSize + i)" [disabled]="!!m.locked" required>
+                    <option [ngValue]="undefined" disabled>Seleccione</option>
                     <option *ngFor="let v of getAvailableVeedores((page - 1) * pageSize + i, 1)" [ngValue]="v.id_user">{{ v.fullname }}</option>
                   </select>
                 </div>
@@ -56,8 +56,8 @@
                 <div>
                   <label class="block text-xs text-gray-600 mb-1">Veedor 2</label>
                   <select class="border border-gray-300 rounded-md px-2 py-1 w-full" [(ngModel)]="m.veedor2Id"
-                    (ngModelChange)="onChangeVeedores((page - 1) * pageSize + i)" [disabled]="!!m.locked">
-                    <option [ngValue]="undefined">Seleccione</option>
+                    (ngModelChange)="onChangeVeedores((page - 1) * pageSize + i)" [disabled]="!!m.locked" required>
+                    <option [ngValue]="undefined" disabled>Seleccione</option>
                     <option *ngFor="let v of getAvailableVeedores((page - 1) * pageSize + i, 2)" [ngValue]="v.id_user">{{ v.fullname }}</option>
                   </select>
                 </div>

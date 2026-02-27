@@ -30,6 +30,11 @@ export class Matricula {
 
   // Requisitos form state
   requisitosHabilitados = true;
+  solicitudUploadEnabled = true;
+  oficioUploadEnabled = true;
+  otroUploadEnabled = true;
+  private allowedOtroCodes = new Set<string>();
+
   reqArchivos: { solicitud?: File; oficio?: File; otro?: File } = {};
   reqNombres: { solicitud?: string; oficio?: string; otro?: string } = {};
   reqTipos: { solicitud?: string; oficio?: string; otro?: string } = {};
@@ -69,6 +74,91 @@ export class Matricula {
       && !this.hasOtrosSinTipo
       && !this.loading
     );
+  }
+
+  private labelToCodeOtro(t: string): string {
+    const key = String(t || '').toLowerCase();
+    if (key.includes('vincul')) return 'cert_vinculacion';
+    if (key.includes('prácticas') || key.includes('practicas')) return 'cert_practicas';
+    if (key.includes('inglés') || key.includes('ingles')) return 'cert_ingles';
+    if (key.includes('no adeud')) return 'cert_no_adeudar';
+    if (key.includes('aprobación malla') || key.includes('aprobacion malla')) return 'cert_aprobacion_malla';
+    return '';
+  }
+
+  private recomputeUploadLocks() {
+    // Si por validaciones base no puede, bloquear todo
+    if (!this.requisitosHabilitados) {
+      this.solicitudUploadEnabled = false;
+      this.oficioUploadEnabled = false;
+      this.otroUploadEnabled = false;
+      this.allowedOtroCodes = new Set();
+      return;
+    }
+
+    // Si aún no hay checklist, permitir carga inicial
+    if (!Array.isArray(this.docsList) || this.docsList.length === 0) {
+      this.solicitudUploadEnabled = true;
+      this.oficioUploadEnabled = true;
+      this.allowedOtroCodes = new Set(['cert_vinculacion', 'cert_practicas', 'cert_ingles', 'cert_no_adeudar', 'cert_aprobacion_malla']);
+      this.otroUploadEnabled = true;
+      return;
+    }
+
+    // Tomar último estado por tipo (por fecha y fallback por id)
+    const byType = new Map<string, any[]>();
+    for (const d of this.docsList) {
+      const t = String(d?.tipo || '').toLowerCase();
+      if (!t) continue;
+      if (!byType.has(t)) byType.set(t, []);
+      byType.get(t)!.push(d);
+    }
+    const lastStatus = new Map<string, string>();
+    for (const [t, list] of byType.entries()) {
+      const sorted = list.slice().sort((a, b) => {
+        const da = a?.created_at ? new Date(a.created_at).getTime() : 0;
+        const db = b?.created_at ? new Date(b.created_at).getTime() : 0;
+        if (da !== db) return db - da;
+        return Number(b?.id || 0) - Number(a?.id || 0);
+      });
+      const st = String(sorted?.[0]?.estado || '').toLowerCase();
+      lastStatus.set(t, st);
+    }
+
+    const isApproved = (t: string) => lastStatus.get(String(t).toLowerCase()) === 'aprobado';
+    const isRejected = (t: string) => lastStatus.get(String(t).toLowerCase()) === 'rechazado';
+    const isInReview = (t: string) => lastStatus.get(String(t).toLowerCase()) === 'en_revision';
+    const isMissing = (t: string) => !lastStatus.has(String(t).toLowerCase());
+
+    this.solicitudUploadEnabled = (isMissing('solicitud') || isRejected('solicitud')) && !isInReview('solicitud') && !isApproved('solicitud');
+    this.oficioUploadEnabled = (isMissing('oficio') || isRejected('oficio')) && !isInReview('oficio') && !isApproved('oficio');
+
+    const otherCodes = ['cert_vinculacion', 'cert_practicas', 'cert_ingles', 'cert_no_adeudar', 'cert_aprobacion_malla'];
+    this.allowedOtroCodes = new Set(otherCodes.filter(code => (isMissing(code) || isRejected(code)) && !isInReview(code) && !isApproved(code)));
+    this.otroUploadEnabled = this.allowedOtroCodes.size > 0;
+
+    // Si todo está aprobado, bloquear todo
+    const allApproved = isApproved('solicitud') && isApproved('oficio') && otherCodes.every(isApproved);
+    if (allApproved) {
+      this.solicitudUploadEnabled = false;
+      this.oficioUploadEnabled = false;
+      this.otroUploadEnabled = false;
+      this.allowedOtroCodes = new Set();
+    }
+  }
+
+  private canUploadTipo(tipo: 'solicitud'|'oficio'|'otro', otroLabel?: string): boolean {
+    if (!this.requisitosHabilitados) return false;
+    if (tipo === 'solicitud') return !!this.solicitudUploadEnabled;
+    if (tipo === 'oficio') return !!this.oficioUploadEnabled;
+    if (tipo === 'otro') {
+      if (!this.otroUploadEnabled) return false;
+      if (!otroLabel) return true;
+      const code = this.labelToCodeOtro(otroLabel);
+      if (!code) return true;
+      return this.allowedOtroCodes.has(String(code).toLowerCase());
+    }
+    return false;
   }
   constructor(
     private toast: ToastrService,
@@ -130,11 +220,15 @@ export class Matricula {
             this.validationsMsg = pagosAprobados
               ? ''
               : 'Debes tener aprobados tus pagos para continuar a Matrícula.';
+
+            this.recomputeUploadLocks();
           },
           error: () => {
             this.canProceed = false;
             this.requisitosHabilitados = false;
             this.validationsMsg = 'No se pudo verificar el estado de tus pagos. Intenta nuevamente.';
+
+            this.recomputeUploadLocks();
           }
         });
       },
@@ -165,6 +259,8 @@ export class Matricula {
           estado: d?.status ?? d?.estado ?? 'en_revision',
           observacion: d?.observacion ?? d?.observation ?? null,
         }));
+
+        this.recomputeUploadLocks();
       },
       error: () => this.toast.error('No se pudo cargar el checklist de documentos'),
       complete: () => { this.listLoading = false; }
@@ -172,7 +268,7 @@ export class Matricula {
   }
 
   onReqFile(e: Event, tipo: 'solicitud'|'oficio'|'otro') {
-    if (!this.requisitosHabilitados) {
+    if (!this.canUploadTipo(tipo)) {
       this.toast.warning(this.validationsMsg || 'No puedes continuar aún.');
       return;
     }
@@ -238,7 +334,7 @@ export class Matricula {
 
   onReqDragOver(e: DragEvent, tipo: 'solicitud'|'oficio'|'otro') {
     e.preventDefault();
-    if (!this.requisitosHabilitados) return;
+    if (!this.canUploadTipo(tipo)) return;
     this.dragOverReq[tipo] = true;
   }
 
@@ -298,7 +394,7 @@ export class Matricula {
   }
 
   removeOtro(index: number) {
-    if (!this.requisitosHabilitados) {
+    if (!this.canUploadTipo('otro')) {
       this.toast.warning(this.validationsMsg || 'No puedes continuar aún.');
       return;
     }
@@ -306,15 +402,7 @@ export class Matricula {
   }
 
   isOtroTipoDisabled(tipoLabel: string, currentIndex: number): boolean {
-    const labelToCode = (t: string): string => {
-      const key = String(t || '').toLowerCase();
-      if (key.includes('vincul')) return 'cert_vinculacion';
-      if (key.includes('prácticas') || key.includes('practicas')) return 'cert_practicas';
-      if (key.includes('inglés') || key.includes('ingles')) return 'cert_ingles';
-      if (key.includes('no adeud')) return 'cert_no_adeudar';
-      if (key.includes('aprobación malla') || key.includes('aprobacion malla')) return 'cert_aprobacion_malla';
-      return '';
-    };
+    const labelToCode = (t: string): string => this.labelToCodeOtro(t);
 
     const current = this.reqOtros[currentIndex];
     if (current && String(current.tipo || '') === String(tipoLabel || '')) return false;
@@ -326,6 +414,11 @@ export class Matricula {
     // 2) Si ya fue aprobado en checklist, bloquear para evitar resubidas
     const code = labelToCode(tipoLabel);
     if (!code) return false;
+
+    // 2.1) Si existe checklist, bloquear si no es uno de los rechazados/faltantes permitidos
+    if (Array.isArray(this.docsList) && this.docsList.length > 0) {
+      if (!this.allowedOtroCodes.has(String(code).toLowerCase())) return true;
+    }
     const alreadyApproved = (this.docsList || []).some((d: any) =>
       String(d?.tipo || '').toLowerCase() === String(code).toLowerCase() &&
       String(d?.estado || '').toLowerCase() === 'aprobado'
@@ -351,13 +444,18 @@ export class Matricula {
     };
 
     if (this.reqArchivos.solicitud) {
+      if (!this.canUploadTipo('solicitud')) { this.toast.info('El documento Solicitud ya está aprobado o en revisión.'); return; }
       toUpload.push({ file: this.reqArchivos.solicitud, tipo: 'solicitud' });
     }
     if (this.reqArchivos.oficio) {
+      if (!this.canUploadTipo('oficio')) { this.toast.info('El documento Oficio ya está aprobado o en revisión.'); return; }
       toUpload.push({ file: this.reqArchivos.oficio, tipo: 'oficio' });
     }
     for (const o of this.reqOtros) {
-      if (o.file && o.tipo) toUpload.push({ file: o.file, tipo: mapOtroTipo(o.tipo) });
+      if (o.file && o.tipo) {
+        if (!this.canUploadTipo('otro', o.tipo)) { this.toast.info('Este tipo de certificado ya está aprobado o en revisión.'); return; }
+        toUpload.push({ file: o.file, tipo: mapOtroTipo(o.tipo) });
+      }
     }
 
     // Verificar PDFs y tamaños

@@ -289,6 +289,11 @@ export class GestionExamenes {
       next: () => {
         // refrescar lista desde backend
         this.cargar();
+        // limpiar selects superiores para la siguiente asignación
+        this.tutorAsignacionId = null;
+        this.asignaturaAsignacionId = null;
+        this.asignaturasCat = [];
+        this.materiaAsignacionId = null;
         this.toastOk = true; this.toastMsg = 'Materia registrada'; this.showToast = true; setTimeout(() => this.showToast = false, 2500);
       },
       error: () => { this.toastOk = false; this.toastMsg = 'No se pudo registrar la materia'; this.showToast = true; setTimeout(() => this.showToast = false, 3500); }

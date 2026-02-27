@@ -109,18 +109,7 @@
               <td class="px-3 py-2">{{ a.fullname }}</td>
               <td class="px-3 py-2">{{ a.career_name || a.career_id || '-' }}</td>
               <td class="px-3 py-2">
-                <div *ngIf="editingStudentId !== a.id_user">{{ a.tutor_name || a.tutor_id || '—' }}</div>
-                <div *ngIf="editingStudentId === a.id_user" class="max-w-xs">
-                  <app-searchable-select
-                    [(ngModel)]="editingTutorId"
-                    [items]="docentes"
-                    labelKey="fullname"
-                    valueKey="id_user"
-                    placeholder="Seleccione tutor"
-                    maxPanelHeight="240px"
-                    class="block w-full">
-                  </app-searchable-select>
-                </div>
+                {{ a.tutor_name || a.tutor_id || '—' }}
               </td>
               <td class="px-3 py-2">
                 <div class="flex gap-2" *ngIf="editingStudentId !== a.id_user">
@@ -130,16 +119,6 @@
                     Editar
                   </button>
                 </div>
-                <div class="flex gap-2" *ngIf="editingStudentId === a.id_user">
-                  <button type="button" (click)="saveEdit(a)" [disabled]="savingEdit || !editingTutorId || isReadOnly"
-                    class="text-xs px-2 py-1 rounded bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-60">
-                    Guardar
-                  </button>
-                  <button type="button" (click)="cancelEdit()" [disabled]="savingEdit || isReadOnly"
-                    class="text-xs px-2 py-1 rounded border hover:bg-gray-50 disabled:opacity-60">
-                    Cancelar
-                  </button>
-                </div>
               </td>
             </tr>
             <tr *ngIf="asignados.length === 0">
@@ -147,6 +126,35 @@
             </tr>
           </tbody>
         </table>
+      </div>
+
+      <div *ngIf="editingStudentId" class="mt-3 p-3 rounded-lg border border-gray-200 bg-gray-50">
+        <div class="text-sm font-semibold text-gray-800">Editar tutor asignado</div>
+        <div class="mt-2 grid grid-cols-1 md:grid-cols-3 gap-3 items-end">
+          <div class="md:col-span-2">
+            <label class="block text-xs text-gray-600 mb-1">Tutor (Docente)</label>
+            <app-searchable-select
+              [(ngModel)]="editingTutorId"
+              [items]="docentes"
+              labelKey="fullname"
+              valueKey="id_user"
+              placeholder="Seleccione tutor"
+              maxPanelHeight="240px"
+              class="block w-full">
+            </app-searchable-select>
+          </div>
+          <div class="flex gap-2">
+            <button type="button" (click)="saveEditCurrent()"
+              [disabled]="savingEdit || !editingTutorId || isReadOnly || !hasEditChanges"
+              class="text-xs px-3 py-2 rounded bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-60">
+              Guardar
+            </button>
+            <button type="button" (click)="cancelEdit()" [disabled]="savingEdit"
+              class="text-xs px-3 py-2 rounded border hover:bg-gray-50 disabled:opacity-60">
+              Cancelar
+            </button>
+          </div>
+        </div>
       </div>
 
       <div class="mt-2 flex items-center justify-between" *ngIf="(asignados || []).length > pageSize">

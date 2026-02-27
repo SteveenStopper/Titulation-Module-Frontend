@@ -14,7 +14,7 @@ import { switchMap } from 'rxjs';
 })
 export class AvanceUic {
   tutorNombre: string | null = null;
-  notas = { p1: 0, p2: 0, p3: 0 };
+  notas: { p1: number | null; p2: number | null; p3: number | null } = { p1: null, p2: null, p3: null };
   loading = true;
   sending = false;
   informeFinalEntregado = false;
@@ -27,9 +27,12 @@ export class AvanceUic {
     this.loading = true;
     this.studentSvc.getAvanceUIC().subscribe((res: AvanceView) => {
       this.tutorNombre = res?.tutorNombre ?? null;
-      this.notas.p1 = res?.p1 ?? 0;
-      this.notas.p2 = res?.p2 ?? 0;
-      this.notas.p3 = res?.p3 ?? 0;
+      // Mantener null cuando el parcial aún no está calificado.
+      // Esto permite que el promedio se calcule solo con parciales efectivamente registrados,
+      // consistente con el panel del Docente.
+      this.notas.p1 = (typeof res?.p1 === 'number') ? res.p1 : null;
+      this.notas.p2 = (typeof res?.p2 === 'number') ? res.p2 : null;
+      this.notas.p3 = (typeof res?.p3 === 'number') ? res.p3 : null;
       this.loading = false;
     });
 
@@ -47,10 +50,11 @@ export class AvanceUic {
   }
 
   get promedio(): number {
-    const vals = [this.notas.p1, this.notas.p2, this.notas.p3];
-    const validos = vals.filter(v => typeof v === 'number');
-    const sum = validos.reduce((a, b) => a + (b || 0), 0);
-    return validos.length ? parseFloat((sum / validos.length).toFixed(2)) : 0;
+    const vals = [this.notas.p1, this.notas.p2, this.notas.p3]
+      .filter((v): v is number => typeof v === 'number' && Number.isFinite(v));
+    if (!vals.length) return 0;
+    const avg = vals.reduce((a, b) => a + b, 0) / vals.length;
+    return Math.round(avg * 100) / 100;
   }
 
   // Informe Final (subida habilitada cuando haya nota de Parcial 2)
