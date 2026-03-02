@@ -33,6 +33,17 @@ export class Pagos {
   total = 0;
   search = '';
 
+  private titleCaseName(s: string): string {
+    const str = String(s || '').trim();
+    if (!str) return '';
+    return str
+      .toLowerCase()
+      .split(/\s+/g)
+      .filter(Boolean)
+      .map(w => w.length ? (w[0].toUpperCase() + w.slice(1)) : '')
+      .join(' ');
+  }
+
   setTab(tab: 'certificados' | 'titulacion' | 'acta') {
     this.activeTab = tab;
     this.load();
@@ -101,14 +112,17 @@ export class Pagos {
       next: (res: any) => {
         const rows = Array.isArray(res?.data) ? res.data : (Array.isArray(res) ? res : []);
         // Compat: asegurar que cada item tenga 'id' poblado para el botón Ver actual
-        this.items = rows.map((it: any) => ({
+        this.items = rows.map((it: any) => {
+          const rawName = it?.estudiante || (it?.users ? `${String(it.users.firstname || '').trim()} ${String(it.users.lastname || '').trim()}`.trim() : undefined);
+          return {
           ...it,
-          estudiante: it?.estudiante || (it?.users ? `${String(it.users.firstname || '').trim()} ${String(it.users.lastname || '').trim()}`.trim() : undefined),
+          estudiante: rawName ? this.titleCaseName(String(rawName)) : undefined,
           carrera: it?.carrera || it?.career || undefined,
           referencia: it?.referencia || it?.reference || undefined,
           monto: it?.monto ?? it?.amount,
           id: Number(it?.id ?? it?.voucher_id ?? it?.id_voucher ?? it?.id_voucher ?? it?.documento_id ?? 0) || undefined,
-        }));
+          };
+        });
         const pag = res?.pagination || {};
         this.total = Number(pag.total || this.items.length || 0);
         this.totalPages = Number(pag.totalPages || 1);
@@ -148,7 +162,7 @@ export class Pagos {
 
   verVoucher(item: any) {
     const id = Number(item?.id_voucher ?? item?.voucher_id ?? item?.id);
-    if (!id) return;
+    if (!id) { this.toast.info('No hay comprobante para visualizar'); return; }
     const filename = String(item?.filename || 'comprobante.pdf');
     this.vouchers.download(id).subscribe({
       next: (blob) => this.openPreviewFromBlob(blob, filename, 'Comprobante'),
@@ -217,7 +231,9 @@ export class Pagos {
   aprobar(item: any) {
     const id = item?.id ?? item?.voucher_id;
     const studentId = item?.id_user ?? item?.usuario_id;
-    if (!id) return;
+    if (!id) { this.toast.info('Registro inválido'); return; }
+    const st = String(item?.status || item?.estado || 'en_revision');
+    if (st !== 'en_revision') { this.toast.info('Solo puedes aprobar si está en revisión'); return; }
     this.actionLoading = true;
     this.vouchers.approve(Number(id)).subscribe({
       next: () => {
@@ -241,6 +257,8 @@ export class Pagos {
   }
 
   rechazar(item: any) {
+    const st = String(item?.status || item?.estado || 'en_revision');
+    if (st !== 'en_revision') { this.toast.info('Solo puedes rechazar si está en revisión'); return; }
     this.rejectTarget = item;
     this.rejectObs = '';
     this.isRejectOpen = true;

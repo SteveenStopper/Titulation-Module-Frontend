@@ -29,6 +29,17 @@ export class ActasGrado {
     guardado: boolean;
   }> = [];
 
+  private titleCaseName(s: string): string {
+    const str = String(s || '').trim();
+    if (!str) return '';
+    return str
+      .toLowerCase()
+      .split(/\s+/g)
+      .filter(Boolean)
+      .map(w => w.length ? (w[0].toUpperCase() + w.slice(1)) : '')
+      .join(' ');
+  }
+
   get totalPagesUic(): number {
     const total = (this.items || []).length;
     return Math.max(1, Math.ceil(total / this.pageSize));
@@ -99,6 +110,11 @@ export class ActasGrado {
 
   constructor(private http: HttpClient) {
     this.cargar();
+  }
+
+  private cargar() {
+    this.cargarUIC();
+    this.cargarComplexivo();
   }
 
   isCalificacionValida(it: { calificacionTribunal: number | null }): boolean {
@@ -318,33 +334,37 @@ export class ActasGrado {
     });
   }
 
-  private cargar() {
-    this.http.get<Array<{ id: number; estudiante: string; carrera: string | null; tribunal: string; calificacionTribunal: number | null; hojaCargada: boolean; hojaDocumentoId?: number | null }>>('/api/secretaria/actas')
+  private cargarUIC() {
+    this.http.get<any[]>('/api/secretaria/actas')
       .subscribe(list => {
-        this.items = (Array.isArray(list) ? list : []).map(r => ({
-          id: r.id,
-          estudiante: r.estudiante,
-          carrera: r.carrera ?? null,
-          tribunal: r.tribunal,
-          calificacionTribunal: r.calificacionTribunal,
-          hojaCargada: !!r.hojaCargada,
-          hojaDocumentoId: (r as any).hojaDocumentoId ?? null,
-          guardado: false,
+        const rows = Array.isArray(list) ? list : [];
+        this.items = rows.map((r: any) => ({
+          id: Number(r?.id_user || r?.id || 0),
+          estudiante: this.titleCaseName(String(r?.fullname || r?.estudiante || '')),
+          carrera: r?.career_name != null ? String(r.career_name) : (r?.carrera != null ? String(r.carrera) : null),
+          tribunal: String(r?.tribunal || ''),
+          calificacionTribunal: r?.score != null ? Number(r.score) : null,
+          hojaCargada: !!r?.hojaDocumentoId,
+          hojaDocumentoId: r?.hojaDocumentoId ?? null,
+          guardado: !!r?.saved,
         }));
 
         this.pageUic = 1;
       });
+  }
 
-    this.http.get<Array<{ id: number; estudiante: string; carrera: string | null; calificacionComplexivo: number | null; actaDocumentoId?: number | null; actaEstado?: string | null }>>('/api/secretaria/actas/complexivo')
+  private cargarComplexivo() {
+    this.http.get<any[]>('/api/secretaria/actas/complexivo')
       .subscribe(list => {
-        this.complexivoItems = (Array.isArray(list) ? list : []).map(r => ({
-          id: r.id,
-          estudiante: r.estudiante,
-          carrera: r.carrera ?? null,
-          calificacionComplexivo: r.calificacionComplexivo == null ? null : Number(r.calificacionComplexivo),
-          actaDocumentoId: (r as any).actaDocumentoId ?? null,
-          actaEstado: (r as any).actaEstado ?? null,
-          guardado: false,
+        const rows = Array.isArray(list) ? list : [];
+        this.complexivoItems = rows.map((r: any) => ({
+          id: Number(r?.id_user || r?.id || 0),
+          estudiante: this.titleCaseName(String(r?.fullname || r?.estudiante || '')),
+          carrera: r?.career_name != null ? String(r.career_name) : (r?.carrera != null ? String(r.carrera) : null),
+          calificacionComplexivo: r?.calificacionComplexivo == null ? null : Number(r.calificacionComplexivo),
+          actaDocumentoId: r?.actaDocumentoId ?? null,
+          actaEstado: r?.actaEstado ?? null,
+          guardado: !!r?.saved,
         }));
 
         this.pageComplexivo = 1;

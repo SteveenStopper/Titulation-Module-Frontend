@@ -2,6 +2,7 @@ import { Component } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { HttpClient } from '@angular/common/http';
+import Swal from 'sweetalert2';
 import { SearchableSelectComponent } from '../../../core/components/searchable-select.component';
 
 @Component({
@@ -34,6 +35,30 @@ export class TribunalEvaluador {
   private originalEditingVocalId: number | null = null;
   private editingAsignadoRow: any | null = null;
   savingEdit = false;
+
+  private swalToastSuccess(msg: string) {
+    return Swal.fire({
+      toast: true,
+      position: 'top-end',
+      icon: 'success',
+      title: msg,
+      showConfirmButton: false,
+      timer: 3000,
+      timerProgressBar: true,
+    });
+  }
+
+  private swalToastError(msg: string) {
+    return Swal.fire({
+      toast: true,
+      position: 'top-end',
+      icon: 'error',
+      title: msg,
+      showConfirmButton: false,
+      timer: 3500,
+      timerProgressBar: true,
+    });
+  }
 
   get hasEditAsignadoChanges(): boolean {
     if (!this.editingStudentId) return false;
@@ -253,8 +278,26 @@ export class TribunalEvaluador {
   addMiembro() {
     if (this.isReadOnly) return;
     if (!this.hasStudents) return;
+    if (!Number.isFinite(Number(this.model.estudianteId))) return;
     if (this.model.miembros.length >= 2) return;
     this.model.miembros.push({});
+    this.onChange();
+  }
+
+  isRoleDisabled(role: string, index: number): boolean {
+    const r = String(role || '').trim();
+    if (!r) return false;
+    return (this.model.miembros || []).some((m, i) => i !== index && String(m?.rol || '').trim() === r);
+  }
+
+  selectStudent(e: any) {
+    if (this.isReadOnly) return;
+    const id = Number(e?.id);
+    if (!Number.isFinite(id)) return;
+    this.model.estudianteId = id;
+    this.model.miembros = [];
+    this.errors = [];
+    this.cancelEditAsignado();
     this.onChange();
   }
 
@@ -316,9 +359,9 @@ export class TribunalEvaluador {
       const list = Array.isArray(rows) ? rows : [];
       this.estudiantesUIC = list.map((r: any) => ({
         id: Number(r.id_user),
-        nombre: String(r.fullname),
+        nombre: this.toTitleCase(String(r.fullname)),
         tutor_id: r.tutor_id != null ? Number(r.tutor_id) : null,
-        tutor: r.tutor_name != null ? String(r.tutor_name) : null,
+        tutor: r.tutor_name != null ? this.toTitleCase(String(r.tutor_name)) : null,
         career_id: r.career_id != null ? Number(r.career_id) : (r.careerId != null ? Number(r.careerId) : null),
       }));
     });
@@ -376,9 +419,12 @@ export class TribunalEvaluador {
         this.cancelEditAsignado();
         this.refreshEstudiantes();
         this.refreshTribunalAsignado();
+        this.swalToastSuccess('Tribunal actualizado.');
       },
       error: (err) => {
-        this.errors = [err?.error?.message || 'No se pudo actualizar el tribunal'];
+        const msg = err?.error?.message || 'No se pudo actualizar el tribunal';
+        this.errors = [msg];
+        this.swalToastError(msg);
       },
       complete: () => { this.savingEdit = false; }
     });
@@ -387,6 +433,12 @@ export class TribunalEvaluador {
   get selectedTutor(): string | null {
     const e = this.estudiantesUIC.find(x => x.id === this.model.estudianteId);
     return (e?.tutor || null) as any;
+  }
+
+  get docentesForMiembros(): Array<{ id_user: number; fullname: string }> {
+    const tutorId = this.getSelectedTutorId();
+    if (!Number.isFinite(Number(tutorId))) return this.docentes || [];
+    return (this.docentes || []).filter(d => Number(d?.id_user) !== Number(tutorId));
   }
 
   private getSelectedTutorId(): number | null {
@@ -432,7 +484,10 @@ export class TribunalEvaluador {
       this.errors = ['Solo se puede editar en el período activo.'];
       return;
     }
-    if (!this.validate()) return;
+    if (!this.validate()) {
+      if (this.errors.length) this.swalToastError(this.errors[0]);
+      return;
+    }
     const lectorId = this.getSelectedLectorId();
     if (!Number.isFinite(Number(lectorId))) {
       this.errors = ['El estudiante no tiene lector asignado.'];
@@ -466,9 +521,12 @@ export class TribunalEvaluador {
         this.errors = [];
         this.refreshEstudiantes();
         this.refreshTribunalAsignado();
+        this.swalToastSuccess('Tribunal asignado correctamente.');
       },
       error: (err) => {
-        this.errors = [err?.error?.message || 'No se pudo guardar la asignación'];
+        const msg = err?.error?.message || 'No se pudo guardar la asignación';
+        this.errors = [msg];
+        this.swalToastError(msg);
       }
     });
   }

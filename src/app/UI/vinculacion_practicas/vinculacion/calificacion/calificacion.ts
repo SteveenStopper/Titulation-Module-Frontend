@@ -24,6 +24,17 @@ export class Calificacion {
     return Math.max(1, Math.ceil(total / this.pageSize));
   }
 
+  private toTitleCase(name: string): string {
+    const s = String(name || '').trim();
+    if (!s) return '';
+    return s
+      .toLowerCase()
+      .split(' ')
+      .filter(Boolean)
+      .map(p => p.length ? (p[0].toUpperCase() + p.slice(1)) : p)
+      .join(' ');
+  }
+
   get pagedItems() {
     const list = this.items || [];
     const start = (this.page - 1) * this.pageSize;
@@ -155,7 +166,7 @@ export class Calificacion {
         const list = Array.isArray(rows) ? rows : [];
         this.items = list.map(r => ({
           id: r.id_user,
-          estudiante: r.fullname,
+          estudiante: this.toTitleCase(r.fullname),
           carrera: (r.career_name || r.career || ''),
           nota: r.score != null ? Number(r.score) : null,
           guardado: r.status === 'saved' || r.status === 'validated',

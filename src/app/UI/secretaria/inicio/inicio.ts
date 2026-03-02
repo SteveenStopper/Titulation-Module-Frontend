@@ -28,6 +28,17 @@ export class Inicio {
       if (i >= 0) this.notifications[i].leida = true;
     }});
   }
+
+  private titleCaseName(s: string): string {
+    const str = String(s || '').trim();
+    if (!str) return '';
+    return str
+      .toLowerCase()
+      .split(/\s+/g)
+      .filter(Boolean)
+      .map(w => w.length ? (w[0].toUpperCase() + w.slice(1)) : '')
+      .join(' ');
+  }
   marcarTodasLeidas() {
     this.notificationsSvc.markAllRead().subscribe({ complete: () => {
       this.notifications = this.notifications.map(n => ({ ...n, leida: true }));
@@ -82,7 +93,13 @@ export class Inicio {
     });
     // Trámites recientes reales
     this.http.get<Array<{ estudiante: string; tramite: string; fecha: string; estado: 'completado'|'pendiente' }>>('/api/secretaria/recientes').subscribe((rows) => {
-      if (Array.isArray(rows)) this.recientes = rows.map(r => ({ ...r, fecha: new Date(r.fecha).toLocaleDateString() }));
+      if (Array.isArray(rows)) {
+        this.recientes = rows.map(r => ({
+          ...r,
+          estudiante: this.titleCaseName(String(r?.estudiante || '')),
+          fecha: new Date(r.fecha).toLocaleDateString()
+        }));
+      }
     });
   }
 

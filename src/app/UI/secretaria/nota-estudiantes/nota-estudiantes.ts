@@ -157,7 +157,7 @@ export class NotaEstudiantes {
 
   generarCertificado(estudiante_id: number) {
     const e = this.items.find(x => x.estudiante_id === estudiante_id);
-    if (!e) return;
+    if (!e) { this.toast.info('Estudiante no encontrado'); return; }
     if (!this.elegible(e)) { this.toast.warning('El estudiante no cumple los requisitos'); return; }
     if (!this.canGenerate(e)) { this.toast.info('El certificado ya fue generado'); return; }
     this.secretaria.generarCertNotas(estudiante_id).subscribe({
@@ -166,6 +166,7 @@ export class NotaEstudiantes {
         if (!docId) { this.toast.info('Certificado generado, pero no se obtuvo el documento'); return; }
         (e as any).certificado_doc_id = Number(docId);
         this.documents.download(docId).subscribe(blob => {
+          this.toast.success('Certificado generado');
           const url = URL.createObjectURL(blob);
           const a = document.createElement('a');
           a.href = url;
@@ -187,11 +188,12 @@ export class NotaEstudiantes {
 
   verCertificado(estudiante_id: number) {
     const e = this.items.find(x => x.estudiante_id === estudiante_id);
-    if (!e) return;
+    if (!e) { this.toast.info('Estudiante no encontrado'); return; }
     const docId = Number((e as any).certificado_doc_id);
-    if (!Number.isFinite(docId) || docId <= 0) return;
+    if (!Number.isFinite(docId) || docId <= 0) { this.toast.info('No hay certificado para visualizar'); return; }
     this.documents.download(docId).subscribe({
       next: (blob) => {
+        this.toast.info('Abriendo certificado...');
         const url = URL.createObjectURL(blob);
         // Abrir en nueva pestaña (ver) + permitir guardar manualmente
         try { window.open(url, '_blank'); } catch (_) { /* ignore */ }
@@ -213,7 +215,8 @@ export class NotaEstudiantes {
 
   aceptar(estudiante_id: number) {
     const e = this.items.find(x => x.estudiante_id === estudiante_id);
-    if (!e) return;
+    if (!e) { this.toast.info('Estudiante no encontrado'); return; }
+    if ((e as any)?.estado !== 'pendiente') { this.toast.info('Esta solicitud ya no está pendiente'); return; }
     if (!this.elegible(e)) { this.toast.warning('El estudiante no cumple los requisitos'); return; }
     this.secretaria.approve(estudiante_id).subscribe({
       next: () => {
@@ -226,8 +229,8 @@ export class NotaEstudiantes {
 
   reconsiderar(estudiante_id: number) {
     const e = this.items.find(x => x.estudiante_id === estudiante_id);
-    if (!e) return;
-    if (!this.canReconsider(e)) return;
+    if (!e) { this.toast.info('Estudiante no encontrado'); return; }
+    if (!this.canReconsider(e)) { this.toast.info('Solo puedes reconsiderar si está rechazado'); return; }
     this.loading = true;
     this.secretaria.reconsiderar(estudiante_id).subscribe({
       next: () => {
@@ -244,7 +247,8 @@ export class NotaEstudiantes {
 
   rechazar(estudiante_id: number) {
     const e = this.items.find(x => x.estudiante_id === estudiante_id);
-    if (!e) return;
+    if (!e) { this.toast.info('Estudiante no encontrado'); return; }
+    if ((e as any)?.estado !== 'pendiente') { this.toast.info('Esta solicitud ya no está pendiente'); return; }
     this.rejectTargetId = estudiante_id;
     this.rejectObs = '';
     this.showRejectDialog = true;

@@ -42,6 +42,17 @@ export class Inicio {
       }
     });
   }
+
+  private titleCaseName(s: string): string {
+    const str = String(s || '').trim();
+    if (!str) return '';
+    return str
+      .toLowerCase()
+      .split(/\s+/g)
+      .filter(Boolean)
+      .map(w => w.length ? (w[0].toUpperCase() + w.slice(1)) : '')
+      .join(' ');
+  }
   marcarTodasLeidas() {
     this.notificationsSvc.markAllRead().subscribe({
       complete: () => {
@@ -94,7 +105,8 @@ export class Inicio {
     this.http.get<any>('/api/vouchers?v_type=pago_certificado&page=1&pageSize=5').subscribe((resp) => {
       const data = Array.isArray(resp?.data) ? resp.data : (Array.isArray(resp) ? resp : []);
       this.recentPayments = data.map((r: any) => {
-        const estudiante = r?.users ? `${String(r.users.firstname || '').trim()} ${String(r.users.lastname || '').trim()}`.trim() : (String(r?.estudiante || '').trim() || `ID ${r?.id_user || ''}`);
+        const raw = r?.users ? `${String(r.users.firstname || '').trim()} ${String(r.users.lastname || '').trim()}`.trim() : (String(r?.estudiante || '').trim() || `ID ${r?.id_user || ''}`);
+        const estudiante = this.titleCaseName(raw);
         const monto = Number(r?.amount ?? r?.monto ?? 0);
         const fecha = new Date(r?.created_at || r?.creado_en || Date.now()).toLocaleDateString();
         const estadoRaw = String(r?.status || r?.estado || '').toLowerCase();

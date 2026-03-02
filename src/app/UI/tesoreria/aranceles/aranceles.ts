@@ -145,7 +145,7 @@ export class Aranceles {
   aprobar(it: TesoreriaResumenItem) {
     const periodo = this.requirePeriodoFromItem(it);
     if (periodo === null) return;
-    if (!this.canApproveOrReject(it)) return;
+    if (!this.canApproveOrReject(it)) { this.toast.info('Esta solicitud ya fue procesada'); return; }
     this.loading = true;
     this.tesoreria.aprobar(periodo, Number(it.estudiante_id))
       .subscribe({
@@ -198,7 +198,7 @@ export class Aranceles {
   reconsiderar(it: TesoreriaResumenItem) {
     const periodo = this.requirePeriodoFromItem(it);
     if (periodo === null) return;
-    if (!this.canReconsider(it)) return;
+    if (!this.canReconsider(it)) { this.toast.info('Solo puedes reconsiderar si está rechazado'); return; }
     this.loading = true;
     this.tesoreria.reconsiderar(periodo, Number(it.estudiante_id))
       .subscribe({
@@ -216,7 +216,7 @@ export class Aranceles {
   generarCertificado(it: TesoreriaResumenItem) {
     const periodo = this.requirePeriodoFromItem(it);
     if (periodo === null) return;
-    if (!this.canGenerate(it)) return;
+    if (!this.canGenerate(it)) { this.toast.info('No está disponible generar certificado'); return; }
     this.loading = true;
     this.tesoreria.generarCertificado(periodo, Number(it.estudiante_id))
       .subscribe({
@@ -228,7 +228,7 @@ export class Aranceles {
   descargarCertificado(it: TesoreriaResumenItem) {
     const periodo = this.requirePeriodoFromItem(it);
     if (periodo === null) return;
-    if (!this.canView(it)) return;
+    if (!this.canView(it)) { this.toast.info('No hay certificado para visualizar'); return; }
     this.loading = true;
     this.tesoreria.descargarCertificadoPorEstudiante(Number(it.estudiante_id), periodo)
       .subscribe({

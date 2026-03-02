@@ -57,6 +57,17 @@ export class Matricula {
       });
   }
 
+  private titleCaseName(s: string): string {
+    const str = String(s || '').trim();
+    if (!str) return '';
+    return str
+      .toLowerCase()
+      .split(/\s+/g)
+      .filter(Boolean)
+      .map(w => w.length ? (w[0].toUpperCase() + w.slice(1)) : '')
+      .join(' ');
+  }
+
   private resetView() {
     this.search = '';
     this.carreraFiltro = '';
@@ -131,7 +142,7 @@ export class Matricula {
             d?.career_name ?? d?.career ?? d?.carrera ?? d?.carrera_nombre ?? (d as any)?.careerName ?? '-'
           ).trim() || '-';
 
-          const g = byUser.get(uid) || { id: uid, estudiante: (nombre || `Usuario ${uid}`), carrera: carrera || '-', documentos: [] as any[] };
+          const g = byUser.get(uid) || { id: uid, estudiante: (this.titleCaseName(nombre) || `Usuario ${uid}`), carrera: carrera || '-', documentos: [] as any[] };
           if (g.carrera === '-' && carrera !== '-') g.carrera = carrera;
 
           const view = {
