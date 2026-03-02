@@ -87,11 +87,13 @@ export class TutorUicDocente {
   }
 
   puedeEditar(e: any, key: 'p1'|'p2'|'p3'): boolean {
+    if (!this.previoCompleto(e, key)) return false;
     if (this.isAdmin) return e[key].estado === 'editing';
     return e[key].estado === 'editing';
   }
 
   puedeMostrarEditar(e: any, key: 'p1'|'p2'|'p3'): boolean {
+    if (!this.previoCompleto(e, key)) return false;
     if (this.isAdmin) return (e[key].estado === 'saved' || e[key].estado === 'published');
     return e[key].estado === 'saved';
   }
@@ -100,18 +102,28 @@ export class TutorUicDocente {
     this.clampNota(e, key);
     this.avanceSvc.guardarParcial(this.tutorId, e.alumnoId, key, { nota: e[key].nota, obs: e[key].obs })
       .subscribe({
-        next: () => { this.toastOk = true; this.toastMsg = 'Guardado correctamente'; this.showToast = true; setTimeout(()=> this.showToast=false, 2500); },
+        next: () => {
+          // Al guardar, debe quedar deshabilitado hasta que se presione "Editar" nuevamente
+          // (estado 'saved' => no editable)
+          e[key].estado = 'saved';
+          this.toastOk = true;
+          this.toastMsg = 'Guardado correctamente';
+          this.showToast = true;
+          setTimeout(()=> this.showToast=false, 2500);
+        },
         error: () => { this.toastOk = false; this.toastMsg = 'No se pudo guardar'; this.showToast = true; setTimeout(()=> this.showToast=false, 3500); }
       });
   }
 
   editar(e: FilaAvance, key: 'p1'|'p2'|'p3') {
-    if (e[key].estado === 'published') return;
+    if (e[key].estado === 'published' && !this.isAdmin) return;
+    if (!this.previoCompleto(e, key)) return;
     e[key].estado = 'editing';
   }
 
   puedePublicar(e: FilaAvance, key: 'p1'|'p2'|'p3'): boolean {
     if (this.isAdmin) return false;
+    if (!this.previoCompleto(e, key)) return false;
     return e[key].nota !== null && e[key].estado !== 'published';
   }
 

@@ -107,7 +107,18 @@ export class SearchableSelectComponent implements ControlValueAccessor {
   }
 
   onSearchChange(v: string) {
-    this.search = String(v ?? '');
+    const next = String(v ?? '');
+    this.search = next;
+
+    // Si el usuario limpia el input, limpiar el valor seleccionado inmediatamente.
+    // Esto evita que Angular re-escriba el valor anterior (y "reviva" el texto) al borrar caracter por caracter.
+    if (!String(next).trim()) {
+      this.setValue(null);
+      this.open();
+      this.recompute();
+      return;
+    }
+
     this.open();
     this.recompute();
   }

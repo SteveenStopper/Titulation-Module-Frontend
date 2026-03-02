@@ -17,7 +17,7 @@
       <!-- Estudiante -->
       <div>
         <label class="block text-sm text-gray-700 mb-1">Estudiante</label>
-        <select [(ngModel)]="estudianteId" [disabled]="isReadOnly"
+        <select [(ngModel)]="estudianteId" [disabled]="isReadOnly || !(estudiantes && estudiantes.length)"
           class="w-full rounded-lg border-gray-300 focus:border-blue-600 focus:ring-blue-600">
           <option [ngValue]="null">Seleccione estudiante</option>
           <option *ngFor="let e of estudiantes" [ngValue]="e.id_user">{{ e.fullname }}</option>
@@ -29,7 +29,7 @@
         <label class="block text-sm text-gray-700 mb-1">Tutor (Docente)</label>
         <app-searchable-select
           [(ngModel)]="tutorId"
-          [disabled]="isReadOnly"
+          [disabled]="isReadOnly || !(estudiantes && estudiantes.length) || !estudianteId"
           [items]="docentes"
           labelKey="fullname"
           valueKey="id_user"

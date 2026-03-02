@@ -337,6 +337,8 @@ export class ComisionAsignarTutorComponent implements OnInit {
     this.http.put('/api/uic/admin/asignaciones/tutor', body).subscribe({
       next: (resp: any) => {
         this.message = 'Tutor asignado correctamente';
+        this.estudianteId = null;
+        this.tutorId = null;
         // refrescar lista por si el estudiante ya no debe aparecer
         this.cargarEstudiantes();
         this.cargarAsignados();

@@ -17,7 +17,7 @@
       <!-- Estudiante -->
       <div>
         <label class="block text-sm text-gray-700 mb-1">Estudiante</label>
-        <select [(ngModel)]="estudianteId" [disabled]="isReadOnly"
+        <select [(ngModel)]="estudianteId" [disabled]="isReadOnly || !(estudiantes && estudiantes.length)"
           class="w-full rounded-lg border-gray-300 focus:border-blue-600 focus:ring-blue-600">
           <option [ngValue]="null">Seleccione estudiante</option>
           <option *ngFor="let e of estudiantes" [ngValue]="e.id_user">{{ e.fullname }}</option>
@@ -27,14 +27,8 @@
       <!-- Lector (Docente) -->
       <div>
         <label class="block text-sm text-gray-700 mb-1">Lector (Docente)</label>
-        <app-searchable-select
-          [(ngModel)]="lectorId"
-          [disabled]="isReadOnly"
-          [items]="docentes"
-          labelKey="fullname"
-          valueKey="id_user"
-          placeholder="Seleccione lector"
-          maxPanelHeight="240px"
+        <app-searchable-select [(ngModel)]="lectorId" [disabled]="isReadOnly || !(estudiantes && estudiantes.length) || !estudianteId" [items]="docentesForLector"
+          labelKey="fullname" valueKey="id_user" placeholder="Seleccione lector" maxPanelHeight="240px"
           class="block w-full">
         </app-searchable-select>
       </div>
@@ -63,8 +57,7 @@
               <td class="px-3 py-2">{{ e.career_name || e.career_id || '-' }}</td>
               <td class="px-3 py-2">{{ e.tutor_name || '—' }}</td>
               <td class="px-3 py-2">
-                <button (click)="pickEstudiante(e.id_user)"
-                  [disabled]="isReadOnly"
+                <button (click)="pickEstudiante(e.id_user)" [disabled]="isReadOnly"
                   class="text-xs px-2 py-1 rounded bg-gray-800 text-white hover:bg-black">Seleccionar</button>
               </td>
             </tr>
@@ -115,8 +108,7 @@
               </td>
               <td class="px-3 py-2">
                 <div class="flex gap-2" *ngIf="editingStudentId !== a.id_user">
-                  <button type="button" (click)="startEdit(a)"
-                    [disabled]="isReadOnly"
+                  <button type="button" (click)="startEdit(a)" [disabled]="isReadOnly"
                     class="text-xs px-2 py-1 rounded border hover:bg-gray-50">Editar</button>
                 </div>
               </td>
@@ -133,14 +125,8 @@
         <div class="mt-2 grid grid-cols-1 md:grid-cols-3 gap-3 items-end">
           <div class="md:col-span-2">
             <label class="block text-xs text-gray-600 mb-1">Lector (Docente)</label>
-            <app-searchable-select
-              [(ngModel)]="editingLectorId"
-              [items]="docentes"
-              labelKey="fullname"
-              valueKey="id_user"
-              placeholder="Seleccione lector"
-              maxPanelHeight="240px"
-              class="block w-full">
+            <app-searchable-select [(ngModel)]="editingLectorId" [items]="docentesForEditingLector" labelKey="fullname"
+              valueKey="id_user" placeholder="Seleccione lector" maxPanelHeight="240px" class="block w-full">
             </app-searchable-select>
           </div>
           <div class="flex gap-2">

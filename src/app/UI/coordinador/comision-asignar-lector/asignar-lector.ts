@@ -16,7 +16,7 @@ export class ComisionAsignarLectorComponent implements OnInit {
   periodos: Array<{ id_academic_periods: number; name: string }> = [];
   carreras: Array<{ id: number; nombre: string }> = [];
   docentes: Array<{ id_user: number; fullname: string; email?: string | null }> = [];
-  estudiantes: Array<{ id_user: number; fullname: string; career_id?: number | null; career_name?: string | null; tutor_name?: string | null }> = [];
+  estudiantes: Array<{ id_user: number; fullname: string; career_id?: number | null; career_name?: string | null; tutor_id?: number | null; tutor_name?: string | null }> = [];
   asignados: Array<{ id_user: number; fullname: string; career_id?: number | null; career_name?: string | null; tutor_id?: number | null; tutor_name?: string | null; lector_id?: number | null; lector_name?: string | null }> = [];
 
   activePeriodId: number | null = null;
@@ -48,6 +48,29 @@ export class ComisionAsignarLectorComponent implements OnInit {
     const act = Number(this.activePeriodId);
     if (!Number.isFinite(sel) || !Number.isFinite(act)) return false;
     return sel !== act;
+  }
+
+  private getTutorIdForStudent(studentId: number | null): number | null {
+    const sid = this.toValidId(studentId);
+    if (!sid) return null;
+    const fromEst = (this.estudiantes || []).find(e => Number(e.id_user) === sid);
+    const fromAsig = (this.asignados || []).find(a => Number(a.id_user) === sid);
+    const v = (fromEst?.tutor_id ?? fromAsig?.tutor_id) as any;
+    return this.toValidId(v);
+  }
+
+  private docentesExcludingTutor(tutorId: number | null): Array<{ id_user: number; fullname: string; email?: string | null }> {
+    const tid = this.toValidId(tutorId);
+    if (!tid) return this.docentes;
+    return (this.docentes || []).filter(d => Number(d.id_user) !== tid);
+  }
+
+  get docentesForLector() {
+    return this.docentesExcludingTutor(this.getTutorIdForStudent(this.estudianteId));
+  }
+
+  get docentesForEditingLector() {
+    return this.docentesExcludingTutor(this.getTutorIdForStudent(this.editingStudentId));
   }
 
   // Paginación (client-side)
@@ -222,6 +245,7 @@ export class ComisionAsignarLectorComponent implements OnInit {
       this.estudiantes = (Array.isArray(rows) ? rows : []).map((e: any) => ({
         ...e,
         fullname: e?.fullname != null ? this.toTitleCase(String(e.fullname)) : e?.fullname,
+        tutor_id: e?.tutor_id != null && Number.isFinite(Number(e.tutor_id)) ? Number(e.tutor_id) : null,
         tutor_name: e?.tutor_name != null ? this.toTitleCase(String(e.tutor_name)) : e?.tutor_name,
       }));
       this.setPageEst(1);
@@ -240,6 +264,8 @@ export class ComisionAsignarLectorComponent implements OnInit {
       const list = Array.isArray(rows) ? rows : [];
       this.asignados = list.map((a: any) => ({
         ...a,
+        tutor_id: a?.tutor_id != null && Number.isFinite(Number(a.tutor_id)) ? Number(a.tutor_id) : (a?.tutor_usuario_id != null && Number.isFinite(Number(a.tutor_usuario_id)) ? Number(a.tutor_usuario_id) : null),
+        lector_id: a?.lector_id != null && Number.isFinite(Number(a.lector_id)) ? Number(a.lector_id) : (a?.lector_usuario_id != null && Number.isFinite(Number(a.lector_usuario_id)) ? Number(a.lector_usuario_id) : a?.lector_id),
         tutor_name: a?.tutor_name != null ? this.toTitleCase(String(a.tutor_name)) : a?.tutor_name,
         lector_name: a?.lector_name != null ? this.toTitleCase(String(a.lector_name)) : a?.lector_name,
         fullname: a?.fullname != null ? this.toTitleCase(String(a.fullname)) : a?.fullname,
@@ -330,7 +356,13 @@ export class ComisionAsignarLectorComponent implements OnInit {
     const body: any = { id_user_student, lector_usuario_id };
     body.academicPeriodId = periodoId;
     this.http.put('/api/uic/admin/asignaciones/lector', body).subscribe({
-      next: () => { this.message = 'Lector asignado correctamente'; this.cargarEstudiantes(); this.cargarAsignados(); },
+      next: () => {
+        this.message = 'Lector asignado correctamente';
+        this.estudianteId = null;
+        this.lectorId = null;
+        this.cargarEstudiantes();
+        this.cargarAsignados();
+      },
       error: (err) => { this.error = err?.error?.message || 'No se pudo asignar el lector'; },
       complete: () => { this.loading = false; }
     });

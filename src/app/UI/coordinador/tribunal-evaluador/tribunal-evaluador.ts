@@ -25,6 +25,9 @@ export class TribunalEvaluador {
   private lectorByStudentId = new Map<number, number>();
   private lectorNameByStudentId = new Map<number, string>();
 
+  private lastPeriodo: number | null = null;
+  private lastStudentId: number | null = null;
+
   editingStudentId: number | null = null;
   editingPresidentId: number | null = null;
   editingSecretaryId: number | null = null;
@@ -269,10 +272,19 @@ export class TribunalEvaluador {
     this.errors = [];
     if (this.model.miembros.length > 2) this.errors.push('Máximo 2 integrantes (Integrante 2 y 3).');
 
-    // Refrescar listados cuando haya filtros
-    this.refreshEstudiantes();
-    this.refreshLectorMap();
-    this.refreshTribunalAsignado();
+    const pid = Number.isFinite(Number(this.model.periodo)) ? Number(this.model.periodo) : null;
+    const sid = Number.isFinite(Number(this.model.estudianteId)) ? Number(this.model.estudianteId) : null;
+    const filtersChanged = String(pid ?? '') !== String(this.lastPeriodo ?? '') || String(sid ?? '') !== String(this.lastStudentId ?? '');
+    this.lastPeriodo = pid;
+    this.lastStudentId = sid;
+
+    // Solo refrescar listados si cambian filtros (período/estudiante),
+    // no en cada cambio de miembros (evita parpadeos en "Lector asignado").
+    if (filtersChanged) {
+      this.refreshEstudiantes();
+      this.refreshLectorMap();
+      this.refreshTribunalAsignado();
+    }
   }
 
   addMiembro() {
@@ -281,7 +293,8 @@ export class TribunalEvaluador {
     if (!Number.isFinite(Number(this.model.estudianteId))) return;
     if (this.model.miembros.length >= 2) return;
     this.model.miembros.push({});
-    this.onChange();
+    // No refrescar listados; solo revalidar (evita parpadeos)
+    this.errors = [];
   }
 
   isRoleDisabled(role: string, index: number): boolean {
@@ -302,7 +315,8 @@ export class TribunalEvaluador {
   }
 
   onMiembrosChange() {
-    this.onChange();
+    // No disparar refresh de listados en cada cambio; solo revalidar
+    this.errors = [];
   }
 
   removeMiembro(i: number) {
@@ -312,23 +326,25 @@ export class TribunalEvaluador {
   }
 
   private refreshLectorMap() {
-    this.lectorByStudentId = new Map();
-    this.lectorNameByStudentId = new Map();
-
     if (!Number.isFinite(Number(this.model.periodo))) return;
     const params: any = { academicPeriodId: Number(this.model.periodo) };
 
     this.http.get<any[]>('/api/uic/admin/asignaciones/lector', { params }).subscribe({
       next: (rows) => {
+        const nextById = new Map<number, number>();
+        const nextNameById = new Map<number, string>();
         const list = Array.isArray(rows) ? rows : [];
         for (const r of list) {
           const sid = Number(r?.id_user);
           const lid = r?.lector_id != null ? Number(r.lector_id) : null;
           if (!Number.isFinite(sid) || !Number.isFinite(Number(lid))) continue;
-          this.lectorByStudentId.set(sid, Number(lid));
+          nextById.set(sid, Number(lid));
           const lname = r?.lector_name != null ? this.toTitleCase(String(r.lector_name)) : null;
-          if (lname) this.lectorNameByStudentId.set(sid, lname);
+          if (lname) nextNameById.set(sid, lname);
         }
+
+        this.lectorByStudentId = nextById;
+        this.lectorNameByStudentId = nextNameById;
 
         this.refreshTribunalAsignado();
 
@@ -341,9 +357,7 @@ export class TribunalEvaluador {
         }
       },
       error: () => {
-        // no bloquear UI, solo limpiar
-        this.lectorByStudentId = new Map();
-        this.lectorNameByStudentId = new Map();
+        // no bloquear UI; mantener el mapa actual (evita parpadeos)
         this.refreshTribunalAsignado();
       }
     });
@@ -435,15 +449,59 @@ export class TribunalEvaluador {
     return (e?.tutor || null) as any;
   }
 
-  get docentesForMiembros(): Array<{ id_user: number; fullname: string }> {
+  private getExcludedDocenteIdsForIndex(index: number): Set<number> {
+    const excluded = new Set<number>();
     const tutorId = this.getSelectedTutorId();
-    if (!Number.isFinite(Number(tutorId))) return this.docentes || [];
-    return (this.docentes || []).filter(d => Number(d?.id_user) !== Number(tutorId));
+    const lectorId = this.getSelectedLectorId();
+    if (Number.isFinite(Number(tutorId))) excluded.add(Number(tutorId));
+    if (Number.isFinite(Number(lectorId))) excluded.add(Number(lectorId));
+
+    // Evitar repetir integrantes: excluir lo ya seleccionado en el otro combo
+    (this.model.miembros || []).forEach((m, i) => {
+      if (i === index) return;
+      const did = Number(m?.docente);
+      if (Number.isFinite(did)) excluded.add(did);
+    });
+    return excluded;
+  }
+
+  docentesForMiembro(index: number): Array<{ id_user: number; fullname: string }> {
+    const excluded = this.getExcludedDocenteIdsForIndex(index);
+    return (this.docentes || []).filter(d => !excluded.has(Number(d?.id_user)));
   }
 
   private getSelectedTutorId(): number | null {
     const e = this.estudiantesUIC.find(x => x.id === this.model.estudianteId);
     return e?.tutor_id != null ? Number(e.tutor_id) : null;
+  }
+
+  private getTutorIdForStudentId(studentId: number | null): number | null {
+    const sid = Number(studentId);
+    if (!Number.isFinite(sid)) return null;
+    const e = (this.estudiantesUIC || []).find(x => Number(x.id) === sid);
+    return e?.tutor_id != null ? Number(e.tutor_id) : null;
+  }
+
+  get docentesForEditingSecretary(): Array<{ id_user: number; fullname: string }> {
+    const excluded = new Set<number>();
+    const tutorId = this.getTutorIdForStudentId(this.editingStudentId);
+    const lectorId = Number.isFinite(Number(this.editingStudentId)) ? Number(this.lectorByStudentId.get(Number(this.editingStudentId)) || null) : null;
+    if (Number.isFinite(Number(tutorId))) excluded.add(Number(tutorId));
+    if (Number.isFinite(Number(lectorId))) excluded.add(Number(lectorId));
+    const vocal = Number(this.editingVocalId);
+    if (Number.isFinite(vocal)) excluded.add(vocal);
+    return (this.docentes || []).filter(d => !excluded.has(Number(d?.id_user)));
+  }
+
+  get docentesForEditingVocal(): Array<{ id_user: number; fullname: string }> {
+    const excluded = new Set<number>();
+    const tutorId = this.getTutorIdForStudentId(this.editingStudentId);
+    const lectorId = Number.isFinite(Number(this.editingStudentId)) ? Number(this.lectorByStudentId.get(Number(this.editingStudentId)) || null) : null;
+    if (Number.isFinite(Number(tutorId))) excluded.add(Number(tutorId));
+    if (Number.isFinite(Number(lectorId))) excluded.add(Number(lectorId));
+    const sec = Number(this.editingSecretaryId);
+    if (Number.isFinite(sec)) excluded.add(sec);
+    return (this.docentes || []).filter(d => !excluded.has(Number(d?.id_user)));
   }
 
   private validate(): boolean {
